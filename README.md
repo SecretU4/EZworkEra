@@ -1,8 +1,9 @@
 # EZworkEra
 Utility For using UpdateEra(Not Mine) - Translated Eramaker base game's update tool
 
-#2019.08.19
-#readme ver 2.0
+# 2019.08.19
+
+# readme ver 2.0
     개요
 	이 툴은 ver 2.0 현재 eraTW의 파일구조를 참고하여 만들어졌습니다. 타 era에서의 구동을 보장할 수 없습니다.
 	이 툴은 ver 2.0 현재 python 3.7.4를 기반으로 작성되고 있습니다. C 계열이던 Java 계열이던 다른 언어는 아예 만질 줄 모릅니다.
@@ -14,7 +15,7 @@ Utility For using UpdateEra(Not Mine) - Translated Eramaker base game's update t
 	파일 설명
 	이 파일은 readme 텍스트 파일로, 현재 존재하는 툴의 기능을 설명하고 있습니다.
 
-#trans_csv_to_srs.exe
+# trans_csv_to_srs.exe
 	1. extractj/ 디렉토리와 extractK/ 디렉토리 내부의 CSV 파일의 특정 변수를 필터링하여 TXT 자료화 및 srs 양식에 맞게 정리하는 툴입니다.
 		* 되도록 원본과 번역본은 csv 파일의 내용물이 변하지 않은 상태인 것(그러니까 되도록 같은버전)만 넣어주세요. 이후 수작업할 분량이 늘어납니다.
 		* ver 2.0 현재 UTF-8 인코딩만을 지원하기에 원본 csv 파일의 경우 shift-jif 인코딩인 경우가 많아 인코딩 변환을 미리 하셔야 합니다.
@@ -35,10 +36,10 @@ Utility For using UpdateEra(Not Mine) - Translated Eramaker base game's update t
 	10. 위 툴은 한 번 구동할 때 이미 폴더 내에 존재하는 추출된 텍스트 파일을 지우고 다시 생성하므로, 한 번 완성된 파일은 따로 보관해주세요.
 		*srs 파일은 이어쓰는 방식이기에 이전 결과물이 사라지지는 않지만 srs 파일 내 중복 여부는 판별하지 않으므로 같은 csv를 지속적으로 구동할 경우 중복이 계속 발생하게 됩니다.
 
-#오류, 개선 등 보고 관련하여
+# 오류, 개선 등 보고 관련하여
 	텍마갤 눈팅족으로도 있기는 하지만 참치넷 쪽이 보기 편합니다. 차후 github로의 프로젝트 이식을 고려하고 있습니다. readme.txt 내 누락된 설명이 있다고 느껴질 경우 바로 보고해주세요.
 
-#이후 예정(이슈 트레커)
+# 이후 예정(이슈 트레커)
 	우선사항
 		인코딩이 UTF-8이 아니어도 바로 툴의 적용이 가능하도록.
 		타 csv 구조 분석을 통한 지원 강화 및 이를 통한 특정 변수 식별 기능 업데이트
@@ -53,7 +54,7 @@ Utility For using UpdateEra(Not Mine) - Translated Eramaker base game's update t
 			*era의 csv 폴더를 바로 넣어도 작동 가능하도록.(타 csv 양식도 적용 가능해야 의미있는 기능)
 		검색 디렉토리명이나 결과물 텍스트 파일 이름 커스터마이징 지원(만든다면 실행 파일의 하위에서만. 컴퓨터 전체는 허들 높음)
 		
-#작성 로그
+# 작성 로그
 ver 1.0
 	'chara CSV 이름추출', 'CSV 이름 srs 변환 구동'의 설명 작성
 	readme 파일 작성
