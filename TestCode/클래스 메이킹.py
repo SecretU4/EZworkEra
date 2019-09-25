@@ -43,32 +43,27 @@ class CSVLoad(LoadFile):
         pass
 class ERBLoad(LoadFile):
     pass
-# 사용자 입력 부분
-inputDir = str(input("파일이 위치하는 폴더명을 입력해주세요. \
-존재하지 않는 폴더명인 경우 오류가 발생합니다.: "))
-if len(inputDir)==0:
-    print("특정 디렉토리의 입력 없이 진행합니다.")
-inputDir = DataFilter().DirSlash(inputDir)
-while True:
-    inputName = str(input("파일의 이름을 입력해주세요. : "))
-    if len(inputName) == 0:
-        print("공란은 입력하실 수 없습니다.")
-        continue
-    break
-while True:
-    inputType = str(input("파일의 타입을 입력해주세요. 현재 CSV 타입만 지원합니다.: ")).upper()
-    if len(inputType) == 0:
-        print("공란은 입력하실 수 없습니다.")
-        continue
-    elif inputType == 'CSV': print("땡큐!")
-    else: print("안돼도 모릅니다.")
-    break
-InputA = FileInfo(inputDir, inputName, inputType)
-InputA.SetPreset()
-if InputA.PresetOn == 1:
-    print("체크 해냈다!")
-elif InputA.PresetOn == 0:
-    print("슈벌")
-print(InputA.DirName)
-TestA = FileInfo('TestDir', 'TestNam', 'TestTyp')
-print(TestA.PresetOn)
+# 사용자 입력 클래스
+class Custom_input:
+    def File_input(self):
+        self.inputDir = str(input("파일이 위치하는 폴더명을 입력해주세요.\
+ 존재하지 않는 폴더명인 경우 오류가 발생합니다.: "))
+        if len(self.inputDir)==0:
+            print("특정 디렉토리의 입력 없이 진행합니다.")
+        self.inputDir = DataFilter().DirSlash(self.inputDir)
+        while True:
+            self.inputName = str(input("파일의 이름을 입력해주세요. : "))
+            if len(self.inputName) == 0:
+                print("공란은 입력하실 수 없습니다.")
+                continue
+            break
+        while True:
+            self.inputType = str(input("파일의 타입을 입력해주세요. 현재 CSV 타입만 지원합니다.: ")).upper()
+            if len(self.inputType) == 0:
+                print("공란은 입력하실 수 없습니다.")
+                continue
+            elif self.inputType == 'CSV': print("땡큐!")
+            else: print("안돼도 모릅니다.")
+            break
+    def Results(self):
+        return self.inputDir,self.inputName,self.inputType
