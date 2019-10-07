@@ -1,4 +1,4 @@
-﻿;여기여기, ;Char부분
+﻿;Char부분
 番号, NO
 名前, NAME
 呼び名, CALLNAME
@@ -7,7 +7,7 @@
 能力, ABL
 フラグ, CFLAG
 呼び方リスト, CSTR
-;여기여기, ;CSV이름부분
+;CSV이름부분
 DAY, DAY
 Equip, EQUIP
 ex, EX

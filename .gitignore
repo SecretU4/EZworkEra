@@ -109,3 +109,5 @@ extract?/
 .vs/
 .vscode/
 test*.csv
+test*.txt
+dump.*
