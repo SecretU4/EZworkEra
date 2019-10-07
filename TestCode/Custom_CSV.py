@@ -34,5 +34,5 @@ class CSVLoad(LoadFile):
             except IndexError: continue
             InfoDATA_list.append(DATA_1)
             InfoDATA_list.append(DATA_2)
-        InfoCSV_DATA = DataFilter.Dup_Filter(InfoDATA_list)
+        InfoCSV_DATA = DataFilter().Dup_Filter(InfoDATA_list)
         return InfoCSV_DATA

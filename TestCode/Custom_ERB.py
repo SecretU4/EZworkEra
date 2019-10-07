@@ -13,11 +13,11 @@ class ERBLoad(LoadFile):
         self.List_Target = []
         for line in self.ERB_Context_List:
             if Target in line:
-                self.List_Comment.append(line)
+                self.List_Target.append(line)
         return self.List_Target
     def SearchFunc(self,Func):
         self.MakeERBList()
-        FncList = CSVLoad('CSVfnclist.csv').InfoCSV()
+        FncList = CSVLoad('CSVfnclist.csv','').InfoCSV()
         if Func in FncList:
             pass
 class ERBWrite(LoadFile):
