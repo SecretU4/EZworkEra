@@ -1,55 +1,77 @@
 # EZworkEra 메인 모듈
 # 사용 라이브러리
 import os
+import time
 # 클래스 목록
 ## 사용자 화면 관련
 ### 관용구
 class Common_Sent:
-    def NotOK(self): print("유효하지 않은 입력입니다.")
-    def EndComment(self):
+    def NotOK():
+        print("유효하지 않은 입력입니다.")
+        time.sleep(0.5)
+    def EndComment():
         print("이용해주셔서 감사합니다.")
         input("엔터를 누르면 종료됩니다.")
+    def NoVoid():
+        print("공란은 입력하실 수 없습니다.")
+        time.sleep(0.5)
+    def PrintLine():
+        print("".center(100,"="))
+    def ExtractFinish():
+        print("추출이 완료되었습니다.")
+        time.sleep(1)
 ### 메인 메뉴
 class Main_Menu:
+    def __init__(self,MenuList):
+        self.MList = MenuList
+        self.list_range = range(len(MenuList))
+    def Title(self,title_name):
+        Common_Sent.PrintLine()
+        print(title_name.center(100," "))
+        Common_Sent.PrintLine()
     def Print_MainMenu(self):
-        print("""
-        [1]. CSV 파일 처리
-        [2]. ERB 파일 처리 (미실장)
-        [3]. ERH 파일 처리 (미실장)
-        [4]. 프로그램 종료
-        """)
-        self.MenuSelect = input("번호를 입력하세요. 클릭은 지원하지 않습니다.:")
+        for number in self.list_range:
+            print("[{}]. {}".format(number,self.MList[number]))
+        Common_Sent.PrintLine()
+        self.MenuSelect = input("번호를 입력하세요. 클릭은 지원하지 않습니다. :")
     def Run_MainMenu(self):
-        AllowNum = (1,2,3,4)
+        AllowNum = self.list_range
         while True:
             self.Print_MainMenu()
-            if AllowNum.count(self.MenuSelect) == True:
-                return self.MenuSelect
-            elif self.MenuSelect == '99' or self.MenuSelect == '999':
-                print("디버그 기능 없습니다!")
-            else: Common_Sent().NotOK()
+            try:
+                self.MenuSelect = int(self.MenuSelect)
+                if AllowNum.count(self.MenuSelect) == True:
+                    return self.MenuSelect
+                elif self.MenuSelect == 99 or self.MenuSelect == 999:
+                    print("디버그 기능 없습니다!")
+                    time.sleep(0.5)
+                else:
+                    Common_Sent.NotOK()
+            except ValueError:
+                Common_Sent.NotOK()
 ### 사용자의 입력 클래스
 class Custom_input:
     def __init__(self,Target):
         self.Target = Target
     def Dir_Input(self):
         self.inputDir = str(input("{0}이(가) 위치하는 디렉토리명을 입력해주세요.\
- 존재하지 않는 디렉토리인 경우 오류가 발생합니다.: ".format(self.Target)))
+ 존재하지 않는 디렉토리인 경우 오류가 발생합니다. : ".format(self.Target)))
         if len(self.inputDir)==0:
             print("특정 디렉토리의 입력 없이 진행합니다.")
+            time.sleep(1)
         self.inputDir = DataFilter().DirSlash(self.inputDir)
     def Name_input(self):
         while True:
-            self.inputName = str(input("{0}의 명칭을 입력해주세요.: ".format(self.Target)))
+            self.inputName = str(input("{0}의 명칭을 입력해주세요. : ".format(self.Target)))
             if len(self.inputName) == 0:
-                print("공란은 입력하실 수 없습니다.")
+                Common_Sent.NoVoid()
                 continue
             break
     def Type_input(self):
         while True:
-            self.inputType = str(input("{0}의 타입을 입력해주세요.: ".format(self.Target))).upper()
+            self.inputType = str(input("{0}의 타입을 입력해주세요. : ".format(self.Target))).upper()
             if len(self.inputType) == 0:
-                print("공란은 입력하실 수 없습니다.")
+                Common_Sent.NoVoid()
                 continue
             break
     def InputOption(self,OptionNum): # 0: 모두, 1: 디렉토리, 2: 이름, 3: 이름/타입
@@ -71,7 +93,9 @@ class Custom_input:
 class Encode:
     def Encode_input(self):
         while True:
+            Common_Sent.PrintLine()
             print("[1]. UTF-8\n[2]. UTF-8-BOM\n[3]. SHIFT-JIS\n[4]. EUC-KR")
+            Common_Sent.PrintLine()
             EncType = input("처리할 파일의 인코딩 타입에 해당하는 번호를 입력하세요. :")
             if EncType == '1':
                 EncType = 'UTF-8-SIG'
@@ -86,7 +110,7 @@ class Encode:
                 EncType = 'EUC-KR'
                 break
             else:
-                Common_Sent().NotOK()
+                Common_Sent.NotOK()
         return EncType
 ## 내부 기초기능 관련
 ### 파일 관련 정보 클래스
@@ -100,6 +124,11 @@ class FileInfo:
         self.DirName = self.Dir + self.Name + '.' + self.Type
         self.FullName = self.Name + '.' + self.Type
         self.PresetOn = 1
+class DictInfo:
+    def __init__(self,Dict):
+        self.Dictionary = Dict
+    def Func1(self):
+        pass
 ### 각종 정보 필터 클래스
 class DataFilter:
     def DirSlash(self, Directory):
@@ -115,6 +144,11 @@ class DataFilter:
                 Flitered_list.append(data)
                 set_filter.add(data)
         return Flitered_list
+    def EraseQuote(self,dataname):
+        if isinstance(dataname,dict) is True:
+            pass
+        elif isinstance(dataname,list) is True:
+            pass
 ### 파일 불러오기 클래스
 class LoadFile:
     def __init__(self, NameDir, EncodeType):
@@ -124,7 +158,7 @@ class LoadFile:
     def readwrite(self):
         return open(self.NameDir, 'w', encoding=self.EncodType, newline='')
     def readonly(self):
-        return open(self.NameDir, 'r', newline='')
+        return open(self.NameDir, 'r', encoding=self.EncodType, newline='')
     def addwrite(self):
         return open(self.NameDir, 'a', encoding=self.EncodType, newline='')
 ### 디렉토리 내 특정 확장자 파일 검색
