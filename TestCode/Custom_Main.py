@@ -22,20 +22,19 @@ class Common_Sent:
         time.sleep(1)
 ### 메인 메뉴
 class Main_Menu:
-    def __init__(self,MenuList):
-        self.MList = MenuList
-        self.list_range = range(len(MenuList))
+    def __init__(self,MenuDict):
+        self.Menu_dict = MenuDict
     def Title(self,title_name):
         Common_Sent.PrintLine()
         print(title_name.center(100," "))
         Common_Sent.PrintLine()
     def Print_MainMenu(self):
-        for number in self.list_range:
-            print("[{}]. {}".format(number,self.MList[number]))
+        for key in self.Menu_dict:
+            print("[{1}]. {0}".format(key,self.Menu_dict[key]))
         Common_Sent.PrintLine()
         self.MenuSelect = input("번호를 입력하세요. 클릭은 지원하지 않습니다. :")
     def Run_MainMenu(self):
-        AllowNum = self.list_range
+        AllowNum = tuple(self.Menu_dict.values())
         while True:
             self.Print_MainMenu()
             try:

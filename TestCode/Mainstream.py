@@ -3,8 +3,8 @@
 from Custom_Main import Common_Sent, Main_Menu, Custom_input, Encode, LoadFile, Find_File_in_Dir
 from Custom_CSV import CSVLoad
 # from Custom_ERB import ERBLoad, ERBWrite
-Menu_Main_List = ['CSV 파일 처리','ERB 파일 처리 (미실장)','ERH 파일 처리 (미실장)', '프로그램 종료']
-MainMenu1 = Main_Menu(Menu_Main_List)
+Menu_Main_Dict = {'CSV 파일 처리':0,'ERB 파일 처리 (미실장)':1,'ERH 파일 처리 (미실장)':2,'프로그램 종료':3}
+MainMenu1 = Main_Menu(Menu_Main_Dict)
 MainMenu1.Title("EZworkEra - Develop utility for EmuEra base game")
 while True:
     MainMenu1.Run_MainMenu()
