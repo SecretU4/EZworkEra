@@ -6,17 +6,22 @@ import time
 ## 사용자 화면 관련
 ### 관용구
 class Common_Sent:
+    @staticmethod
     def NotOK():
         print("유효하지 않은 입력입니다.")
         time.sleep(0.5)
+    @staticmethod
     def EndComment():
         print("이용해주셔서 감사합니다.")
         input("엔터를 누르면 종료됩니다.")
+    @staticmethod
     def NoVoid():
         print("공란은 입력하실 수 없습니다.")
         time.sleep(0.5)
+    @staticmethod
     def PrintLine():
         print("".center(100,"="))
+    @staticmethod
     def ExtractFinish():
         print("추출이 완료되었습니다.")
         time.sleep(1)
@@ -164,7 +169,7 @@ class Find_File_in_Dir:
     def FileList_Ext(self,TargetDir,TargetExt):
         TargetExt = TargetExt.upper()
         self.FileList = []
-        for (path, dir, files) in os.walk(TargetDir):
+        for (path, _, files) in os.walk(TargetDir):
             for filename in files:
                 FileType = os.path.splitext(filename)[-1].upper()
                 if FileType == TargetExt:
@@ -173,7 +178,7 @@ class Find_File_in_Dir:
     def FileList_Name(self,TargetDir,TargetName):
         TargetName = TargetName.upper()
         self.FileList = []
-        for (path, dir, files) in os.walk(TargetDir):
+        for (_, _, files) in os.walk(TargetDir):
             for filename in files:
                 FoundName = os.path.split(filename)[-1].upper()
                 if TargetName in FoundName:
