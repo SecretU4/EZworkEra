@@ -51,8 +51,9 @@ class Menu:
 ### 자주 쓰는 메뉴 프리셋
 class Menu_Preset:
     def Encode(self):
-        Encode_Dict={0:'UTF-8',1:'UTF-8-sig',2:'SHIFT-JIS',3:'EUC-KR'}
+        Encode_Dict={0:'UTF-8',1:'UTF-8-sig',2:'SHIFT-JIS',3:'cp932',4:'EUC-KR',5:'cp949'}
         Encode = Menu(Encode_Dict)
+        Encode.Title("인코딩 선택\n* cp932는 일본어 확장, cp949는 한국어 확장입니다.")
         Encode.Run_Menu()
         EncodeType = Encode_Dict[Encode.MenuSelect]
         return EncodeType
