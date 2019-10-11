@@ -1,34 +1,41 @@
 # ERB 관련 모듈
-from Custom_Main import LoadFile
-from Custom_CSV import CSVLoad
+from customcore import LoadFile
+from custom_csv import CSVLoad
+
+
 class ERBLoad(LoadFile):
-    def MakeERBList(self):
-        with self.readonly() as Origin_ERB:
-            self.ERB_Context_List = []
-            ERB_Context = Origin_ERB.readline()
-            self.ERB_Context_List.append(ERB_Context)
-            return self.ERB_Context_List
-    def SearchLine(self,Target):
-        self.MakeERBList()
-        self.List_Target = []
-        for line in self.ERB_Context_List:
+    def make_erb_list(self):
+        with self.readonly() as erb_origin:
+            self.erb_context_list = []
+            self.erb_context_list.append(erb_origin.readline())
+            return self.erb_context_list
+
+    def search_line(self,Target):
+        self.make_erb_list()
+        self.targeted_list = []
+        for line in self.erb_context_list:
             if Target in line:
-                self.List_Target.append(line)
-        return self.List_Target
-    def SearchFunc(self,Func):
-        self.MakeERBList()
-        FncList = CSVLoad('CSVfnclist.csv','').InfoCSV()
-        if Func in FncList:
+                self.targeted_list.append(line)
+        return self.targeted_list
+
+    def search_func(self,Func):
+        self.make_erb_list()
+        func_list = CSVLoad('CSVfnclist.csv','').info_data_csv()
+        if Func in func_list:
             pass
+
+
 class ERBWrite(LoadFile):
-    def ExportToERB(self):
-        self.ExpERB = open('trans_{0}.erb'.format(self.NameDir),'w',encoding=self.EncodType,newline='')
-    def TransERB(self):
-        self.ExportToERB()
-        with self.readonly() as Origin_TXT:
-            TXT_Context_List = []
-            TXT_Context = Origin_TXT.readline()
-            TXT_Context_List.append(TXT_Context)
-        for line in TXT_Context_List:
+    def _export_erb(self):
+        self.erb_exporting = LoadFile('trans_{0}.erb'.format(
+            self.NameDir),self.EncodType)
+
+    def trans_erb(self):
+        self._export_erb()
+        with self.readonly() as txt_origin:
+            txt_text_list = []
+            txt_context = txt_origin.readline()
+            txt_text_list.append(txt_context)
+        for line in txt_text_list:
             pass
-        self.ExpERB.close()
+        self.erb_exporting.close()
