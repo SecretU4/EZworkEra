@@ -20,23 +20,23 @@ class Common_Sent:
     def ExtractFinish():
         print("추출이 완료되었습니다.")
         time.sleep(1)
-### 메인 메뉴
-class Main_Menu:
+### 메뉴 선택
+class Menu:
     def __init__(self,MenuDict):
         self.Menu_dict = MenuDict
     def Title(self,title_name):
         Common_Sent.PrintLine()
         print(title_name.center(100," "))
         Common_Sent.PrintLine()
-    def Print_MainMenu(self):
+    def Print_Menu(self):
         for key in self.Menu_dict:
-            print("[{1}]. {0}".format(key,self.Menu_dict[key]))
+            print("[{}]. {}".format(key,self.Menu_dict[key]))
         Common_Sent.PrintLine()
         self.MenuSelect = input("번호를 입력하세요. 클릭은 지원하지 않습니다. :")
-    def Run_MainMenu(self):
-        AllowNum = tuple(self.Menu_dict.values())
+    def Run_Menu(self):
+        AllowNum = tuple(self.Menu_dict.keys())
         while True:
-            self.Print_MainMenu()
+            self.Print_Menu()
             try:
                 self.MenuSelect = int(self.MenuSelect)
                 if AllowNum.count(self.MenuSelect) == True:
@@ -48,6 +48,14 @@ class Main_Menu:
                     Common_Sent.NotOK()
             except ValueError:
                 Common_Sent.NotOK()
+### 자주 쓰는 메뉴 프리셋
+class Menu_Preset:
+    def Encode(self):
+        Encode_Dict={0:'UTF-8',1:'UTF-8-sig',2:'SHIFT-JIS',3:'EUC-KR'}
+        Encode = Menu(Encode_Dict)
+        Encode.Run_Menu()
+        EncodeType = Encode_Dict[Encode.MenuSelect]
+        return EncodeType
 ### 사용자의 입력 클래스
 class Custom_input:
     def __init__(self,Target):
@@ -56,7 +64,8 @@ class Custom_input:
         self.inputDir = str(input("{0}이(가) 위치하는 디렉토리명을 입력해주세요.\
  존재하지 않는 디렉토리인 경우 오류가 발생합니다. : ".format(self.Target)))
         if len(self.inputDir)==0:
-            print("특정 디렉토리의 입력 없이 진행합니다.")
+            print("특정 디렉토리의 입력 없이 진행합니다. 오류가 발생할 수 있습니다.")
+            self.inputDir = '.'
             time.sleep(1)
         self.inputDir = DataFilter().DirSlash(self.inputDir)
     def Name_input(self):
@@ -89,28 +98,6 @@ class Custom_input:
             self.Name_input()
             self.Type_input()
             return self.inputName,self.Type_input
-class Encode:
-    def Encode_input(self):
-        while True:
-            Common_Sent.PrintLine()
-            print("[1]. UTF-8\n[2]. UTF-8-BOM\n[3]. SHIFT-JIS\n[4]. EUC-KR")
-            Common_Sent.PrintLine()
-            EncType = input("처리할 파일의 인코딩 타입에 해당하는 번호를 입력하세요. :")
-            if EncType == '1':
-                EncType = 'UTF-8-SIG'
-                break
-            elif EncType == '2':
-                EncType = 'UTF-8'
-                break
-            elif EncType == '3':
-                EncType = 'SHIFT=JIS'
-                break
-            elif EncType == '4':
-                EncType = 'EUC-KR'
-                break
-            else:
-                Common_Sent.NotOK()
-        return EncType
 ## 내부 기초기능 관련
 ### 파일 관련 정보 클래스
 class FileInfo:
@@ -143,11 +130,22 @@ class DataFilter:
                 Flitered_list.append(data)
                 set_filter.add(data)
         return Flitered_list
-    def EraseQuote(self,dataname):
+    def EraseQuote(self,dataname,quotechar):
         if isinstance(dataname,dict) is True:
-            pass
+            NewDict = {}
+            for key in list(dataname.keys()):
+                if quotechar in key: continue
+                elif quotechar in dataname[key]: continue
+                else:
+                    NewDict[key] = dataname[key]
+            return NewDict
         elif isinstance(dataname,list) is True:
-            pass
+            NewList = []
+            for data in dataname:
+                if quotechar in data: continue
+                else:
+                    NewList.append(data)
+            return NewList
 ### 파일 불러오기 클래스
 class LoadFile:
     def __init__(self, NameDir, EncodeType):
@@ -182,4 +180,8 @@ class Find_File_in_Dir:
         return self.FileList
 # 디버그용 코드
 if __name__ == "__main__":
-    pass
+    TestMenu = Menu({0:"테스트",1:"스크린"})
+    TestMenu.Title("디버그 테스트 메뉴")
+    TestMenu.Run_Menu()
+    print(TestMenu.MenuSelect)
+    print(Menu_Preset().Encode())

@@ -35,3 +35,6 @@ class CSVLoad(LoadFile):
             InfoDATA_list.append(DATA_2)
         InfoCSV_DATA = DataFilter().Dup_Filter(InfoDATA_list)
         return InfoCSV_DATA
+class CSVModule: # 현재 미실장.
+    def ExportCSV(self):
+        pass
