@@ -28,13 +28,13 @@ class _CSVLoad(LoadFile):
             if select_dataset == Filter_info:
                 self.data_dict[select_dataset] = another_dataset
 
-    def info_data_CSV(self):
+    def info_data_csv(self):
         self._start_csv()
         info_data_list = []
         for row_list in self.csv_reading:
             try:
-                data1 = str(row_list[0])
-                data2 = str(row_list[1])
+                data1 = str(row_list[0]).strip()
+                data2 = str(row_list[1]).strip()
             except IndexError: continue
             info_data_list.append(data1)
             info_data_list.append(data2)
@@ -46,7 +46,7 @@ class CSVFunc:
     def import_all_CSV(self):
         print("추출을 시작합니다.")
         with LoadFile('debug.txt', 'UTF-8').readwrite() as debug_txt:
-            with LoadFile('debuglog.txt', 'UTF-8').readwrite() as debug_log:
+            with LoadFile('debug.log', 'UTF-8').readwrite() as debug_log:
                 debug_log.write(
                     "오류코드 0xef는 UTF-8-sig, 다른 경우 \
                     cp932(일본어)나 cp949(한국어)로 시도하세요.\n")
@@ -71,8 +71,9 @@ class CSVFunc:
                     _file_count += 1
                 if _error_check != 0:
                     print("{}건 추출 도중 {}건의 인코딩 오류가 발생했습니다.\
-                        debuglog.txt를 확인해주세요.".format(_file_count, _error_check))
+                        debug.log를 확인해주세요.".format(_file_count, _error_check))
                 else:
                     print("{}건이 추출되었습니다.".format(_file_count))
                     debug_log.write("오류가 발생하지 않았거나 덮어씌워졌습니다.")
         CommonSent.extract_finished()
+        CommonSent.print_line()

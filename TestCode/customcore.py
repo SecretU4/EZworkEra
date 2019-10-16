@@ -1,7 +1,7 @@
 # EZworkEra 메인 모듈
 # 사용 라이브러리
-import time
 import os
+import time
 # 클래스 목록
 ## 사용자 화면 관련
 class CommonSent: #관용구 클래스
@@ -62,13 +62,20 @@ class Menu: # 콘솔 메뉴 디스플레이
                 CommonSent.not_ok()
 
 
-class MenuPreset(): # 자주 쓰는 메뉴 프리셋
+class MenuPreset: # 자주 쓰는 메뉴 프리셋
     def encode(self):
-        encode_dict={0:'UTF-8',1:'UTF-8-sig',2:'SHIFT-JIS',3:'cp932',4:'EUC-KR',5:'cp949'}
+        encode_dict={0:'UTF-8',1:'UTF-8 with BOM',2:'SHIFT-JIS',
+                    3:'일본어 확장(cp932)',4:'EUC-KR',5:'한국어 확장(cp949)'}
         encode = Menu(encode_dict)
-        encode.title("인코딩 선택\n* cp932는 일본어 확장, cp949는 한국어 확장입니다.")
+        encode.title("대상 파일의 인코딩을 선택하세요.")
         encode.run_menu()
         EncodeType = encode_dict[encode.selected_num]
+        if EncodeType == 'UTF-8 with BOM':
+            EncodeType = 'UTF-8-sig'
+        elif EncodeType == '일본어 확장(cp932)':
+            EncodeType = 'cp932'
+        elif EncodeType == '한국어 확장(cp949)':
+            EncodeType = 'cp949'
         return EncodeType
 
 
@@ -173,6 +180,12 @@ class DataFilter:
                 else:
                     list_erased.append(data)
             return list_erased
+        elif isinstance(dataname,str) is True:
+            splited_data = dataname.split()
+            try:
+                if quotechar in splited_data[0]: return None
+                else: return dataname
+            except IndexError: return None
 
     def files_ext(self,dir_target,ext_target):
         ext_target = ext_target.upper()
