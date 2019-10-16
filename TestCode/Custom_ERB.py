@@ -110,5 +110,5 @@ class ERBFunc:
 if __name__ == '__main__':
     # ERBFunc().search_csv_var()
     origin_txt = ERBWrite('testtext.txt','utf-8')
-    opened_txt = origin_text.readonly()
-    origin_txt.trans_erb()
+    while origin_txt.readonly():
+        origin_txt.trans_erb()

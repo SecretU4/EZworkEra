@@ -126,26 +126,13 @@ class CustomInput: # 사용자의 입력 클래스
             return self.name_inputed,self.input_type
 
 
-class FileInfo:
-    _preset_switch = 0 # preset 사용여부 판별
+class DictInfo: # 파일 이름별 사전 저장
+    dict_info = {}
+    def add_dict(self,dictname,dict):
+        self.dict_info[dictname]=dict
 
-    def __init__(self, Dir, Name, Type):
-        self.Dir = Dir
-        self.Name = Name
-        self.Type = Type
-
-    def set_preset(self):
-        self.DirName = self.Dir + self.Name + '.' + self.Type
-        self.FullName = self.Name + '.' + self.Type
-        self._preset_switch = 1
-
-
-class DictInfo: #개발중
-    def __init__(self,dict):
-        self.dict = dict
-
-    def func_1(self):
-        pass
+    def show_dict_list(self):
+        return self.dict_info.keys
 
 
 class DataFilter:
@@ -206,6 +193,11 @@ class DataFilter:
                 if name_target in FoundName:
                     self.files.append(FoundName)
         return self.files
+
+    def sep_filename(self,filename):
+        splited_filename = os.path.basename(filename)
+        filename_only = os.path.splitext(splited_filename)[0]
+        return filename_only
 
 
 class LoadFile: # 파일 불러오기 상용구
