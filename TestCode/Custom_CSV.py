@@ -8,7 +8,7 @@ class _CSVLoad(LoadFile):
     def _start_csv(self):
         self.csv_reading = csv.reader(self.readonly())
 
-    def core_csv(self, select_num, Filter_info):
+    def core_csv(self, select_num, Filter_info=None):
         self._start_csv()
         self.data_dict = {}
         for row_list in self.csv_reading:
@@ -16,17 +16,17 @@ class _CSVLoad(LoadFile):
                 data_1 = str(row_list[0]).strip()
                 data_2 = str(row_list[1]).strip()
                 if select_num == 0:
-                    self.data_dict[data_1] = data_2
-                    continue
-                elif select_num == 1:
                     select_dataset = data_1
                     another_dataset = data_2
-                elif select_num == 2:
+                elif select_num == 1:
                     select_dataset = data_2
                     another_dataset = data_1
             except IndexError: continue
-            if select_dataset == Filter_info:
+            if Filter_info == None:
                 self.data_dict[select_dataset] = another_dataset
+            elif select_dataset == Filter_info:
+                self.data_dict[select_dataset] = another_dataset
+        return self.data_dict
 
     def info_data_csv(self):
         self._start_csv()
@@ -59,7 +59,7 @@ class CSVFunc:
                 open_csv = _CSVLoad(filename, encode_type)
                 with open_csv.readonly():
                     try:
-                        open_csv.core_csv(0, 0)
+                        open_csv.core_csv(0)
                     except UnicodeDecodeError as UniDecode:
                         print("{}에서 {} 발생\n".format(
                             filename, UniDecode), file=debug_log)
@@ -71,7 +71,7 @@ class CSVFunc:
                 _file_count += 1
             if _error_check != 0:
                 print("{}건 추출 도중 {}건의 인코딩 오류가 발생했습니다.\
-                    debug.log를 확인해주세요.".format(_file_count, _error_check))
+debug.log를 확인해주세요.".format(_file_count, _error_check))
             else:
                 print("{}건이 추출되었습니다.".format(_file_count))
                 debug_log.write("오류가 발생하지 않았거나 덮어씌워졌습니다.")

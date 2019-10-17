@@ -48,17 +48,28 @@ class ERBWrite(LoadFile):
         with self.readonly() as txt_origin:
             txt_text_list = txt_origin.readlines()
         with self.erb_exporting.readwrite() as erb_export_opened:
+            erb_translated_list = []
             for line in txt_text_list:
                 splited_line = line.split()
                 try:
-                    if "~!" in splited_line[0]:
-                        pass
-                    elif "~아나타" in line or "~당신" in line:
-                        line = line.replace("~아나타","%CALLNAME:MASTER%")
-                        line = line.replace("~당신","%CALLNAME:MASTER%")
-                except IndexError:
-                    continue
-            erb_export_opened.writelines()
+                    if "!~" in splited_line[0]:
+                        if "또는" in line:
+                            line = line.replace("또는", "||")
+                        if "이고" in line:
+                            line = line.replace("이고","&&")
+                        if "일 떄:" in line:
+                            line = "IF "+line
+                        erb_translated_list.append(line)
+                    elif "/t" in line:
+                        if "~아나타" in line or "~당신" in line:
+                            line = line.replace("~아나타","%CALLNAME:MASTER%")
+                            line = line.replace("~당신","%CALLNAME:MASTER%")
+                        erb_translated_list.append(line)
+                except IndexError: pass
+            erb_export_opened.writelines(erb_translated_list)
+
+    def import_erbtext_info(self,situation,context,cases):
+        pass
 
 
 class ERBFunc:
@@ -106,9 +117,45 @@ class ERBFunc:
                     print("{}/{} 완료".format(file_count,len(erb_files)))
         print("변수 목록이 작성되었습니다.")
         CommonSent.print_line()
+
+    def make_tree(self):
+        print("""
+        ERB 내 조건문 구조를 트리 형태로 보여줍니다.
+        되도록 적은 수의 ERB만을 포함시키는 편이 가독성이 높습니다.
+        """)
+        with LoadFile('ERBtree.txt').readwrite() as tree_txt:
+            user_input = CustomInput("ERB")
+            target_dir = user_input.input_option(1)
+            encode_type = MenuPreset().encode()
+            erb_files = DataFilter().files_ext(target_dir, '.ERB',1)
+            for filename in erb_files:
+                tree_txt.write("{}\n".format(filename))
+                with LoadFile(filename,encode_type).readonly() as erb_opened:
+                    for line in erb_opened:
+                        pass
+
+
+class ERBtextInfo(ERBWrite):
+    def put_info(self, context, situation, *cases):
+        self.context = context
+        self.situation = situation
+        self.case_count = 0
+        self.case_list = []
+        for case in cases:
+            if 'CASE' in case:
+                pass
+            elif 'DATA' in case:
+                pass
+            else:
+                case_count += 1
+                self.case_list.append('\t'*case_count+case)
+    def export_erbinfo(self):
+        return self.situation, self.context, self.case_list
+
+
 # 디버그용
 if __name__ == '__main__':
     # ERBFunc().search_csv_var()
-    origin_txt = ERBWrite('testtext.txt','utf-8')
+    origin_txt = ERBWrite('testtext.txt','utf-8-sig')
     while origin_txt.readonly():
         origin_txt.trans_erb()

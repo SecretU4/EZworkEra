@@ -174,21 +174,33 @@ class DataFilter:
                 else: return dataname
             except IndexError: return None
 
-    def files_ext(self,dir_target,ext_target):
+    def files_ext(self,dir_target,ext_target,option_num=0):
         ext_target = ext_target.upper()
         self.files = []
-        for (path, _, files) in os.walk(dir_target):
-            for filename in files:
-                FileType = os.path.splitext(filename)[-1].upper()
-                if FileType == ext_target:
-                    self.files.append('{0}/{1}'.format(path,filename))
+        if option_num == 0: # 하위 포함
+            for (path, _, files) in os.walk(dir_target):
+                for filename in files:
+                    file_type = os.path.splitext(filename)[-1].upper()
+                    if file_type == ext_target:
+                        self.files.append('{0}/{1}'.format(path,filename))
+        elif option_num == 1: # 해당 디렉토리만
+            for filename in os.listdir(dir_target):
+                file_type = os.path.splitext(filename)[-1].upper()
+                if file_type == ext_target:
+                        self.files.append('{0}/{1}'.format(path,filename))
         return self.files
 
-    def files_name(self,dir_target,name_target):
+    def files_name(self,dir_target,name_target,option_num=0):
         name_target = name_target.upper()
         self.files = []
-        for (_, _, files) in os.walk(dir_target):
-            for filename in files:
+        if option_num == 0: # 하위 포함
+            for (_, _, files) in os.walk(dir_target):
+                for filename in files:
+                    FoundName = os.path.split(filename)[-1].upper()
+                    if name_target in FoundName:
+                        self.files.append(FoundName)
+        elif option_num == 1: # 해당 디렉토리만
+            for filename in os.listdir(dir_target):
                 FoundName = os.path.split(filename)[-1].upper()
                 if name_target in FoundName:
                     self.files.append(FoundName)
@@ -201,7 +213,7 @@ class DataFilter:
 
 
 class LoadFile: # 파일 불러오기 상용구
-    def __init__(self, NameDir, EncodeType):
+    def __init__(self, NameDir, EncodeType='UTF-8'):
         self.NameDir = NameDir
         self.EncodType = EncodeType
 
