@@ -1,6 +1,6 @@
 # CSV 기능 관련 모듈
 import csv
-from customcore import CommonSent, CustomInput,\
+from util import CommonSent, CustomInput,\
     DictInfo, DataFilter, LoadFile, MenuPreset
 
 
@@ -8,17 +8,17 @@ class _CSVLoad(LoadFile):
     def _start_csv(self):
         self.csv_reading = csv.reader(self.readonly())
 
-    def core_csv(self, select_num, Filter_info=None):
+    def core_csv(self, mode_num, Filter_info=None):
         self._start_csv()
         self.data_dict = {}
         for row_list in self.csv_reading:
             try:
                 data_1 = str(row_list[0]).strip()
                 data_2 = str(row_list[1]).strip()
-                if select_num == 0:
+                if mode_num == 0:
                     select_dataset = data_1
                     another_dataset = data_2
-                elif select_num == 1:
+                elif mode_num == 1:
                     select_dataset = data_2
                     another_dataset = data_1
             except IndexError: continue
@@ -43,7 +43,7 @@ class _CSVLoad(LoadFile):
 
 
 class CSVFunc:
-    def import_all_CSV(self):
+    def import_all_CSV(self,mode_num=0):
         print("추출을 시작합니다.")
         with LoadFile('debug.log', 'UTF-8').readwrite() as debug_log:
             debug_log.write(
@@ -57,6 +57,14 @@ class CSVFunc:
             self.dic_assemble = DictInfo()
             for filename in csv_files:
                 open_csv = _CSVLoad(filename, encode_type)
+                if mode_num  == 0: # 구별없이 전부
+                    pass
+                elif mode_num == 1: # chara 제외
+                    if 'chara' in filename.lower():
+                        continue
+                elif mode_num == 2: # chara 포함
+                    if 'chara' not in filename.lower():
+                        continue
                 with open_csv.readonly():
                     try:
                         open_csv.core_csv(0)
@@ -67,14 +75,16 @@ class CSVFunc:
                 open_csv.data_dict = DataFilter(
                 ).erase_quote(open_csv.data_dict, ';')
                 self.dic_assemble.add_dict(DataFilter(
-                    ).sep_filename(filename),open_csv.data_dict)
+                ).sep_filename(filename),open_csv.data_dict)
                 _file_count += 1
             if _error_check != 0:
-                print("{}건 추출 도중 {}건의 인코딩 오류가 발생했습니다.\
-debug.log를 확인해주세요.".format(_file_count, _error_check))
+                print("""
+                {}건 추출 도중 {}건의 인코딩 오류가 발생했습니다.\
+                debug.log를 확인해주세요.
+                """.format(_file_count, _error_check))
             else:
                 print("{}건이 추출되었습니다.".format(_file_count))
-                debug_log.write("오류가 발생하지 않았거나 덮어씌워졌습니다.")
+                debug_log.write("오류가 발생하지 않았거나 파일이 덮어씌워졌습니다.")
         CommonSent.extract_finished()
         CommonSent.print_line()
         return self.dic_assemble

@@ -136,11 +136,11 @@ class DictInfo: # 파일 이름별 사전 저장
 
 
 class DataFilter:
-    def dir_slash(self, dir):
-        dir_slashed = list(dir)
-        if list(dir) == []: pass
-        elif dir_slashed.pop() != "/": dir = dir + "/"
-        return dir
+    def dir_slash(self, directory):
+        dir_slashed = list(directory)
+        if list(directory) == []: pass
+        elif dir_slashed.pop() != "/": directory = directory + "/"
+        return directory
 
     def dup_filter(self, list_name): #중복 감별 들어온 순서대로 저장
         dup_filtered = []
@@ -207,8 +207,7 @@ class DataFilter:
         return self.files
 
     def sep_filename(self,filename):
-        splited_filename = os.path.basename(filename)
-        filename_only = os.path.splitext(splited_filename)[0]
+        filename_only = os.path.splitext(filename)[0]
         return filename_only
 
 
@@ -227,6 +226,52 @@ class LoadFile: # 파일 불러오기 상용구
 
     def addwrite(self):
         return open(self.NameDir, 'a', encoding=self.EncodType, newline='')
+
+
+class StatusNum: # 숫자 상태 처리 관련 클래스
+    def how_much_there(self,num_all,target_type):
+        print("{} 개의 {}{} 발견되었습니다.".format(num_all,target_type,
+        KoreanSupport().what_next(target_type,'가')))
+        if num_all < 10:
+            self.num_will_show = [1,2]
+        elif 10 <= num_all < 500:
+            self.num_will_show = list(map(lambda x: x*int(
+                round(num_all)/4), list(range(1,5))))
+        else:
+            self.num_will_show = list(map(lambda x: x*int(
+                round(num_all)/10),list(range(1,11))))
+        self.num_all = num_all
+    def how_much_done(self,num_now):
+        if num_now in self.num_will_show:
+            print("{}/{} 완료".format(num_now,self.num_all))
+
+
+class KoreanSupport: # 한글 처리
+    def is_hangul(self,word):
+        self.last_letter = list(word)[-1]
+        if ord(self.last_letter) < 0xac00 or ord(self.last_letter) > 0xD7A3:
+            return False
+        return True
+
+    def have_jongseong(self,word):
+        if self.is_hangul(word) == False: return None
+        self.jongseong_code = (ord(self.last_letter) - 0xac00)%28
+        if self.jongseong_code == 0:
+            return 0 # 종성 없음
+        else: return 1 # 종성 있음
+
+    def what_next(self,word,josa):
+        is_jongseong = self.have_jongseong(word)
+        josa_list = [['이','가'],['을','를'],['은','는'],['와','과']]
+        if is_jongseong == None:
+            return '한글아님'
+        josa_type = [bulk for bulk in josa_list if josa in bulk]
+        if is_jongseong == 0:
+            for bulk in josa_type:
+                return bulk[1]
+        elif is_jongseong == 1:
+            for bulk in josa_type:
+                return bulk[0]
 
 # 디버그용 코드
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 # EmuEra용 번역 파일 처리/합병 툴
 # 사용되는 라이브러리
-from customcore import CommonSent, Menu
-from custom_csv import CSVFunc
-from custom_erb import ERBFunc
+from util import CommonSent, Menu
+from csvcore import CSVFunc
+from erbcore import ERBFunc
 # from Custom_ERB import ERBLoad, ERBWrite
 menu_dict_main = {
     0: 'CSV 파일 처리', 1: 'ERB 파일 처리 (미실장)',
@@ -17,18 +17,20 @@ while True:
     menu_main.run_menu()
 # [0] CSV 파일의 처리
     if menu_dict_main[menu_main.selected_num] == 'CSV 파일 처리':
-        print("CSV 파일 처리 유틸리티입니다.")
         CommonSent.print_line()
         menu_dict_csv = {0: 'CSV 변수 목록 추출',1: '이전으로'}
         menu_csv = Menu(menu_dict_csv)
+        menu_csv.title("CSV 파일 처리 유틸리티입니다.")
         menu_csv.run_menu()
         if menu_csv.selected_num == 0:
-            import_all_csv_dict = CSVFunc().import_all_CSV()
-            import_all_csv_switch = 1
-        elif menu_csv.selected_num == 1:
-            pass
-        del menu_csv.selected_num
-        del menu_main.selected_num
+            menu_dict_import_all_csv = {0: '모두',1:'CHARA제외',
+                                        2:'CHARA만',3:'처음으로'}
+            menu_import_all_csv = Menu(menu_dict_import_all_csv)
+            menu_import_all_csv.title("추출할 CSV의 종류를 선택하세요.")
+            menu_import_all_csv.run_menu()
+            if menu_import_all_csv.selected_num != 3:
+                import_all_csv_dict = CSVFunc().import_all_CSV(menu_import_all_csv.selected_num)
+                import_all_csv_switch = 1
 # [1] ERB 파일의 처리
     elif menu_dict_main[menu_main.selected_num] == 'ERB 파일 처리 (미실장)':
         print("ERB 파일 처리 유틸리티입니다.")
@@ -41,8 +43,6 @@ while True:
             ERBFunc().extract_printfunc()
         elif menu_erb.selected_num == 2:
             pass
-        del menu_erb.selected_num
-        del menu_main.selected_num
 # [2] ERH 파일의 처리
     elif  menu_dict_main[menu_main.selected_num] == 'ERH 파일 처리 (미실장)':
         print("미실장입니다")

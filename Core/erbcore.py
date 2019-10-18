@@ -1,7 +1,7 @@
 # ERB 관련 모듈
-from customcore import CommonSent, CustomInput, DataFilter,\
-                        LoadFile, MenuPreset
-from custom_csv import _CSVLoad
+from util import CommonSent, CustomInput, DataFilter,\
+                        LoadFile, MenuPreset, StatusNum
+from csvcore import _CSVLoad
 
 
 class ERBLoad(LoadFile):
@@ -10,7 +10,7 @@ class ERBLoad(LoadFile):
             self.erb_context_list = erb_origin.readlines()
             return self.erb_context_list
 
-    def search_line(self,*args):
+    def search_line(self,*args,except_args=None):
         self._make_context_list()
         self.targeted_list = []
         skip_switch = 0
@@ -22,11 +22,14 @@ class ERBLoad(LoadFile):
                 if '[SKIPSTART]' in line:
                     skip_switch = 1
                     continue
+                elif except_args != None:
+                    for except_arg in except_args:
+                        if except_arg in line: continue
                 for target in args:
                     if target in line:
                         self.targeted_list.append(line)
         return self.targeted_list
-    
+
     def search_word(self,loc_num,*args):
         self._make_context_list()
         self.targeted_list = []
@@ -80,19 +83,27 @@ class ERBFunc:
             target_dir = user_input.input_option(1)
             encode_type = MenuPreset().encode()
             erb_files = DataFilter().files_ext(target_dir, '.ERB')
+            files_count = len(erb_files)
+            file_count = 0
+            file_count_check = StatusNum()
+            file_count_check.how_much_there(files_count,'파일')
             for filename in erb_files:
                 erb_opened = ERBLoad(filename, encode_type)
                 printfunc_list = erb_opened.search_line(
-                                'PRINTFORM', 'DATAFORM')
+                        'PRINT', 'DATAFORM',except_args=['PRINTDATA'])
+                for line in printfunc_list:
+                    if len(line.split()) == 1:
+                        printfunc_list.remove(line)
                 debug_log.write(filename)
                 debug_log.writelines(printfunc_list)
+                file_count +=1
+                file_count_check.how_much_done(file_count)
         print("추출이 완료되었습니다.")
         CommonSent.print_line()
 
     def search_csv_var(self):
-        print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.\
-현재 기능의 의미가 별로 없는 상황입니다.")
-        with LoadFile('debug.log','UTF-8').readwrite() as debug_log:
+        print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
+        with LoadFile('debug.log', 'UTF-8').readwrite() as debug_log:
             var_list = _CSVLoad('CSVfnclist.csv','UTF-8-SIG').info_data_csv()
             user_input = CustomInput("ERB")
             target_dir = user_input.input_option(1)
@@ -100,21 +111,17 @@ class ERBFunc:
             erb_files = DataFilter().files_ext(target_dir, '.ERB')
             files_count = len(erb_files)
             file_count = 0
-            level_show_list = list(map(lambda x: x*int(round(files_count)/4
-                                                    ), list(range(1,5))))
-            if len(erb_files) > 500:
-                level_show_list = list(map(lambda x: x*int(round(files_count)/10
-                                                    ),list(range(1,11))))
+            file_count_check = StatusNum()
+            file_count_check.how_much_there(files_count,'파일')
             for filename in erb_files:
                 debug_log.write("{}\n".format(filename))
                 erb_opened = ERBLoad(filename, encode_type)
-                var_context_list = erb_opened.search_line(*var_list)
+                var_context_list = erb_opened.search_line(*var_list,except_arg=['name'])
                 if bool(var_context_list) is True:
                     filtered_con_list = DataFilter().dup_filter(var_context_list)
                     debug_log.writelines(filtered_con_list)
                 file_count +=1
-                if file_count in level_show_list:
-                    print("{}/{} 완료".format(file_count,len(erb_files)))
+                file_count_check.how_much_done(file_count)
         print("변수 목록이 작성되었습니다.")
         CommonSent.print_line()
 

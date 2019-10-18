@@ -114,3 +114,5 @@ test*.txt
 test*.py
 dump.*
 debug*.txt
+*.erb
+ResultFiles/
