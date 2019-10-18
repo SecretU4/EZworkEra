@@ -116,7 +116,7 @@ class ERBFunc:
             for filename in erb_files:
                 debug_log.write("{}\n".format(filename))
                 erb_opened = ERBLoad(filename, encode_type)
-                var_context_list = erb_opened.search_line(*var_list,except_arg=['name'])
+                var_context_list = erb_opened.search_line(*var_list,except_args=['name'])
                 if bool(var_context_list) is True:
                     filtered_con_list = DataFilter().dup_filter(var_context_list)
                     debug_log.writelines(filtered_con_list)
