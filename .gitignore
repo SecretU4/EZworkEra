@@ -105,4 +105,15 @@ venv.bak/
 
 # custom cause
 extract?/
+extract?.txt
 *Temp/
+.vs/
+.vscode/
+test*.csv
+test*.txt
+test*.py
+dump.*
+debug*.txt
+*.erb
+ResultFiles/
+sav/

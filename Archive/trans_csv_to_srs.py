@@ -5,7 +5,7 @@
 #사용 라이브러리
 import os
 import csv
-
+csv.register_dialect("EmuEra",quotechar=';',skipinitialspace=True)
 #원문 추출 파일 및 디렉토리
 Jdir = "extractJ/"
 Jf = "extractJ.txt"
@@ -47,7 +47,7 @@ if type_1 == 'END':
 #csv 내 명칭인지 검사
 with open("CSVfnclist.csv", 'r',encoding='UTF-8-sig',newline='') as csv_in_file:
     for line in "CSVfnclist.csv":
-        csv_read = csv.reader(csv_in_file)
+        csv_read = csv.reader(csv_in_file,'EmuEra')
         for row_list in csv_read:
             try:
                 JFn = str(row_list[0]).strip()
@@ -96,7 +96,7 @@ for filename in filenJ:
     if ".csv" not in filename:
         continue
     Jfile = Jdir + filename
-    with open(Jfile, 'r',encoding='UTF-8-sig',newline='') as csv_in_file:
+    with open(Jfile, 'r',encoding='shift-jis',newline='') as csv_in_file:
         for line in Jfile:
             csv_reading(Jlit)
 

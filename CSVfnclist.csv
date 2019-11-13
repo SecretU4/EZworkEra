@@ -1,8 +1,31 @@
-﻿番号,NO
-名前,NAME
-呼び名,CALLNAME
-基礎,BASE
-素質,TALENT
-能力,ABL
-フラグ,CFLAG
+﻿;Char부분
+番号, NO
+名前, NAME
+呼び名, CALLNAME
+基礎, BASE
+素質, TALENT
+能力, ABL
+フラグ, CFLAG
 呼び方リスト, CSTR
+;CSV이름부분
+DAY, DAY
+Equip, EQUIP
+ex, EX
+exp, EXP
+Flag, FLAG
+Gamebase, GAMEBASE
+Item, ITEM
+Juel, JUEL
+Mark, MARK
+Palam, PALAM
+;Param, ;PARAM
+source, SOURCE
+Stain, STAIN
+Str, STR
+tcvar, TCVAR
+Tequip, TEQUIP
+tflag, TFLAG
+Train, TRAIN
+VariableSize, VARIABLESIZE
+_Rename, _RENAME
+_Replace, _REPLACE
