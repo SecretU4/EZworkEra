@@ -65,7 +65,7 @@ while True:
         menu_prginfo.title('EZworkEra 정보')
         menu_prginfo.run_menu()
         if menu_prginfo.selected_num == 0:
-            print("2.0.0 beta")
+            print("3.0.0 beta")
         elif menu_prginfo.selected_num == 1:
             print("https://github.com/SecretU4/EZworkEra/issues 으로 연락주세요.")
         elif menu_prginfo.selected_num == 2:
