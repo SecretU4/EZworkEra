@@ -1,6 +1,7 @@
-# EZworkEra 메인 모듈
+# EZworkEra 공용 모듈
 # 사용 라이브러리
 import os
+import pickle
 import time
 # 클래스 목록
 ## 사용자 화면 관련
@@ -29,6 +30,10 @@ class CommonSent: #관용구 클래스
         print("추출이 완료되었습니다.")
         time.sleep(1)
 
+    @staticmethod
+    def put_time():
+        return time.strftime('%Y/%m/%d %H:%M',time.localtime(time.time()))
+
 
 class Menu: # 콘솔 메뉴 디스플레이
     def __init__(self,menu_dict):
@@ -39,7 +44,7 @@ class Menu: # 콘솔 메뉴 디스플레이
         print(title_name.center(100," "))
         CommonSent.print_line()
 
-    def _print_menu(self):
+    def __print_menu(self):
         for key in self.menu_dict:
             print("[{}]. {}".format(key,self.menu_dict[key]))
         CommonSent.print_line()
@@ -48,10 +53,11 @@ class Menu: # 콘솔 메뉴 디스플레이
     def run_menu(self):
         menu_numlist = tuple(self.menu_dict.keys())
         while True:
-            self._print_menu()
+            self.__print_menu()
             try:
                 self.selected_num = int(self.selected_num)
                 if menu_numlist.count(self.selected_num) == True:
+                    self.selected_menu = self.menu_dict[self.selected_num]
                     return self.selected_num
                 elif self.selected_num == 99 or self.selected_num == 999:
                     print("디버그 기능 없습니다!")
@@ -77,6 +83,51 @@ class MenuPreset: # 자주 쓰는 메뉴 프리셋
         elif EncodeType == '한국어 확장(cp949)':
             EncodeType = 'cp949'
         return EncodeType
+
+    def yesno(self,sentence):
+        yesno_dict={0:'예',1:'아니오'}
+        yesno = Menu(yesno_dict)
+        yesno.title(sentence)
+        yesno.run_menu()
+        return yesno.selected_num
+
+    def shall_save_data(self,data,datatype=None):
+        menu_save = MenuPreset().yesno("출력된 정보를 외부 파일에 저장하시겠습니까?")
+        sav_dir_check = DirCheck()
+        sav_dir_check.run('sav')
+        if menu_save == 0:
+            while True:
+                save_name = input("저장할 외부 파일의 이름을 입력해주세요.")
+                try:
+                    with open("sav\\{}_{}.sav".format(save_name,datatype), 'xb') as sav_file:
+                        pickle.dump(data,sav_file,pickle.HIGHEST_PROTOCOL)
+                        break
+                except FileExistsError:
+                    print("같은 이름의 파일이 존재합니다. 다시 시도해주세요.")
+
+    def load_saved_data(self,option_num=0):
+        if option_num == 0: # 불러올지 말지 정함
+            menu_load = self.yesno("저장된 데이터 파일을 불러오시겠습니까?")
+        elif option_num == 1: # 무조건 불러옴
+            print("불러올 데이터 파일을 선택해주세요.")
+            menu_load = 0
+        if menu_load == 1:
+            return None
+        else:
+            while True:
+                sav_dir_list = DataFilter().files_ext('sav','.sav',1)
+                sav_dir_list.append("돌아가기")
+                menu_dict_sav_list = {}
+                for filename in sav_dir_list:
+                    menu_dict_sav_list[sav_dir_list.index(filename)]=filename
+                menu_sav_list = Menu(menu_dict_sav_list)
+                savfile_no = menu_sav_list.run_menu()
+                self.savfile_name = menu_dict_sav_list[savfile_no]
+                if self.savfile_name == "돌아가기": break
+                with open(self.savfile_name,'rb') as opened_sav:
+                    target_data = pickle.load(opened_sav)
+                    return target_data
+            return None
 
 
 class CustomInput: # 사용자의 입력 클래스
@@ -127,19 +178,19 @@ class CustomInput: # 사용자의 입력 클래스
 
 
 class DictInfo: # 파일 이름별 사전 저장
-    dict_info = {}
-    def add_dict(self,dictname,dict):
-        self.dict_info[dictname]=dict
+    def __init__(self):
+        self.dict_info = {}
 
-    def show_dict_list(self):
-        return self.dict_info.keys
+    def add_dict(self,dictname,dictionary):
+        self.dict_info[dictname]=dictionary
 
 
 class DataFilter:
     def dir_slash(self, directory):
         dir_slashed = list(directory)
         if list(directory) == []: pass
-        elif dir_slashed.pop() != "/": directory = directory + "/"
+        elif dir_slashed.pop() != '/' and dir_slashed.pop() != '\\':
+            directory = directory + '\\'
         return directory
 
     def dup_filter(self, list_name): #중복 감별 들어온 순서대로 저장
@@ -182,12 +233,12 @@ class DataFilter:
                 for filename in files:
                     file_type = os.path.splitext(filename)[-1].upper()
                     if file_type == ext_target:
-                        self.files.append('{0}/{1}'.format(path,filename))
+                        self.files.append('{0}\\{1}'.format(path,filename))
         elif option_num == 1: # 해당 디렉토리만
             for filename in os.listdir(dir_target):
                 file_type = os.path.splitext(filename)[-1].upper()
                 if file_type == ext_target:
-                        self.files.append('{0}/{1}'.format(path,filename))
+                        self.files.append('{0}\\{1}'.format(dir_target,filename))
         return self.files
 
     def files_name(self,dir_target,name_target,option_num=0):
@@ -206,44 +257,66 @@ class DataFilter:
                     self.files.append(FoundName)
         return self.files
 
-    def sep_filename(self,filename):
-        filename_only = os.path.splitext(filename)[0]
-        return filename_only
+    def sep_filename(self,filename,option_num=0): # 0: 오직 파일명 1: 확장자 제외 2: 상위폴더명 제외
+        if option_num == 0:
+            seprated_filename = os.path.basename(filename)
+            seprated_filename = os.path.splitext(seprated_filename)[0]
+        elif option_num == 1:
+            seprated_filename = os.path.splitext(filename)[0]
+        elif option_num == 2:
+            seprated_filename = os.path.split(filename)[-1]
+        return seprated_filename
 
+    def search_filename_wordwrap(self,filenames,keyword_list):
+        filename_dict = {}
+        for filename in filenames:
+            filename_dict[DataFilter().sep_filename(filename).upper()] = filename
+        for keyword in keyword_list:
+            if keyword.upper() in list(filename_dict.keys()):
+                target_name = filename_dict.get(keyword.upper())
+                break
+            else: target_name = None
+        return target_name
 
 class LoadFile: # 파일 불러오기 상용구
     def __init__(self, NameDir, EncodeType='UTF-8'):
         self.NameDir = NameDir
-        self.EncodType = EncodeType
+        self.EncodeType = EncodeType
 
     def onlyopen(self): return open(self.NameDir)
 
     def readwrite(self):
-        return open(self.NameDir, 'w', encoding=self.EncodType, newline='')
+        return open(self.NameDir, 'w', encoding=self.EncodeType, newline='')
 
     def readonly(self):
-        return open(self.NameDir, 'r', encoding=self.EncodType, newline='')
+        return open(self.NameDir, 'r', encoding=self.EncodeType, newline='')
 
     def addwrite(self):
-        return open(self.NameDir, 'a', encoding=self.EncodType, newline='')
+        return open(self.NameDir, 'a', encoding=self.EncodeType, newline='')
 
 
 class StatusNum: # 숫자 상태 처리 관련 클래스
-    def how_much_there(self,num_all,target_type):
-        print("{} 개의 {}{} 발견되었습니다.".format(num_all,target_type,
-        KoreanSupport().what_next(target_type,'가')))
-        if num_all < 10:
-            self.num_will_show = [1,2]
-        elif 10 <= num_all < 500:
-            self.num_will_show = list(map(lambda x: x*int(
-                round(num_all)/4), list(range(1,5))))
+    def __init__(self,target_data,target_type=None,counted_num=0):
+        self.total_num = len(target_data)
+        self.counted_num = counted_num
+        self.target_type = target_type
+        if self.total_num < 10:
+            self.when_num_show = [1,2]
+        elif 10 <= self.total_num < 500:
+            self.when_num_show = list(map(lambda x: x*int(
+                round(self.total_num)/4), list(range(1,5))))
         else:
-            self.num_will_show = list(map(lambda x: x*int(
-                round(num_all)/10),list(range(1,11))))
-        self.num_all = num_all
-    def how_much_done(self,num_now):
-        if num_now in self.num_will_show:
-            print("{}/{} 완료".format(num_now,self.num_all))
+            self.when_num_show = list(map(lambda x: x*int(
+                round(self.total_num)/10),list(range(1,11))))
+
+    def how_much_there(self):
+        print("{} 개의 {}{} 발견되었습니다.".format(self.total_num,self.target_type,
+        KoreanSupport().what_next(self.target_type,'가')))
+
+    def how_much_done(self):
+        self.counted_num += 1
+        if self.counted_num in self.when_num_show:
+            print("{}/{} 완료".format(self.counted_num,self.total_num))
 
 
 class KoreanSupport: # 한글 처리
@@ -272,6 +345,12 @@ class KoreanSupport: # 한글 처리
         elif is_jongseong == 1:
             for bulk in josa_type:
                 return bulk[0]
+
+
+class DirCheck:
+    def run(self,dirname='ResultFiles'):
+        if os.path.isdir(dirname) == False: os.mkdir(dirname)
+        self.dirname = dirname+'\\'
 
 # 디버그용 코드
 if __name__ == "__main__":
