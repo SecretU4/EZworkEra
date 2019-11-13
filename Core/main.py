@@ -8,7 +8,7 @@ from result import ResultFunc
 menu_dict_main = {
     0: 'CSV 파일 처리', 1: 'ERB 파일 처리',
     2: 'ERH 파일 처리 (미실장)', 3:'결과물 제어',
-    4: '프로그램 종료'}
+    4: '프로그램 정보', 5: '프로그램 종료'}
 menu_main = Menu(menu_dict_main)
 menu_main.title("EZworkEra - Develop utility for EmuEra base game")
 last_work = None; last_work_name = None
@@ -58,7 +58,24 @@ while True:
             ResultFunc().make_result(last_work_name,last_work)
         elif menu_result.selected_menu == '결과물 SRS화':
             ResultFunc().make_result(last_work_name,last_work,2)
-# [4] 프로그램 종료
+# [4] 프로그램 정보
+    elif menu_dict_main[menu_main.selected_num] == '프로그램 정보':
+        menu_dict_prginfo = {0: '버전명',1: '오류보고 관련',2: '유의사항',3: '이전으로'}
+        menu_prginfo = Menu(menu_dict_prginfo)
+        menu_prginfo.title('EZworkEra 정보')
+        menu_prginfo.run_menu()
+        if menu_prginfo.selected_num == 0:
+            print("2.0.0 beta")
+        elif menu_prginfo.selected_num == 1:
+            print("https://github.com/SecretU4/EZworkEra/issues 으로 연락주세요.")
+        elif menu_prginfo.selected_num == 2:
+            print("""
+            아직 완성된 프로그램이 아닙니다. 사용 시 문제가 발생하면 오류를 보고해주세요.
+            여러분의 도움으로 더 나은 프로그램을 만들어 노가다를 줄입니다.
+
+            현재 윈도우 환경만 지원합니다. 어차피 원본 엔진도 윈도우용이잖아요.
+            """)
+# [5] 프로그램 종료
     elif menu_dict_main[menu_main.selected_num] == '프로그램 종료':
         break
 CommonSent.end_comment()

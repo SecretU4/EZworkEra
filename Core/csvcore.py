@@ -36,9 +36,8 @@ class CSVFunc:
     def import_all_CSV(self,mode_num=0):
         print("추출을 시작합니다.")
         with LoadFile('debug.log', 'UTF-8').readwrite() as debug_log:
-            debug_log.write(
-                "오류코드 0xef는 UTF-8-sig, 다른 경우 \
-                cp932(일본어)나 cp949(한국어)로 시도하세요.\n")
+            debug_log.write("오류코드 0xef는 UTF-8-sig, 다른 경우\
+ cp932(일본어)나 cp949(한국어)로 시도하세요.\n")
             __error_check, __file_count = 0, 0
             user_input = CustomInput("CSV")
             target_dir = user_input.input_option(1)
@@ -49,7 +48,7 @@ class CSVFunc:
                 open_csv = CSVLoad(filename, encode_type)
                 if mode_num <= 2:
                     if mode_num  == 0: # 구별없이 전부
-                        pass
+                        option_tuple = (0,)
                     elif mode_num == 1: # chara 제외
                         if 'chara' in filename.lower():
                             continue
