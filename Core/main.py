@@ -38,24 +38,39 @@ while True:
 # [1] ERB 파일의 처리
     elif menu_main.selected_menu == 'ERB 파일 처리':
         print("ERB 파일 처리 유틸리티입니다. 현재 TW 파일 이외의 구동을 보장하지 않습니다.")
-        menu_dict_erb = {0: '사용된 CSV 변수 추출', 1: '구상추출', 2: '이전으로'}
+        menu_dict_erb = {0: '사용된 CSV 변수 추출', 1: '구상추출',
+                         2: '들여쓰기 교정', 3: '이전으로'}
         menu_erb = Menu(menu_dict_erb)
         menu_erb.run_menu()
         if menu_erb.selected_num == 0:
-            ERBFunc().search_csv_var() # result 모듈 적용 예정
+            print("이 기능은 아직 결과물 제어 기능이 적용되지 않습니다.")
+            ERBFunc().search_csv_var() #TODO result 모듈 적용 예정
         elif menu_erb.selected_num == 1:
-            ERBFunc().extract_printfunc() # result 모듈 적용 예정
+            print("이 기능은 아직 결과물 제어 기능이 적용되지 않습니다.")
+            ERBFunc().extract_printfunc() #TODO result 모듈 적용 예정
+        elif menu_erb.selected_num == 2:
+            remodeled_erb = ERBFunc().remodel_indent()
+            ResultFunc().make_result(menu_erb.selected_menu,remodeled_erb,1)
+            MenuPreset().shall_save_data(remodeled_erb,'metatext_list')
+            last_work = remodeled_erb
+            last_work_name = menu_erb.selected_menu
+        # if menu_erb.selected_menu != '이전으로':
+        #     last_work_name = menu_erb.selected_menu
+
 # [2] ERH 파일의 처리
     elif  menu_main.selected_menu == 'ERH 파일 처리 (미실장)':
         print("미실장입니다")
 # [3] 결과물 제어
     elif menu_main.selected_menu == '결과물 제어':
-        menu_dict_result = {0: '결과물 TXT화',1: '결과물 SRS화',2: '이전으로'}
+        menu_dict_result = {0: '결과물 TXT화',1: '결과물 ERB화',
+                            2: '결과물 SRS화',3: '이전으로'}
         menu_result = Menu(menu_dict_result)
         menu_result.title("추출 결과물에 대한 제어 메뉴입니다.")
         menu_result.run_menu()
         if menu_result.selected_num == 0:
             ResultFunc().make_result(last_work_name,last_work)
+        elif menu_result.selected_menu == '결과물 ERB화':
+            ResultFunc().make_result(last_work_name,last_work,1)
         elif menu_result.selected_menu == '결과물 SRS화':
             ResultFunc().make_result(last_work_name,last_work,2)
 # [4] 프로그램 정보

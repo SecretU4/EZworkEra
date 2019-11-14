@@ -159,12 +159,12 @@ class ERBLoad(LoadFile):
 
 
 class ERBWrite(LoadFile):
-    def export_erb(self):
+    def __init__(self,NameDir,EncodeType):
+        super().__init__(NameDir,EncodeType)
         self.erb_exporting = LoadFile('trans_{0}.erb'.format(
             self.NameDir),self.EncodeType)
 
     def trans_erb(self): # 작업중
-        self.export_erb()
         with self.readonly() as txt_origin:
             txt_text_list = txt_origin.readlines()
         with self.erb_exporting.readwrite() as erb_export_opened:
@@ -250,6 +250,7 @@ class ERBFunc:
         CommonSent.print_line()
 
     def remodel_indent(self,option_num=None,target_metalines=None):
+        print("들여쓰기를 자동 교정하는 유틸리티입니다.")
         self.result_lines = []
         if target_metalines == None:
             user_input = CustomInput("ERB")
@@ -265,7 +266,7 @@ class ERBFunc:
         else:
             print("특정 데이터셋으로 작업합니다.")
             self.result_lines = ERBFilter().indent_maker(target_metalines)
-        return self.result_lines
+        return self.result_lines # metainfo line 리스트
 
 
 # 디버그용
