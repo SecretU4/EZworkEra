@@ -92,7 +92,7 @@ class MenuPreset: # 자주 쓰는 메뉴 프리셋
         return yesno.selected_num
 
     def shall_save_data(self,data,datatype=None):
-        menu_save = MenuPreset().yesno("출력된 정보를 외부 파일에 저장하시겠습니까?")
+        menu_save = MenuPreset().yesno("출력된 데이터를 외부 파일에 저장하시겠습니까?")
         sav_dir_check = DirCheck()
         sav_dir_check.run('sav')
         if menu_save == 0:
