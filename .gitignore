@@ -104,8 +104,9 @@ venv.bak/
 .mypy_cache/
 
 # custom cause
-extract?/
-extract?.txt
+extract*/
+sample/
+sample*/
 *Temp/
 .vs/
 .vscode/
@@ -115,5 +116,6 @@ test*.py
 dump.*
 debug*.txt
 *.erb
+*.exe
 ResultFiles/
 sav/
