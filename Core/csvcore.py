@@ -1,7 +1,7 @@
 # CSV 기능 관련 모듈
 import csv
 from util import CommonSent, CustomInput,\
-    DictInfo, DataFilter, LoadFile, MenuPreset
+    DataFilter, InfoDict, LoadFile, MenuPreset
 
 
 class CSVLoad(LoadFile):
@@ -33,9 +33,9 @@ class CSVLoad(LoadFile):
 
 
 class CSVFunc:
-    def import_all_CSV(self,mode_num=0):
+    def import_all_CSV(self,mode_num=0): #TODO chara 대응방안 제기, StatusNum 기능 겷합
         print("추출을 시작합니다.")
-        with LoadFile('debug.log', 'UTF-8').readwrite() as debug_log:
+        with LoadFile('csv_debug.log', 'UTF-8').readwrite() as debug_log:
             debug_log.write("오류코드 0xef는 UTF-8-sig, 다른 경우\
  cp932(일본어)나 cp949(한국어)로 시도하세요.\n")
             __error_check, __file_count = 0, 0
@@ -43,7 +43,7 @@ class CSVFunc:
             target_dir = user_input.input_option(1)
             encode_type = MenuPreset().encode()
             csv_files = DataFilter().files_ext(target_dir, '.CSV')
-            self.dic_assemble = DictInfo()
+            self.dic_assemble = InfoDict()
             for filename in csv_files:
                 open_csv = CSVLoad(filename, encode_type)
                 if mode_num <= 2:

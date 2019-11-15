@@ -1,6 +1,6 @@
 # ERB 관련 모듈
 from util import CommonSent, CustomInput, DataFilter,\
-                        LoadFile, MenuPreset, StatusNum
+                InfoDict, LoadFile, MenuPreset, StatusNum
 from csvcore import CSVLoad
 
 class ERBMetaInfo:
@@ -206,50 +206,50 @@ class ERBFilter:
 class ERBFunc:
     def extract_printfunc(self):
         print("PRINT/DATAFORM 구문의 추출을 시작합니다.")
-        with LoadFile('debuglog.txt', 'UTF-8').readwrite() as debug_log:
-            user_input = CustomInput("ERB")
-            target_dir = user_input.input_option(1)
-            encode_type = MenuPreset().encode()
-            erb_files = DataFilter().files_ext(target_dir, '.ERB')
-            file_count_check = StatusNum(erb_files,'파일')
-            file_count_check.how_much_there()
-            for filename in erb_files:
-                erb_opened = ERBLoad(filename, encode_type)
-                printfunc_list = erb_opened.search_line(
-                        'PRINT', 'DATAFORM',except_args=['PRINTDATA'])
-                for line in printfunc_list:
-                    if len(line.split()) == 1:
-                        printfunc_list.remove(line)
-                debug_log.write(filename)
-                debug_log.writelines(printfunc_list)
-                file_count_check.how_much_done()
-        print("추출이 완료되었습니다.")
-        CommonSent.print_line()
+        erb_filedict = InfoDict()
+        user_input = CustomInput("ERB")
+        target_dir = user_input.input_option(1)
+        encode_type = MenuPreset().encode()
+        erb_files = DataFilter().files_ext(target_dir, '.ERB')
+        file_count_check = StatusNum(erb_files,'파일')
+        file_count_check.how_much_there()
+        for filename in erb_files:
+            erb_opened = ERBLoad(filename, encode_type)
+            printfunc_list = erb_opened.search_line(
+                    'PRINT', 'DATAFORM',except_args=['PRINTDATA'])
+            for line in printfunc_list:
+                if len(line.split()) == 1:
+                    printfunc_list.remove(line)
+            erb_filedict.add_dict(filename,printfunc_list)
+            file_count_check.how_much_done()
+        CommonSent.extract_finished()
+        return erb_filedict.dict_info # {파일명:lines} 형태
 
-    def search_csv_var(self):
+    def search_csv_var(self,var_list=None):
         print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
-        with LoadFile('debug.log', 'UTF-8').readwrite() as debug_log:
+        if var_list == None:
             csv_fncdata = CSVLoad('CSVfnclist.csv','UTF-8-SIG')
             csv_fncdata.core_csv()
             var_list = csv_fncdata.list_csvdata
-            user_input = CustomInput("ERB")
-            target_dir = user_input.input_option(1)
-            encode_type = MenuPreset().encode()
-            erb_files = DataFilter().files_ext(target_dir, '.ERB')
-            file_count_check = StatusNum(erb_files,'파일')
-            file_count_check.how_much_there()
-            for filename in erb_files:
-                debug_log.write("{}\n".format(filename))
-                erb_opened = ERBLoad(filename, encode_type)
-                var_context_list = erb_opened.search_line(*var_list,except_args=['name'])
-                if bool(var_context_list) is True:
-                    filtered_con_list = DataFilter().dup_filter(var_context_list)
-                    debug_log.writelines(filtered_con_list)
-                file_count_check.how_much_done()
-        print("변수 목록이 작성되었습니다.")
-        CommonSent.print_line()
+        erb_filedict = InfoDict()
+        user_input = CustomInput("ERB")
+        target_dir = user_input.input_option(1)
+        encode_type = MenuPreset().encode()
+        erb_files = DataFilter().files_ext(target_dir, '.ERB')
+        file_count_check = StatusNum(erb_files,'파일')
+        file_count_check.how_much_there()
+        for filename in erb_files:
+            filtered_con_list = None
+            erb_opened = ERBLoad(filename, encode_type)
+            var_context_list = erb_opened.search_line(*var_list,except_args=['name'])
+            if bool(var_context_list) is True:
+                filtered_con_list = DataFilter().dup_filter(var_context_list)
+                erb_filedict.add_dict(filename,filtered_con_list)
+            file_count_check.how_much_done()
+        CommonSent.extract_finished()
+        return erb_filedict.dict_info # {파일명:lines} 형태
 
-    def remodel_indent(self,option_num=None,target_metalines=None):
+    def remodel_indent(self,option_num=None,target_metalines=None): #TODO infodict 자료형 전환
         print("들여쓰기를 자동 교정하는 유틸리티입니다.")
         self.result_lines = []
         if target_metalines == None:
@@ -257,21 +257,22 @@ class ERBFunc:
             target_dir = user_input.input_option(1)
             num = MenuPreset().yesno("하위폴더까지 포함해 진행하시겠습니까?")
             encode_type = MenuPreset().encode()
-            ERB_files = DataFilter().files_ext(target_dir, '.ERB',num)
-            for filename in ERB_files:
+            erb_files = DataFilter().files_ext(target_dir, '.ERB',num)
+            file_count_check = StatusNum(erb_files,'파일')
+            file_count_check.how_much_there()
+            for filename in erb_files:
                 open_erb = ERBLoad(filename,encode_type)
                 lines = open_erb.make_metainfo_lines(option_num)
-                lines.insert(0,[0,0,0,";{}에서 불러옴".format(filename)])
+                lines.insert(0,[0,0,0,";{}에서 불러옴\n".format(filename)])
                 self.result_lines.extend(ERBFilter().indent_maker(lines))
+                file_count_check.how_much_done()
         else:
             print("특정 데이터셋으로 작업합니다.")
             self.result_lines = ERBFilter().indent_maker(target_metalines)
+        CommonSent.extract_finished()
         return self.result_lines # metainfo line 리스트
 
 
 # 디버그용
 if __name__ == '__main__':
-    # testlines = ERBFunc().remodel_indent(option_num=1)
-    # with LoadFile('Resultfiles/test.txt').readwrite() as TEST:
-    #     TEST.writelines(testlines)
     pass

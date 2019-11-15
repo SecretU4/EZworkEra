@@ -177,12 +177,12 @@ class CustomInput: # 사용자의 입력 클래스
             return self.name_inputed,self.input_type
 
 
-class DictInfo: # 파일 이름별 사전 저장
+class InfoDict: # 파일 이름별 데이터 저장
     def __init__(self):
         self.dict_info = {}
 
-    def add_dict(self,dictname,dictionary):
-        self.dict_info[dictname]=dictionary
+    def add_dict(self,dictname,dataname):
+        self.dict_info[dictname]=dataname
 
 
 class DataFilter:
@@ -278,6 +278,7 @@ class DataFilter:
             else: target_name = None
         return target_name
 
+
 class LoadFile: # 파일 불러오기 상용구
     def __init__(self, NameDir, EncodeType='UTF-8'):
         self.NameDir = NameDir
@@ -296,10 +297,11 @@ class LoadFile: # 파일 불러오기 상용구
 
 
 class StatusNum: # 숫자 상태 처리 관련 클래스
-    def __init__(self,target_data,target_type=None,counted_num=0):
+    def __init__(self,target_data,target_type=None,counted_num=0,error_num=0):
         self.total_num = len(target_data)
         self.counted_num = counted_num
         self.target_type = target_type
+        self.error_num = error_num
         if self.total_num < 10:
             self.when_num_show = [1,2]
         elif 10 <= self.total_num < 500:
@@ -317,6 +319,11 @@ class StatusNum: # 숫자 상태 처리 관련 클래스
         self.counted_num += 1
         if self.counted_num in self.when_num_show:
             print("{}/{} 완료".format(self.counted_num,self.total_num))
+        elif self.counted_num == self.total_num:
+            if self.error_num != 0:
+                print("{} 개가 정상적으로 처리되지 않았습니다.".format(self.error_num))
+            print("총 {} 개의 {} 중 {} 개가 처리 완료되었습니다.".format(self.total_num,
+                self.target_type,self.total_num - self.error_num))
 
 
 class KoreanSupport: # 한글 처리

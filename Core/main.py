@@ -43,19 +43,21 @@ while True:
         menu_erb = Menu(menu_dict_erb)
         menu_erb.run_menu()
         if menu_erb.selected_num == 0:
-            print("이 기능은 아직 결과물 제어 기능이 적용되지 않습니다.")
-            ERBFunc().search_csv_var() #TODO result 모듈 적용 예정
+            erb_csv_var_infodict= ERBFunc().search_csv_var()
+            last_work = erb_csv_var_infodict
         elif menu_erb.selected_num == 1:
-            print("이 기능은 아직 결과물 제어 기능이 적용되지 않습니다.")
-            ERBFunc().extract_printfunc() #TODO result 모듈 적용 예정
+            erb_printfunc_infodict = ERBFunc().extract_printfunc()
+            last_work = erb_printfunc_infodict
         elif menu_erb.selected_num == 2:
             remodeled_erb = ERBFunc().remodel_indent()
             ResultFunc().make_result(menu_erb.selected_menu,remodeled_erb,1)
+            make_erb_yn = MenuPreset().yesno("지금 바로 데이터를 erb화 할까요?")
+            if make_erb_yn == 0:
+                ResultFunc().make_result(remodeled_erb,'들여쓰기 교정',1)
             MenuPreset().shall_save_data(remodeled_erb,'metatext_list')
             last_work = remodeled_erb
+        if menu_erb.selected_menu != '이전으로':
             last_work_name = menu_erb.selected_menu
-        # if menu_erb.selected_menu != '이전으로':
-        #     last_work_name = menu_erb.selected_menu
 
 # [2] ERH 파일의 처리
     elif  menu_main.selected_menu == 'ERH 파일 처리 (미실장)':
@@ -85,10 +87,10 @@ while True:
             print("https://github.com/SecretU4/EZworkEra/issues 으로 연락주세요.")
         elif menu_prginfo.selected_num == 2:
             print("""
-            아직 완성된 프로그램이 아닙니다. 사용 시 문제가 발생하면 오류를 보고해주세요.
-            여러분의 도움으로 더 나은 프로그램을 만들어 노가다를 줄입니다.
+아직 완성된 프로그램이 아닙니다. 사용 시 문제가 발생하면 오류를 보고해주세요.
+여러분의 도움으로 더 나은 프로그램을 만들어 노가다를 줄입니다.
 
-            현재 윈도우 환경만 지원합니다. 어차피 원본 엔진도 윈도우용이잖아요.
+현재 윈도우 환경만 지원합니다. 어차피 원본 엔진도 윈도우용이잖아요.
             """)
 # [5] 프로그램 종료
     elif menu_dict_main[menu_main.selected_num] == '프로그램 종료':

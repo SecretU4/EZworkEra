@@ -37,7 +37,7 @@ class ExportData:
             target_data = print_data.load_saved_data()
             if target_data == None:
                 self.lazy_switch = 1
-            else:
+            else: #TODO InfoDict 자료형 대응
                 result_filename = DataFilter().sep_filename(
                                         print_data.savfile_name,2)+'.'+filetype
                 target_name = print_data.savfile_name
@@ -58,14 +58,22 @@ class ExportData:
         self.srs_filename = '{}.simplesrs'.format(self.dest_dir+srsname)
         if bool(orig_dictinfo) == False or bool(trans_dictinfo) == False: self.lazy_switch = 1
         else:
-            with LoadFile('srsdebug.log').readwrite() as self.srslog_file:
-                if os.path.isfile(self.srs_filename) == False:
-                    print("SRS 파일을 새로 작성합니다.")
-                    with LoadFile(self.srs_filename).readwrite() as srs_file:
-                        srs_file.write("[-TRIM-][-SORT-]\n\n")
-                        # TRIM:앞뒤공백 제거, SORT:긴 순서/알파벳 정렬, WORDWRAP:정확히 단어 단위일때만 치환
+            with LoadFile('srs_debug.log').readwrite() as self.srslog_file:
                 orig_dictnames = list(orig_dictinfo.keys())
                 trans_dictnames = list(trans_dictinfo.keys())
+                if os.path.isfile(self.srs_filename) == False: # SRS 유무 검사
+                    print("SRS 파일을 새로 작성합니다.")
+                    with LoadFile(self.srs_filename).readwrite() as srs_file:
+                        wordwrap_yn = 1
+                        for dictname in orig_dictnames:
+                            if 'chara' in dictname or 'name' in dictname:
+                                print("이름 관련 파일명이 감지되었습니다.")
+                                wordwrap_yn = MenuPreset().yesno(
+                                    "입력받은 데이터 전체를 정확한 단어 단위로만 변환하도록 조정할까요?")
+                                break
+                        if wordwrap_yn != 0: srs_file.write("[-TRIM-][-SORT-]\n\n")
+                        else: srs_file.write("[-TRIM-][-SORT-][-WORDWRAP-]\n\n")
+                        # TRIM:앞뒤공백 제거, SORT:긴 순서/알파벳 정렬, WORDWRAP:정확히 단어 단위일때만 치환
                 for num in range(len(orig_dictinfo)):
                     try:
                         self.orig_dictname = orig_dictnames[num]
