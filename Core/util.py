@@ -267,10 +267,10 @@ class DataFilter:
             seprated_filename = os.path.split(filename)[-1]
         return seprated_filename
 
-    def search_filename_wordwrap(self,filenames,keyword_list):
+    def search_filename_wordwrap(self,filenames,keyword_list): #TODO 문제발생
         filename_dict = {}
         for filename in filenames:
-            filename_dict[DataFilter().sep_filename(filename).upper()] = filename
+            filename_dict[DataFilter().sep_filename(filename).upper().split()[0]] = filename
         for keyword in keyword_list:
             if keyword.upper() in list(filename_dict.keys()):
                 target_name = filename_dict.get(keyword.upper())
@@ -297,11 +297,12 @@ class LoadFile: # 파일 불러오기 상용구
 
 
 class StatusNum: # 숫자 상태 처리 관련 클래스
-    def __init__(self,target_data,target_type=None,counted_num=0,error_num=0):
+    def __init__(self,target_data,target_type=None,logname=None,counted_num=0,error_num=0):
         self.total_num = len(target_data)
         self.counted_num = counted_num
         self.target_type = target_type
         self.error_num = error_num
+        self.logname = logname
         if self.total_num < 10:
             self.when_num_show = [1,2]
         elif 10 <= self.total_num < 500:
@@ -322,6 +323,8 @@ class StatusNum: # 숫자 상태 처리 관련 클래스
         elif self.counted_num == self.total_num:
             if self.error_num != 0:
                 print("{} 개가 정상적으로 처리되지 않았습니다.".format(self.error_num))
+                if self.logname != None:
+                    print("{}를 확인해주세요.".format(self.logname))
             print("총 {} 개의 {} 중 {} 개가 처리 완료되었습니다.".format(self.total_num,
                 self.target_type,self.total_num - self.error_num))
 

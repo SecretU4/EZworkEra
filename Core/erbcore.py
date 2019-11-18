@@ -199,7 +199,9 @@ class ERBFilter:
                 if_level, case_level, _, context = line
                 self.filtered_lines.append('{}{}{}\n'.format('\t'*if_level,
                     '\t'*case_level,context))
-        if self.filtered_lines == []: print("결과물이 없습니다.")
+        if self.filtered_lines == []:
+            print("결과물이 없습니다.")
+            return None
         return self.filtered_lines
 
 
@@ -249,9 +251,10 @@ class ERBFunc:
         CommonSent.extract_finished()
         return erb_filedict.dict_info # {파일명:lines} 형태
 
-    def remodel_indent(self,option_num=None,target_metalines=None): #TODO infodict 자료형 전환
+    def remodel_indent(self,option_num=None,target_metalines=None):
+    # 파일 목록을 불러올 때는 결과물이 infodict, 특정 데이터셋일 때는 결과물이 list형임.
         print("들여쓰기를 자동 교정하는 유틸리티입니다.")
-        self.result_lines = []
+        result_datadict = InfoDict()
         if target_metalines == None:
             user_input = CustomInput("ERB")
             target_dir = user_input.input_option(1)
@@ -264,13 +267,14 @@ class ERBFunc:
                 open_erb = ERBLoad(filename,encode_type)
                 lines = open_erb.make_metainfo_lines(option_num)
                 lines.insert(0,[0,0,0,";{}에서 불러옴\n".format(filename)])
-                self.result_lines.extend(ERBFilter().indent_maker(lines))
+                result_datadict.add_dict(filename,ERBFilter().indent_maker(lines))
                 file_count_check.how_much_done()
+            result_dataset = result_datadict.dict_info
         else:
             print("특정 데이터셋으로 작업합니다.")
-            self.result_lines = ERBFilter().indent_maker(target_metalines)
+            result_dataset = ERBFilter().indent_maker(target_metalines) # metainfo line 리스트
         CommonSent.extract_finished()
-        return self.result_lines # metainfo line 리스트
+        return result_dataset
 
 
 # 디버그용
