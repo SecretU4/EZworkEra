@@ -174,7 +174,10 @@ class ResultFunc:
             result_file = ExportData(dirname,target_name,target_data)
         if result_type == 0:
             print("지정된 데이터의 TXT 파일화를 진행합니다.")
-            result_file.to_TXT()
+            press_enter_yn = MenuPreset(
+                ).yesno("데이터에 줄바꿈이 되어있던 경우, 줄바꿈 출력이 가능합니다. 시도하시겠습니까?")
+            if press_enter_yn == 0: result_file.to_TXT(option_num=1)
+            else: result_file.to_TXT()
         elif result_type == 1:
             print("지정된 데이터의 ERB 파일화를 진행합니다.")
             result_file.to_TXT('erb',1)
