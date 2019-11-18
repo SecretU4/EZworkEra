@@ -1,7 +1,7 @@
 # CSV 기능 관련 모듈
 import csv
 from util import CommonSent, CustomInput,\
-    DataFilter, InfoDict, LoadFile, MenuPreset
+    DataFilter, InfoDict, LoadFile, MenuPreset, StatusNum
 
 
 class CSVLoad(LoadFile):
@@ -33,17 +33,18 @@ class CSVLoad(LoadFile):
 
 
 class CSVFunc:
-    def import_all_CSV(self,mode_num=0): #TODO chara 대응방안 제기, StatusNum 기능 겷합
+    def import_all_CSV(self,mode_num=0):
         print("추출을 시작합니다.")
         with LoadFile('csv_debug.log', 'UTF-8').readwrite() as debug_log:
             debug_log.write("오류코드 0xef는 UTF-8-sig, 다른 경우\
  cp932(일본어)나 cp949(한국어)로 시도하세요.\n")
-            __error_check, __file_count = 0, 0
             user_input = CustomInput("CSV")
             target_dir = user_input.input_option(1)
             encode_type = MenuPreset().encode()
             csv_files = DataFilter().files_ext(target_dir, '.CSV')
             self.dic_assemble = InfoDict()
+            count_check = StatusNum(csv_files,'파일','csv_debug.log')
+            count_check.how_much_there()
             for filename in csv_files:
                 open_csv = CSVLoad(filename, encode_type)
                 if mode_num <= 2:
@@ -53,14 +54,14 @@ class CSVFunc:
                         if 'chara' in filename.lower():
                             continue
                         option_tuple = (0,)
-                    elif mode_num == 2: # chara 만
+                    elif mode_num == 2: # chara 변수목록만, 현재 의미없어 접근불가처리
                         if 'chara' in filename.lower():
-                            option_tuple = (0,['NAME','CALLNAME','名前','呼び名'])
+                            option_tuple = (0,)
                         else: continue
                 else:
                     if mode_num == 3: # srs 최적화 - 이름
                         if 'chara' in filename.lower():
-                            option_tuple = (0,['NAME','CALLNAME','名前','呼び名'])
+                            option_tuple = (0,['CALLNAME','呼び名'])
                         elif 'name' in filename.lower():
                             option_tuple = (0,)
                         else: continue
@@ -80,19 +81,11 @@ class CSVFunc:
                     except UnicodeDecodeError as UniDecode:
                         print("{}에서 {} 발생\n".format(
                             filename, UniDecode), file=debug_log)
-                        __error_check += 1
+                        count_check.error_num += 1
                 open_csv.dict_csvdata = DataFilter(
                 ).erase_quote(open_csv.dict_csvdata, ';')
                 self.dic_assemble.add_dict(filename,open_csv.dict_csvdata)
-                __file_count += 1
-            if __error_check != 0:
-                print("""
-                {}건 추출 도중 {}건의 인코딩 오류가 발생했습니다.\
-                debug.log를 확인해주세요.
-                """.format(__file_count, __error_check))
-            else:
-                print("{}건이 추출되었습니다.".format(__file_count))
-                debug_log.write("오류가 발생하지 않았거나 파일이 덮어씌워졌습니다.")
+                count_check.how_much_done()
         CommonSent.extract_finished()
         CommonSent.print_line()
         return self.dic_assemble
