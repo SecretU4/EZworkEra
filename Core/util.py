@@ -267,7 +267,7 @@ class DataFilter:
             seprated_filename = os.path.split(filename)[-1]
         return seprated_filename
 
-    def search_filename_wordwrap(self,filenames,keyword_list): #TODO 문제발생
+    def search_filename_wordwrap(self,filenames,keyword_list):
         filename_dict = {}
         for filename in filenames:
             filename_dict[DataFilter().sep_filename(filename).upper().split()[0]] = filename
@@ -361,6 +361,22 @@ class DirCheck:
     def run(self,dirname='ResultFiles'):
         if os.path.isdir(dirname) == False: os.mkdir(dirname)
         self.dirname = dirname+'\\'
+
+
+class MakeLog(LoadFile):
+    def first_log(self,file_info):
+        with self.addwrite() as log_open:
+            log_open.write('\n{}\n{} 불러오기 성공.\n'.format(CommonSent.put_time,file_info))
+
+    def write_log(self,line='defaultline'):
+        with self.addwrite() as log_open:
+            log_open.write('{}'.format(line))
+
+    def write_error_log(self,error_code,line=None):
+        with self.addwrite() as log_open:
+            log_open.write('{} 오류 발생!'.format(error_code))
+            if line != None:
+                log_open.write('발생 위치: {}'.format(line))
 
 # 디버그용 코드
 if __name__ == "__main__":
