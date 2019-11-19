@@ -385,3 +385,5 @@ if __name__ == "__main__":
     debug_menu.run_menu()
     print(debug_menu.selected_num)
     print(MenuPreset().encode())
+
+#TODO GUI 인터페이스 지원 - 구상 번역기만이라도.

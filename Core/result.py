@@ -59,8 +59,7 @@ class ExportData:
             print("미리 실행된 자료가 없습니다.")
             print_data = MenuPreset()
             target_data = print_data.load_saved_data()
-            if target_data == None:
-                self.lazy_switch = 1
+            if target_data == None: self.lazy_switch = 1
             else:
                 result_filename = DataFilter().sep_filename(
                                         print_data.savfile_name,2)+'.'+filetype
@@ -90,7 +89,9 @@ class ExportData:
             dataset = self.__multi_data_input()
             if len(dataset) == 2:
                 checked_dataset = self.__data_type_check(*dataset)
-                if None in checked_dataset: print("공란인 데이터가 있습니다. 다시 시도해주세요.")
+                if None in checked_dataset:
+                    print("공란인 데이터가 있습니다. 다시 시도해주세요.")
+                    continue
                 break
             else: print("데이터의 수가 올바르지 않습니다. 다시 시도해주세요.")
         orig_dictinfo ,trans_dictinfo = checked_dataset # {분류명 : 딕셔너리} 구조화
@@ -192,3 +193,6 @@ class ResultFunc:
         else:
             print("처리가 완료되었습니다.")
         input("엔터를 눌러 계속...")
+
+#TODO MakeLog 클래스 이식
+#TODO to_txt 함수 - 복수의 InfoDict 데이터를 불러온 경우의 지원
