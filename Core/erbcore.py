@@ -1,6 +1,6 @@
 # ERB 관련 모듈
 from util import CommonSent, CustomInput, DataFilter,\
-                InfoDict, LoadFile, MenuPreset, StatusNum
+                InfoDict, LoadFile, MakeLog, MenuPreset, StatusNum
 from csvcore import CSVLoad
 
 class ERBMetaInfo:
@@ -24,18 +24,20 @@ class ERBLoad(LoadFile):
         self.command_count = 0
         skip_start = 0
         erb_info = ERBMetaInfo()
+        erb_log = MakeLog('erb_debug.log')
         with self.readonly() as erb_opened:
+            erb_log.first_log(self.NameDir)
             for line in erb_opened:
                 line = line.strip()
-                if line.startswith(';') == True: # 주석문
-                    if option_num == 1:
-                        continue
-                    erb_info.add_line_list(line)
-                elif '[SKIPEND]' in line:
+                if '[SKIPEND]' in line:
                     skip_start = 0
                     erb_info.add_line_list(line)
                     continue
                 elif skip_start == 1: continue
+                elif line.startswith(';') == True: # 주석문
+                    if option_num == 1: continue
+                    erb_info.add_line_list(line)
+                    continue
                 elif '[SKIPSTART]' in line:
                     skip_start = 1
                     erb_info.add_line_list(line)
@@ -45,8 +47,7 @@ class ERBLoad(LoadFile):
                         erb_info.add_line_list(line)
                         erb_info.case_level += 1
                     else:
-                        if option_num == 1:
-                            continue
+                        if option_num == 1: continue
                         erb_info.add_line_list(line)
                     continue
                 elif 'IF' in line:
@@ -61,6 +62,7 @@ class ERBLoad(LoadFile):
                         erb_info.add_line_list(line)
                         erb_info.if_level += 1
                     elif 'SIF' in line: erb_info.add_line_list(line)
+                    else: erb_log.write_error_log('미상정',line)
                     continue
                 elif erb_info.case_level != 0: # 케이스 내부 돌 때
                     if 'CASE' in line:
@@ -71,6 +73,8 @@ class ERBLoad(LoadFile):
                             erb_info.case_count += 1
                             if option_num == 1: continue
                             erb_info.add_line_list(line)
+                            if erb_info.case_count == 1: erb_info.case_level += 1
+                        else: erb_log.write_error_log('미상정',line)
                         continue
                     elif 'DATA' in line:
                         if 'DATAFORM' in line :
@@ -92,6 +96,7 @@ class ERBLoad(LoadFile):
                             line = line + ' ;{}개의 케이스 존재'.format(erb_info.case_count)
                             erb_info.case_count = 0
                             erb_info.add_line_list(line)
+                        else: erb_log.write_error_log('미상정',line)
                         continue
                     elif 'END' in line:
                         if 'ENDSELECT' in line:
@@ -103,8 +108,10 @@ class ERBLoad(LoadFile):
                             erb_info.case_level -= 1
                             if option_num == 1: continue
                             erb_info.add_line_list(line)
+                        else: erb_log.write_error_log('미상정',line)
                         continue
-                elif 'SELECTCASE' in line:
+                    else: pass
+                if 'SELECTCASE' in line:
                     erb_info.add_line_list(line)
                     erb_info.case_level += 1
                 elif line.startswith('ELSE') == True:
@@ -125,6 +132,7 @@ class ERBLoad(LoadFile):
                 else:
                     if option_num == 1: continue
                     erb_info.add_line_list(line)
+                    erb_log.write_error_log('미상정',line)
         return erb_info.linelist
 
     def search_line(self,*args,except_args=None):
