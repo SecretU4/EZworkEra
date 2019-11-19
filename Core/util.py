@@ -177,12 +177,12 @@ class CustomInput: # 사용자의 입력 클래스
             return self.name_inputed,self.input_type
 
 
-class DictInfo: # 파일 이름별 사전 저장
+class InfoDict: # 파일 이름별 데이터 저장
     def __init__(self):
         self.dict_info = {}
 
-    def add_dict(self,dictname,dictionary):
-        self.dict_info[dictname]=dictionary
+    def add_dict(self,dictname,dataname):
+        self.dict_info[dictname]=dataname
 
 
 class DataFilter:
@@ -270,13 +270,14 @@ class DataFilter:
     def search_filename_wordwrap(self,filenames,keyword_list):
         filename_dict = {}
         for filename in filenames:
-            filename_dict[DataFilter().sep_filename(filename).upper()] = filename
+            filename_dict[DataFilter().sep_filename(filename).upper().split()[0]] = filename
         for keyword in keyword_list:
             if keyword.upper() in list(filename_dict.keys()):
                 target_name = filename_dict.get(keyword.upper())
                 break
             else: target_name = None
         return target_name
+
 
 class LoadFile: # 파일 불러오기 상용구
     def __init__(self, NameDir, EncodeType='UTF-8'):
@@ -296,10 +297,12 @@ class LoadFile: # 파일 불러오기 상용구
 
 
 class StatusNum: # 숫자 상태 처리 관련 클래스
-    def __init__(self,target_data,target_type=None,counted_num=0):
+    def __init__(self,target_data,target_type=None,logname=None,counted_num=0,error_num=0):
         self.total_num = len(target_data)
         self.counted_num = counted_num
         self.target_type = target_type
+        self.error_num = error_num
+        self.logname = logname
         if self.total_num < 10:
             self.when_num_show = [1,2]
         elif 10 <= self.total_num < 500:
@@ -317,6 +320,13 @@ class StatusNum: # 숫자 상태 처리 관련 클래스
         self.counted_num += 1
         if self.counted_num in self.when_num_show:
             print("{}/{} 완료".format(self.counted_num,self.total_num))
+        elif self.counted_num == self.total_num:
+            if self.error_num != 0:
+                print("{} 개가 정상적으로 처리되지 않았습니다.".format(self.error_num))
+                if self.logname != None:
+                    print("{}를 확인해주세요.".format(self.logname))
+            print("총 {} 개의 {} 중 {} 개가 처리 완료되었습니다.".format(self.total_num,
+                self.target_type,self.total_num - self.error_num))
 
 
 class KoreanSupport: # 한글 처리
@@ -352,6 +362,22 @@ class DirCheck:
         if os.path.isdir(dirname) == False: os.mkdir(dirname)
         self.dirname = dirname+'\\'
 
+
+class MakeLog(LoadFile):
+    def first_log(self,file_info):
+        with self.addwrite() as log_open:
+            log_open.write('\n{}\n{} 불러오기 성공.\n'.format(CommonSent.put_time,file_info))
+
+    def write_log(self,line='defaultline'):
+        with self.addwrite() as log_open:
+            log_open.write('{}'.format(line))
+
+    def write_error_log(self,error_code,line=None):
+        with self.addwrite() as log_open:
+            log_open.write('{} 오류 발생!'.format(error_code))
+            if line != None:
+                log_open.write('발생 위치: {}'.format(line))
+
 # 디버그용 코드
 if __name__ == "__main__":
     debug_menu = Menu({0:"테스트",1:"스크린"})
@@ -359,3 +385,5 @@ if __name__ == "__main__":
     debug_menu.run_menu()
     print(debug_menu.selected_num)
     print(MenuPreset().encode())
+
+#TODO GUI 인터페이스 지원 - 구상 번역기만이라도.

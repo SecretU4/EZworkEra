@@ -19,20 +19,29 @@ while True:
 # [0] CSV 파일의 처리
     if menu_main.selected_menu == 'CSV 파일 처리':
         CommonSent.print_line()
-        menu_dict_csv = {0: 'CSV 변수 목록 추출',1: '이전으로'}
+        menu_dict_csv = {0: 'CSV 변수 목록 추출',1: 'CSV 변수 목록 추출(SRS 최적화)',2: '이전으로'}
         menu_csv = Menu(menu_dict_csv)
         menu_csv.title("CSV 파일 처리 유틸리티입니다.")
         menu_csv.run_menu()
         if menu_csv.selected_num == 0:
-            menu_dict_import_all_csv = {0: '모두',1:'CHARA제외',
-                2:'CHARA만',3:'SRS 최적화-이름',4:'SRS 최적화-변수',5:'처음으로'}
+            menu_dict_import_all_csv = {0: '모두',1:'CHARA 제외',
+                3:'처음으로'}
             menu_import_all_csv = Menu(menu_dict_import_all_csv)
             menu_import_all_csv.title("추출할 CSV의 종류를 선택하세요.")
             menu_import_all_csv.run_menu()
-            if menu_import_all_csv.selected_num != 5: # csv 변수추출 중 처음으로가 아님
+            if menu_import_all_csv.selected_num != 3: # csv 변수추출 중 처음으로가 아님
                 import_all_csv_dict = CSVFunc().import_all_CSV(menu_import_all_csv.selected_num)
                 MenuPreset().shall_save_data(import_all_csv_dict.dict_info,'dict')
                 last_work = import_all_csv_dict.dict_info # 마지막 작업 저장
+        elif menu_csv.selected_num == 1:
+            menu_dict_csv_srs_friendly = {0: 'csv 내 이름만',
+                1: 'csv 내 변수만 (CHARA 제외)',2:'처음으로'}
+            menu_csv_srs_friendly = Menu(menu_dict_csv_srs_friendly)
+            menu_csv_srs_friendly.run_menu()
+            if menu_csv_srs_friendly.selected_num != 2:
+                csv_srs_friendly_dict = CSVFunc().import_all_CSV(menu_csv_srs_friendly.selected_num+3)
+                MenuPreset().shall_save_data(csv_srs_friendly_dict.dict_info,'dict')
+                last_work = csv_srs_friendly_dict.dict_info
         if menu_csv.selected_menu != '이전으로':
             last_work_name = menu_csv.selected_menu # 마지막 작업 명칭 저장
 # [1] ERB 파일의 처리
@@ -43,19 +52,20 @@ while True:
         menu_erb = Menu(menu_dict_erb)
         menu_erb.run_menu()
         if menu_erb.selected_num == 0:
-            print("이 기능은 아직 결과물 제어 기능이 적용되지 않습니다.")
-            ERBFunc().search_csv_var() #TODO result 모듈 적용 예정
+            erb_csv_var_infodict= ERBFunc().search_csv_var()
+            last_work = erb_csv_var_infodict
         elif menu_erb.selected_num == 1:
-            print("이 기능은 아직 결과물 제어 기능이 적용되지 않습니다.")
-            ERBFunc().extract_printfunc() #TODO result 모듈 적용 예정
+            erb_printfunc_infodict = ERBFunc().extract_printfunc()
+            last_work = erb_printfunc_infodict
         elif menu_erb.selected_num == 2:
             remodeled_erb = ERBFunc().remodel_indent()
-            ResultFunc().make_result(menu_erb.selected_menu,remodeled_erb,1)
+            make_erb_yn = MenuPreset().yesno("지금 바로 데이터를 erb화 할까요?")
+            if make_erb_yn == 0:
+                ResultFunc().make_result(menu_erb.selected_menu,remodeled_erb,1)
             MenuPreset().shall_save_data(remodeled_erb,'metatext_list')
             last_work = remodeled_erb
+        if menu_erb.selected_menu != '이전으로':
             last_work_name = menu_erb.selected_menu
-        # if menu_erb.selected_menu != '이전으로':
-        #     last_work_name = menu_erb.selected_menu
 
 # [2] ERH 파일의 처리
     elif  menu_main.selected_menu == 'ERH 파일 처리 (미실장)':
@@ -80,15 +90,15 @@ while True:
         menu_prginfo.title('EZworkEra 정보')
         menu_prginfo.run_menu()
         if menu_prginfo.selected_num == 0:
-            print("3.0.0 beta")
+            print("3.0.0")
         elif menu_prginfo.selected_num == 1:
             print("https://github.com/SecretU4/EZworkEra/issues 으로 연락주세요.")
         elif menu_prginfo.selected_num == 2:
             print("""
-            아직 완성된 프로그램이 아닙니다. 사용 시 문제가 발생하면 오류를 보고해주세요.
-            여러분의 도움으로 더 나은 프로그램을 만들어 노가다를 줄입니다.
+아직 완성된 프로그램이 아닙니다. 사용 시 문제가 발생하면 오류를 보고해주세요.
+여러분의 도움으로 더 나은 프로그램을 만들어 노가다를 줄입니다.
 
-            현재 윈도우 환경만 지원합니다. 어차피 원본 엔진도 윈도우용이잖아요.
+현재 윈도우 환경만 지원합니다. 어차피 원본 엔진도 윈도우용이잖아요.
             """)
 # [5] 프로그램 종료
     elif menu_dict_main[menu_main.selected_num] == '프로그램 종료':
