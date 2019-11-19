@@ -54,7 +54,7 @@ class ExportData:
                 checked_datalist.append(None)
         return checked_datalist
 
-    def to_TXT(self,filetype='txt',option_num=0): # txt, erb 공용
+    def to_TXT(self,filetype='txt',option_num=0,encode_type='UTF-8'): # txt, erb 공용
         if self.target_data == None:
             print("미리 실행된 자료가 없습니다.")
             print_data = MenuPreset()
@@ -74,7 +74,7 @@ class ExportData:
         else:
             checked_data = self.__data_type_check(target_data)
             unpacked_data = list(checked_data[0].values())
-            with LoadFile(self.dest_dir+result_filename).readwrite() as txt_file:
+            with LoadFile(self.dest_dir+result_filename,encode_type).readwrite() as txt_file:
                 txt_file.write("{}에서 불러옴\n".format(target_name))
                 for context in unpacked_data:
                     if option_num == 0:
@@ -102,7 +102,7 @@ class ExportData:
                 trans_dictnames = list(trans_dictinfo.keys())
                 if os.path.isfile(self.srs_filename) == False: # SRS 유무 검사
                     print("SRS 파일을 새로 작성합니다.")
-                    with LoadFile(self.srs_filename).readwrite() as srs_file:
+                    with LoadFile(self.srs_filename,'UTF-8-sig').readwrite() as srs_file:
                         wordwrap_yn = 1
                         for dictname in orig_dictnames:
                             if 'chara' in dictname or 'name' in dictname:
@@ -180,7 +180,7 @@ class ResultFunc:
             else: result_file.to_TXT()
         elif result_type == 1:
             print("지정된 데이터의 ERB 파일화를 진행합니다.")
-            result_file.to_TXT('erb',1)
+            result_file.to_TXT('erb',1,'UTF-8-sig')
         elif result_type == 2:
             print("csv 변수로 작성시 chara 폴더가 제외되어있어야 합니다.")
             print("작성 또는 수정할 srs 파일명을 입력해주세요.")
