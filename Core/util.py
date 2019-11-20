@@ -93,8 +93,7 @@ class MenuPreset: # 자주 쓰는 메뉴 프리셋
 
     def shall_save_data(self,data,datatype=None):
         menu_save = MenuPreset().yesno("출력된 데이터를 외부 파일에 저장하시겠습니까?")
-        sav_dir_check = DirCheck()
-        sav_dir_check.run('sav')
+        DirFilter('sav').dir_exist()
         if menu_save == 0:
             while True:
                 save_name = input("저장할 외부 파일의 이름을 입력해주세요.")
@@ -141,7 +140,7 @@ class CustomInput: # 사용자의 입력 클래스
             print("특정 디렉토리의 입력 없이 진행합니다. 오류가 발생할 수 있습니다.")
             self.dir_inputed = '.'
             time.sleep(1)
-        self.dir_inputed = DataFilter().dir_slash(self.dir_inputed)
+        self.dir_inputed = DirFilter(self.dir_inputed).dir_slash()
 
     def input_name(self):
         while True:
@@ -192,13 +191,6 @@ class InfoDict: # {파일명:{파일내 정보 딕셔너리형}}
 
 
 class DataFilter:
-    def dir_slash(self, directory):
-        dir_slashed = list(directory)
-        if list(directory) == []: pass
-        elif dir_slashed.pop() != '/' and dir_slashed.pop() != '\\':
-            directory = directory + '\\'
-        return directory
-
     def dup_filter(self, list_name): #중복 감별 들어온 순서대로 저장
         dup_filtered = []
         set_filter = set()
@@ -363,10 +355,21 @@ class KoreanSupport: # 한글 처리
                 return bulk[0]
 
 
-class DirCheck:
-    def run(self,dirname='ResultFiles'):
-        if os.path.isdir(dirname) == False: os.mkdir(dirname)
-        self.dirname = dirname+'\\'
+class DirFilter:
+    def __init__(self,dirname):
+        self.dirname = dirname
+
+    def dir_exist(self):
+        dir_target = self.dir_slash()
+        if os.path.isdir(dir_target) == False: os.mkdir(dir_target)
+        return dir_target
+
+    def dir_slash(self):
+        dir_slashed = list(self.dirname)
+        if list(self.dirname) == []: pass
+        elif dir_slashed.pop() != '/' and dir_slashed.pop() != '\\':
+            self.dir_target = self.dirname + '\\'
+        return self.dir_target
 
 
 class MakeLog(LoadFile):

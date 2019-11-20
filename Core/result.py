@@ -1,6 +1,6 @@
 # 생성된 결과물 처리 모듈
 import os
-from util import DataFilter, DirCheck, InfoDict, LoadFile, MenuPreset
+from util import DataFilter, DirFilter, InfoDict, LoadFile, MenuPreset
 
 
 class ExportData:
@@ -164,15 +164,8 @@ class ExportData:
 
 class ResultFunc:
     def make_result(self,target_name,target_data,result_type=0): # 0:txt, 1:erb, 2:srs
-        resultdir_exist = DirCheck()
-        resultdir_exist.run()
-        if target_name == None and target_data == None:
-            result_file = ExportData(resultdir_exist.dirname,target_name,target_data)
-        else:
-            dirname = resultdir_exist.dirname + target_name + '\\'
-            sub_resultdir_exist = DirCheck()
-            sub_resultdir_exist.run(dirname)
-            result_file = ExportData(dirname,target_name,target_data)
+        dirname = DirFilter('ResultFiles').dir_exist()
+        result_file = ExportData(dirname,target_name,target_data)
         if result_type == 0:
             print("지정된 데이터의 TXT 파일화를 진행합니다.")
             press_enter_yn = MenuPreset(

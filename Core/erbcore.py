@@ -15,128 +15,13 @@ class ERBMetaInfo:
 
 
 class ERBLoad(LoadFile):
-    def __make_bulk_lines(self):
+    def make_bulk_lines(self):
         with self.readonly() as erb_origin:
             self.erb_context_list = erb_origin.readlines()
             return self.erb_context_list
 
-    def make_metainfo_lines(self,option_num=0): # 0: 전부 1: 기능관련만
-        self.command_count = 0
-        skip_start = 0
-        erb_info = ERBMetaInfo()
-        erb_log = MakeLog('erb_debug.log')
-        with self.readonly() as erb_opened:
-            erb_log.first_log(self.NameDir)
-            for line in erb_opened:
-                line = line.strip()
-                if '[SKIPEND]' in line:
-                    skip_start = 0
-                    erb_info.add_line_list(line)
-                    continue
-                elif skip_start == 1: continue
-                elif line.startswith(';') == True: # 주석문
-                    if option_num == 1: continue
-                    erb_info.add_line_list(line)
-                    continue
-                elif '[SKIPSTART]' in line:
-                    skip_start = 1
-                    erb_info.add_line_list(line)
-                    continue
-                elif 'PRINT' in line:
-                    if 'PRINTDATA' in line:
-                        erb_info.add_line_list(line)
-                        erb_info.case_level += 1
-                    else:
-                        if option_num == 1: continue
-                        erb_info.add_line_list(line)
-                    continue
-                elif 'IF' in line:
-                    if 'ENDIF' in line:
-                        erb_info.if_level -= 1
-                        erb_info.add_line_list(line)
-                    elif line.startswith('IF') == True:
-                        erb_info.add_line_list(line)
-                        erb_info.if_level += 1
-                    elif 'ELSEIF' in line:
-                        erb_info.if_level -= 1
-                        erb_info.add_line_list(line)
-                        erb_info.if_level += 1
-                    elif 'SIF' in line: erb_info.add_line_list(line)
-                    else: erb_log.write_error_log('미상정',line)
-                    continue
-                elif erb_info.case_level != 0: # 케이스 내부 돌 때
-                    if 'CASE' in line:
-                        if 'SELECTCASE' in line:
-                            erb_info.case_level += 1
-                            erb_info.add_line_list(line)
-                        elif line.startswith('CASE') == True:
-                            erb_info.case_count += 1
-                            if option_num == 1: continue
-                            erb_info.add_line_list(line)
-                            if erb_info.case_count == 1: erb_info.case_level += 1
-                        else: erb_log.write_error_log('미상정',line)
-                        continue
-                    elif 'DATA' in line:
-                        if 'DATAFORM' in line :
-                            if option_num == 1: continue
-                            erb_info.add_line_list(line)
-                        elif 'DATALIST' in line :
-                            erb_info.case_count += 1
-                            if option_num == 1:
-                                erb_info.case_level += 1
-                                continue
-                            erb_info.add_line_list(line)
-                            erb_info.case_level += 1
-                        elif 'PRINTDATA' in line:
-                            erb_info.case_level += 1
-                            erb_info.add_line_list(line)
-                            print("분기문 안에 분기문이 있습니다.")
-                        elif 'ENDDATA' in line:
-                            erb_info.case_level -= 1
-                            line = line + ' ;{}개의 케이스 존재'.format(erb_info.case_count)
-                            erb_info.case_count = 0
-                            erb_info.add_line_list(line)
-                        else: erb_log.write_error_log('미상정',line)
-                        continue
-                    elif 'END' in line:
-                        if 'ENDSELECT' in line:
-                            erb_info.case_level -= 1
-                            line = line + ' ;{}개의 케이스 존재'.format(erb_info.case_count)
-                            erb_info.case_count = 0
-                            erb_info.add_line_list(line)
-                        elif 'ENDLIST' in line :
-                            erb_info.case_level -= 1
-                            if option_num == 1: continue
-                            erb_info.add_line_list(line)
-                        else: erb_log.write_error_log('미상정',line)
-                        continue
-                    else: pass
-                if 'SELECTCASE' in line:
-                    erb_info.add_line_list(line)
-                    erb_info.case_level += 1
-                elif line.startswith('ELSE') == True:
-                    erb_info.if_level -= 1
-                    erb_info.add_line_list(line)
-                    erb_info.if_level += 1
-                elif line.startswith('RETURN') == True:
-                    erb_info.add_line_list(line)
-                elif line.startswith('GOTO') == True:
-                    erb_info.add_line_list(line)
-                elif line.startswith('LOCAL') == True:
-                    erb_info.add_line_list(line)
-                elif line.startswith('$') == True:
-                    erb_info.add_line_list(line)
-                elif line.startswith('@') == True:
-                    self.command_count += 1
-                    erb_info.add_line_list(line)
-                else:
-                    if option_num == 1: continue
-                    erb_info.add_line_list(line)
-                    erb_log.write_error_log('미상정',line)
-        return erb_info.linelist
-
     def search_line(self,*args,except_args=None):
-        self.__make_bulk_lines()
+        self.make_bulk_lines()
         self.targeted_list = []
         skip_switch = 0
         for line in self.erb_context_list:
@@ -156,7 +41,7 @@ class ERBLoad(LoadFile):
         return self.targeted_list
 
     def search_word(self,loc_num,*args):
-        self.__make_bulk_lines()
+        self.make_bulk_lines()
         self.targeted_list = []
         for line in self.erb_context_list:
             line_word = line.split()
@@ -201,7 +86,7 @@ class ERBWrite(LoadFile):
 
 
 class ERBFilter:
-    def indent_maker(self,target_metalines):
+    def indent_maker(self,target_metalines): # metaline을 들여쓰기된 lines로 만듦
         self.filtered_lines = []
         for line in target_metalines:
                 if_level, case_level, _, context = line
@@ -211,6 +96,120 @@ class ERBFilter:
             print("결과물이 없습니다.")
             return None
         return self.filtered_lines
+
+    def make_metainfo_lines(self,bulk_lines,option_num=0,target_name=None): # 0: 전부 1: 기능관련만
+        self.command_count = 0
+        skip_start = 0
+        erb_info = ERBMetaInfo()
+        erb_log = MakeLog('erb_debug.log')
+        erb_log.first_log(target_name)
+        for line in bulk_lines:
+            line = line.strip()
+            if '[SKIPEND]' in line:
+                skip_start = 0
+                erb_info.add_line_list(line)
+                continue
+            elif skip_start == 1: continue
+            elif line.startswith(';') == True: # 주석문
+                if option_num == 1: continue
+                erb_info.add_line_list(line)
+                continue
+            elif '[SKIPSTART]' in line:
+                skip_start = 1
+                erb_info.add_line_list(line)
+                continue
+            elif 'PRINT' in line:
+                if 'PRINTDATA' in line:
+                    erb_info.add_line_list(line)
+                    erb_info.case_level += 1
+                else:
+                    if option_num == 1: continue
+                    erb_info.add_line_list(line)
+                continue
+            elif 'IF' in line:
+                if 'ENDIF' in line:
+                    erb_info.if_level -= 1
+                    erb_info.add_line_list(line)
+                elif line.startswith('IF') == True:
+                    erb_info.add_line_list(line)
+                    erb_info.if_level += 1
+                elif 'ELSEIF' in line:
+                    erb_info.if_level -= 1
+                    erb_info.add_line_list(line)
+                    erb_info.if_level += 1
+                elif 'SIF' in line: erb_info.add_line_list(line)
+                else: erb_log.write_error_log('미상정',line)
+                continue
+            elif erb_info.case_level != 0: # 케이스 내부 돌 때
+                if 'CASE' in line:
+                    if 'SELECTCASE' in line:
+                        erb_info.case_level += 1
+                        erb_info.add_line_list(line)
+                    elif line.startswith('CASE') == True:
+                        erb_info.case_count += 1
+                        if option_num == 1: continue
+                        erb_info.add_line_list(line)
+                        if erb_info.case_count == 1: erb_info.case_level += 1
+                    else: erb_log.write_error_log('미상정',line)
+                    continue
+                elif 'DATA' in line:
+                    if 'DATAFORM' in line :
+                        if option_num == 1: continue
+                        erb_info.add_line_list(line)
+                    elif 'DATALIST' in line :
+                        erb_info.case_count += 1
+                        if option_num == 1:
+                            erb_info.case_level += 1
+                            continue
+                        erb_info.add_line_list(line)
+                        erb_info.case_level += 1
+                    elif 'PRINTDATA' in line:
+                        erb_info.case_level += 1
+                        erb_info.add_line_list(line)
+                        print("분기문 안에 분기문이 있습니다.")
+                    elif 'ENDDATA' in line:
+                        erb_info.case_level -= 1
+                        line = line + ' ;{}개의 케이스 존재'.format(erb_info.case_count)
+                        erb_info.case_count = 0
+                        erb_info.add_line_list(line)
+                    else: erb_log.write_error_log('미상정',line)
+                    continue
+                elif 'END' in line:
+                    if 'ENDSELECT' in line:
+                        erb_info.case_level -= 1
+                        line = line + ' ;{}개의 케이스 존재'.format(erb_info.case_count)
+                        erb_info.case_count = 0
+                        erb_info.add_line_list(line)
+                    elif 'ENDLIST' in line :
+                        erb_info.case_level -= 1
+                        if option_num == 1: continue
+                        erb_info.add_line_list(line)
+                    else: erb_log.write_error_log('미상정',line)
+                    continue
+                else: pass
+            if 'SELECTCASE' in line:
+                erb_info.add_line_list(line)
+                erb_info.case_level += 1
+            elif line.startswith('ELSE') == True:
+                erb_info.if_level -= 1
+                erb_info.add_line_list(line)
+                erb_info.if_level += 1
+            elif line.startswith('RETURN') == True:
+                erb_info.add_line_list(line)
+            elif line.startswith('GOTO') == True:
+                erb_info.add_line_list(line)
+            elif line.startswith('LOCAL') == True:
+                erb_info.add_line_list(line)
+            elif line.startswith('$') == True:
+                erb_info.add_line_list(line)
+            elif line.startswith('@') == True:
+                self.command_count += 1
+                erb_info.add_line_list(line)
+            else:
+                if option_num == 1: continue
+                erb_info.add_line_list(line)
+                erb_log.write_error_log('미상정',line)
+        return erb_info.linelist
 
 
 class ERBFunc:
@@ -224,8 +223,8 @@ class ERBFunc:
         file_count_check = StatusNum(erb_files,'파일')
         file_count_check.how_much_there()
         for filename in erb_files:
-            erb_opened = ERBLoad(filename, encode_type)
-            printfunc_list = erb_opened.search_line(
+            bulk_lines = ERBLoad(filename, encode_type)
+            printfunc_list = bulk_lines.search_line(
                     'PRINT', 'DATAFORM',except_args=['PRINTDATA'])
             for line in printfunc_list:
                 if len(line.split()) == 1:
@@ -250,8 +249,8 @@ class ERBFunc:
         file_count_check.how_much_there()
         for filename in erb_files:
             filtered_con_list = None
-            erb_opened = ERBLoad(filename, encode_type)
-            var_context_list = erb_opened.search_line(*var_list,except_args=['name'])
+            bulk_lines = ERBLoad(filename, encode_type)
+            var_context_list = bulk_lines.search_line(*var_list,except_args=['name'])
             if bool(var_context_list) is True:
                 filtered_con_list = DataFilter().dup_filter(var_context_list)
                 erb_filedict.add_dict(filename,filtered_con_list)
@@ -272,8 +271,8 @@ class ERBFunc:
             file_count_check = StatusNum(erb_files,'파일')
             file_count_check.how_much_there()
             for filename in erb_files:
-                open_erb = ERBLoad(filename,encode_type)
-                lines = open_erb.make_metainfo_lines(option_num)
+                erb_bulk = ERBLoad(filename,encode_type).make_bulk_lines()
+                lines = ERBFilter.make_metainfo_lines(erb_bulk,option_num,filename)
                 lines.insert(0,[0,0,0,";{}에서 불러옴\n".format(filename)])
                 result_infodict.add_dict(filename,ERBFilter().indent_maker(lines))
                 file_count_check.how_much_done()
