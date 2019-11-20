@@ -177,12 +177,18 @@ class CustomInput: # 사용자의 입력 클래스
             return self.name_inputed,self.input_type
 
 
-class InfoDict: # 파일 이름별 데이터 저장
+class InfoDict: # {파일명:{파일내 정보 딕셔너리형}}
     def __init__(self):
-        self.dict_info = {}
+        self.dict_main = {}
+        self.db_ver = '1.1'
 
     def add_dict(self,dictname,dataname):
-        self.dict_info[dictname]=dataname
+        self.dict_main[dictname]=dataname
+
+    def make_dictvals_list(self): # {파일명:[파일내 정보 딕셔너리.values()]}
+        self.dict_name_dictvals = {}
+        for name in list(self.dict_main):
+            self.dict_name_dictvals[name]=list(self.dict_main[name].values())
 
 
 class DataFilter:
@@ -364,9 +370,12 @@ class DirCheck:
 
 
 class MakeLog(LoadFile):
-    def first_log(self,file_info):
+    def first_log(self,file_info=None):
         with self.addwrite() as log_open:
-            log_open.write('\n{}\n{} 불러오기 성공.\n'.format(CommonSent.put_time,file_info))
+            if file_info == None:
+                log_open.write('\n{} 실행됨\n'.format(CommonSent.put_time))
+            else:
+                log_open.write('\n{}\n{} 불러오기 성공.\n'.format(CommonSent.put_time,file_info))
 
     def write_log(self,line='defaultline'):
         with self.addwrite() as log_open:
@@ -387,3 +396,4 @@ if __name__ == "__main__":
     print(MenuPreset().encode())
 
 #TODO GUI 인터페이스 지원 - 구상 번역기만이라도.
+#TODO 설정 외부 파일화(xml나 config 등)

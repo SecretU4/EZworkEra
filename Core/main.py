@@ -30,18 +30,18 @@ while True:
             menu_import_all_csv.title("추출할 CSV의 종류를 선택하세요.")
             menu_import_all_csv.run_menu()
             if menu_import_all_csv.selected_num != 3: # csv 변수추출 중 처음으로가 아님
-                import_all_csv_dict = CSVFunc().import_all_CSV(menu_import_all_csv.selected_num)
-                MenuPreset().shall_save_data(import_all_csv_dict.dict_info,'dict')
-                last_work = import_all_csv_dict.dict_info # 마지막 작업 저장
+                import_all_csv_infodict = CSVFunc().import_all_CSV(menu_import_all_csv.selected_num)
+                MenuPreset().shall_save_data(import_all_csv_infodict,'infodict')
+                last_work = import_all_csv_infodict # 마지막 작업 저장
         elif menu_csv.selected_num == 1:
             menu_dict_csv_srs_friendly = {0: 'csv 내 이름만',
                 1: 'csv 내 변수만 (CHARA 제외)',2:'처음으로'}
             menu_csv_srs_friendly = Menu(menu_dict_csv_srs_friendly)
             menu_csv_srs_friendly.run_menu()
             if menu_csv_srs_friendly.selected_num != 2:
-                csv_srs_friendly_dict = CSVFunc().import_all_CSV(menu_csv_srs_friendly.selected_num+3)
-                MenuPreset().shall_save_data(csv_srs_friendly_dict.dict_info,'dict')
-                last_work = csv_srs_friendly_dict.dict_info
+                csv_srs_friendly_infodict = CSVFunc().import_all_CSV(menu_csv_srs_friendly.selected_num+3)
+                MenuPreset().shall_save_data(csv_srs_friendly_infodict,'infodict')
+                last_work = csv_srs_friendly_infodict
         if menu_csv.selected_menu != '이전으로':
             last_work_name = menu_csv.selected_menu # 마지막 작업 명칭 저장
 # [1] ERB 파일의 처리

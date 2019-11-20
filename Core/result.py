@@ -1,6 +1,6 @@
 # 생성된 결과물 처리 모듈
 import os
-from util import DataFilter, DirCheck, LoadFile, MenuPreset
+from util import DataFilter, DirCheck, InfoDict, LoadFile, MenuPreset
 
 
 class ExportData:
@@ -30,29 +30,29 @@ class ExportData:
             trans_data = MenuPreset().load_saved_data(1)
         return orig_data,trans_data
 
-    def __data_type_check(self,*data_names): # 입력받은 데이터 체크 및 양식 infodict화
+    def __data_type_check(self,*data_names): # 입력받은 데이터 체크 및 양식 InfoDict.dict_main화
         checked_datalist = []
         for data in data_names:
-            if isinstance(data,dict) == True: # dict 자료형인 경우에만 진행 가능
-                dict_data_vals = list(data.values()) # infodict 결과물이라면 각 사전 데이터임.
-                if os.path.isfile(list(data.keys())[0]) == True: # infodict 결과물인지 체크
+            if isinstance(data,InfoDict) == True: # InfoDict 자료형인 경우
+                dict_data_vals = list(data.dict_main.values()) # InfoDict 결과물이라면 각 사전 데이터임.
+                if os.path.isfile(list(data.dict_main.keys())[0]) == True: # InfoDict 결과물인지 체크
                     # {파일명, csv딕셔너리 구조}
                     if isinstance(dict_data_vals[0],dict) == True:
-                        checked_datalist.append(data)
+                        checked_datalist.append(data.dict_main)
                         continue
                     # {파일명, 리스트 구조}
                     elif isinstance(dict_data_vals[0],list) == True:
-                        checked_datalist.append(data)
+                        checked_datalist.append(data.dict_main)
                         continue
-                else: # infodict 결과물이 아닌 순수 dict
+            elif isinstance(data,dict) == True: # InfoDict 결과물이 아닌 순수 dict
                     checked_datalist.append({'ONLYDICT':data})
             elif isinstance(data,list) == True: # list 자료형
                 checked_datalist.append({'ONLYLIST':data})
-            else: # 자료형이 dict, list 아님
+            else: # 자료형이 InfoDict, dict, list 아님
                 print("입력된 데이터가 유효한 데이터가 아닙니다.")
                 print("{} 타입 자료형입니다.".format(type(data)))
                 checked_datalist.append(None)
-        return checked_datalist
+        return checked_datalist # [{InfoDict.dict_main},{InfoDict.dict_main}...]
 
     def to_TXT(self,filetype='txt',option_num=0,encode_type='UTF-8'): # txt, erb 공용
         if self.target_data == None:

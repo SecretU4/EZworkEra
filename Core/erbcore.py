@@ -233,7 +233,7 @@ class ERBFunc:
             erb_filedict.add_dict(filename,printfunc_list)
             file_count_check.how_much_done()
         CommonSent.extract_finished()
-        return erb_filedict.dict_info # {파일명:lines} 형태
+        return erb_filedict # {파일명:lines} 형태가 포함된 infodict
 
     def search_csv_var(self,var_list=None):
         print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
@@ -257,12 +257,12 @@ class ERBFunc:
                 erb_filedict.add_dict(filename,filtered_con_list)
             file_count_check.how_much_done()
         CommonSent.extract_finished()
-        return erb_filedict.dict_info # {파일명:lines} 형태
+        return erb_filedict # {파일명:lines} 형태가 포함된 infodict
 
     def remodel_indent(self,option_num=None,target_metalines=None):
     # 파일 목록을 불러올 때는 결과물이 infodict, 특정 데이터셋일 때는 결과물이 list형임.
         print("들여쓰기를 자동 교정하는 유틸리티입니다.")
-        result_datadict = InfoDict()
+        result_infodict = InfoDict()
         if target_metalines == None:
             user_input = CustomInput("ERB")
             target_dir = user_input.input_option(1)
@@ -275,9 +275,9 @@ class ERBFunc:
                 open_erb = ERBLoad(filename,encode_type)
                 lines = open_erb.make_metainfo_lines(option_num)
                 lines.insert(0,[0,0,0,";{}에서 불러옴\n".format(filename)])
-                result_datadict.add_dict(filename,ERBFilter().indent_maker(lines))
+                result_infodict.add_dict(filename,ERBFilter().indent_maker(lines))
                 file_count_check.how_much_done()
-            result_dataset = result_datadict.dict_info
+            result_dataset = result_infodict
         else:
             print("특정 데이터셋으로 작업합니다.")
             result_dataset = ERBFilter().indent_maker(target_metalines) # metainfo line 리스트
