@@ -1,7 +1,9 @@
 # CSV 기능 관련 모듈
 import csv
-from util import CommonSent, CustomInput,\
-    DataFilter, InfoDict, LoadFile, MenuPreset, StatusNum
+from Core.System.interface import MenuPreset, StatusNum
+from Core.customdb import InfoDict
+from Core.util import CommonSent, DataFilter
+from Core.usefile import CustomInput, FileFilter, LoadFile
 
 
 class CSVLoad(LoadFile):
@@ -38,10 +40,7 @@ class CSVFunc:
         with LoadFile('csv_debug.log', 'UTF-8').readwrite() as debug_log:
             debug_log.write("오류코드 0xef는 UTF-8-sig, 다른 경우\
  cp932(일본어)나 cp949(한국어)로 시도하세요.\n")
-            user_input = CustomInput("CSV")
-            target_dir = user_input.input_option(1)
-            encode_type = MenuPreset().encode()
-            csv_files = DataFilter().files_ext(target_dir, '.CSV')
+            csv_files, encode_type = FileFilter().get_filelist('CSV')
             self.dic_assemble = InfoDict()
             count_check = StatusNum(csv_files,'파일','csv_debug.log')
             count_check.how_much_there()

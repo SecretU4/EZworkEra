@@ -1,10 +1,10 @@
 # EmuEra용 번역 파일 처리/합병 툴
 # 사용되는 라이브러리
-import os
-from util import CommonSent, Menu, MenuPreset
-from csvcore import CSVFunc
-from erbcore import ERBFunc
-from result import ResultFunc
+from util import CommonSent
+from Ctrltool.csvcore import CSVFunc
+from Ctrltool.erbcore import ERBFunc
+from System.interface import Menu, MenuPreset
+from Ctrltool.result import ResultFunc
 menu_dict_main = {
     0: 'CSV 파일 처리', 1: 'ERB 파일 처리',
     2: 'ERH 파일 처리 (미실장)', 3:'결과물 제어',
