@@ -1,9 +1,9 @@
 # ERB 관련 모듈
-from .csvcore import CSVLoad
 from Core.customdb import ERBMetaInfo, InfoDict
-from Core.usefile import CustomInput, FileFilter, LoadFile
+from Core.usefile import FileFilter, LoadFile
 from Core.util import CommonSent, DataFilter, MakeLog
 from Core.System.interface import MenuPreset, StatusNum
+from . import CSVFunc
 
 class ERBLoad(LoadFile):
     def make_bulk_lines(self):
@@ -62,9 +62,9 @@ class ERBWrite(LoadFile):
                         line = "IF "+line
                     erb_translated_list.append(line)
                 elif "\t" in line:
-                    if "~아나타" in line or "~당신" in line:
-                        line = line.replace("~아나타","%CALLNAME:MASTER%")
-                        line = line.replace("~당신","%CALLNAME:MASTER%")
+                    if "(아나타)" in line or "(당신)" in line:
+                        line = line.replace("(아나타)","%CALLNAME:MASTER%")
+                        line = line.replace("(당신)","%CALLNAME:MASTER%")
                     erb_translated_list.append(line)
             except IndexError: pass
             erb_metalines = ERBFilter().make_metainfo_lines(erb_translated_list,0,self.NameDir)
@@ -225,9 +225,7 @@ class ERBFunc:
     def search_csv_var(self,var_list=None):
         print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
         if var_list == None:
-            csv_fncdata = CSVLoad('CSVfnclist.csv','UTF-8-SIG')
-            csv_fncdata.core_csv()
-            var_list = csv_fncdata.list_csvdata
+            var_list = CSVFunc().implement_csv_datalist('CSVfnclist.csv')
         erb_files, encode_type = FileFilter().get_filelist('ERB')
         file_count_check = StatusNum(erb_files,'파일')
         file_count_check.how_much_there()

@@ -12,6 +12,7 @@ import time
 import re
 from Core.util import CommonSent
 from Core.usefile import DirFilter, FileFilter
+
 class Menu:
     """입력받은 자료형({int:str} 또는 [str]) 기반 메뉴창 표출 및 입력값 받음.
     * dict의 경우 '돌아가기'가 생성되지 않음.
@@ -133,7 +134,7 @@ class MenuPreset:
         if load_switch == 1:
             return None
         else:
-            savfile_list = FileFilter().files_ext('sav','.sav',1)
+            savfile_list = FileFilter().files_ext('sav','.sav')
             menu_sav_list = Menu(savfile_list)
             while True:
                 menu_sav_list.run_menu()
@@ -142,7 +143,6 @@ class MenuPreset:
                 with open(self.selected_name,'rb') as opened_sav:
                     target_data = pickle.load(opened_sav)
                     return target_data
-            return None
 
 
 class KoreanSupport:

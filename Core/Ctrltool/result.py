@@ -2,7 +2,7 @@
 import os
 from Core.customdb import ERBMetaInfo, InfoDict
 from Core.usefile import DirFilter, FileFilter, LoadFile
-from Core.util import DataFilter
+from Core.util import DataFilter, MakeLog
 from Core.System.interface import Menu, MenuPreset
 
 
@@ -12,6 +12,7 @@ class ExportData:
         self.target_name = target_name
         self.target_data = target_data
         self.lazy_switch = 0 # 데이터 미선택한 경우 1
+        self.log_file = MakeLog('export_debug.log')
 
     single_namedict = {'ONLYONE':None,'ONLYDICT':dict,
                         'ONLYLIST':list,'ONLYMETALINES':ERBMetaInfo}
@@ -52,7 +53,9 @@ class ExportData:
                     elif isinstance(dict_data_vals[0],ERBMetaInfo) == True:
                         checked_datalist.append(data.dict_main)
                     else:
-                        print("InfoDict 내부의 정의되지 않은 자료형입니다.")
+                        print("InfoDict 내부에 정의되지 않은 자료형이 있습니다.")
+                        self.log_file.write_log(
+                            "올바르지 않은 자료형({})이 InfoDict에 포함되어 있습니다.".format(type(data)))
                         checked_datalist.append(None)
             elif isinstance(data,ERBMetaInfo) == True:
                 checked_datalist.append({'ONLYMETALINES':data.linelist})

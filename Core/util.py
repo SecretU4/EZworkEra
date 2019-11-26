@@ -80,15 +80,19 @@ class MakeLog(LoadFile):
             else:
                 log_open.write('\n{}\n{} 불러오기 성공.\n'.format(CommonSent.put_time,file_info))
 
-    def write_log(self,line='defaultline'):
+    def write_log(self,line='Defaultline'):
         with self.addwrite() as log_open:
             log_open.write('{}'.format(line))
 
-    def write_error_log(self,error_code,line=None):
+    def write_error_log(self,error_code,target=None):
         with self.addwrite() as log_open:
             log_open.write('{} 오류 발생!'.format(error_code))
-            if line != None:
-                log_open.write('발생 위치: {}'.format(line))
+            if target != None:
+                log_open.write('발생 위치: {}'.format(target))
+
+    def write_loaded_log(self,filename):
+        with self.addwrite() as log_open:
+            log_open.write("파일명: {}".format(filename))
 
 # 디버그용 코드
 if __name__ == "__main__":
