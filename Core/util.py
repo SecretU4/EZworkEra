@@ -3,15 +3,13 @@
 Classes:
     CommonSent
     DataFilter
-    MakeLog
+    KoreanSupport
 """
 # 사용 라이브러리
 import os
 import pickle
 import time
 from customdb import InfoDict
-from usefile import LoadFile
-from System.interface import KoreanSupport
 # 클래스 목록
 class CommonSent:
     """자주 사용되는 관용구 묶음 클래스. 모든 함수는 staticmethod로, 클래스의 self를 선언하지 않는다.
@@ -97,46 +95,33 @@ class DataFilter:
             except IndexError: return None
 
 
-class MakeLog(LoadFile):
-    """작업 절차 중 log파일에 대한 클래스. 클래스 호출시 logfile명과 사용될 인코딩을 입력해야 한다.
+class KoreanSupport:
+    """한글 여부 및 조사 처리 클래스"""
+    def is_hangul(self,word):
+        self.last_letter = list(word)[-1]
+        if ord(self.last_letter) < 0xac00 or ord(self.last_letter) > 0xD7A3:
+            return False
+        return True
 
-    Functions:
-        first_log(file_info)
-        write_log(str)
-        write_error_log(error_code,target)
-        write_loaded_log(filename)
-    Variables:
-        NameDir
-            log파일 명칭
-    """
-    def first_log(self,file_info=None):
-        """작업 시작 절차를 logfile에 기록함. 입력받은 인자가 없으면 시작 시간만을 입력함."""
-        with self.addwrite() as log_open:
-            if file_info == None:
-                log_open.write('\n{} 실행됨\n'.format(CommonSent.put_time))
-            else:
-                log_open.write('\n{}\n{} 불러오기 성공.\n'.format(CommonSent.put_time,file_info))
+    def have_jongseong(self,word):
+        if self.is_hangul(word) == False: return None
+        self.jongseong_code = (ord(self.last_letter) - 0xac00)%28
+        if self.jongseong_code == 0:
+            return 0 # 종성 없음
+        else: return 1 # 종성 있음
 
-    def write_log(self,line='Defaultline'):
-        """입력받은 str 타입 자료형을 logfile에 기록함.\n
-        인자 미입력시 'DefaultLine'이 입력됨.
-        """
-        with self.addwrite() as log_open:
-            log_open.write('{}'.format(line))
-
-    def write_error_log(self,error_code,target=None):
-        """입력받은 error 와 해당 위치(target)를 양식에 맞게 logfile에 기록함.\n
-        target은 선택사항이고, 해당 경우 error_code만 입력됨.
-        """
-        with self.addwrite() as log_open:
-            log_open.write('{} 오류 발생!'.format(error_code))
-            if target != None:
-                log_open.write('발생 위치: {}'.format(target))
-
-    def write_loaded_log(self,filename):
-        """작업 중 로드된 파일을 양식에 맞게 logfile에 기록함."""
-        with self.addwrite() as log_open:
-            log_open.write("파일명: {}".format(filename))
+    def what_next(self,word,josa):
+        is_jongseong = self.have_jongseong(word)
+        josa_list = [['이','가'],['을','를'],['은','는'],['와','과']]
+        if is_jongseong == None:
+            return '한글아님'
+        josa_type = [bulk for bulk in josa_list if josa in bulk]
+        if is_jongseong == 0:
+            for bulk in josa_type:
+                return bulk[1]
+        elif is_jongseong == 1:
+            for bulk in josa_type:
+                return bulk[0]
 
 # 디버그용 코드
 if __name__ == "__main__":

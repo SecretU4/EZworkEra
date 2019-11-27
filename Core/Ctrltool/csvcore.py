@@ -1,9 +1,9 @@
 # CSV 기능 관련 모듈
 import csv
-from Core.System.interface import MenuPreset, StatusNum
-from Core.customdb import InfoDict
-from Core.util import CommonSent, DataFilter, MakeLog
-from Core.usefile import FileFilter, LoadFile
+from System.interface import StatusNum
+from customdb import InfoDict
+from util import CommonSent, DataFilter
+from usefile import FileFilter, LoadFile, MakeLog, MenuPreset
 
 
 class CSVLoad(LoadFile):

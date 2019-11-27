@@ -1,9 +1,9 @@
 # 생성된 결과물 처리 모듈
 import os
-from Core.customdb import ERBMetaInfo, InfoDict
-from Core.usefile import DirFilter, FileFilter, LoadFile
-from Core.util import DataFilter, MakeLog
-from Core.System.interface import Menu, MenuPreset
+from customdb import ERBMetaInfo, InfoDict
+from usefile import DirFilter, FileFilter, LoadFile, MakeLog, MenuPreset
+from util import DataFilter
+from System.interface import Menu
 
 
 class ExportData:

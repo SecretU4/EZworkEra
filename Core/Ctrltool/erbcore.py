@@ -1,8 +1,8 @@
 # ERB 관련 모듈
-from Core.customdb import ERBMetaInfo, InfoDict
-from Core.usefile import FileFilter, LoadFile
-from Core.util import CommonSent, DataFilter, MakeLog
-from Core.System.interface import MenuPreset, StatusNum
+from customdb import ERBMetaInfo, InfoDict
+from usefile import FileFilter, LoadFile, MakeLog, MenuPreset
+from util import CommonSent, DataFilter
+from System.interface import StatusNum
 from . import CSVFunc
 
 class ERBLoad(LoadFile):
