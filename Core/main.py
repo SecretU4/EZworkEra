@@ -25,7 +25,7 @@ while True:
         menu_csv.run_menu()
         if menu_csv.selected_num == 0:
             menu_dict_import_all_csv = {0: '모두',1:'CHARA 제외',
-                3:'처음으로'}
+                2:'문자/숫자 변환',3:'처음으로'}
             menu_import_all_csv = Menu(menu_dict_import_all_csv)
             menu_import_all_csv.title("추출할 CSV의 종류를 선택하세요.")
             menu_import_all_csv.run_menu()

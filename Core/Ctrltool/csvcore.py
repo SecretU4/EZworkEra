@@ -52,13 +52,11 @@ class CSVFunc:
                 if mode_num  == 0: # 구별없이 전부
                     option_tuple = (0,)
                 elif mode_num == 1: # chara 제외
-                    if 'chara' in filename.lower():
-                        continue
+                    if 'chara' in filename.lower(): continue
                     option_tuple = (0,)
-                elif mode_num == 2: # chara 변수목록만, 현재 의미없어 접근불가처리
-                    if 'chara' in filename.lower():
-                        option_tuple = (0,)
-                    else: continue
+                elif mode_num == 2: # 문자/숫자 변환 - {변수:숫자} 형태(chara 제외)
+                    if 'chara' in filename.lower(): continue
+                    option_tuple = (1,)
                 else:
                     if mode_num == 3: # srs 최적화 - 이름
                         if 'chara' in filename.lower():

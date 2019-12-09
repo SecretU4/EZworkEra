@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root>
+    <settings>
+        <information>
+            <version>3.3 beta</version>
+            <github>https://github.com/SecretU4/EZworkEra/</github>
+        </information>
+    </settings>
+    <templets>
+        <temp eratype="TW">
+            <encounter>@M_KOJO_ENCOUNTER_K*</encounter>
+            <counter>@M_KOJO_MESSAGE_COUNTER_K*</counter>
+            <sp_event>@M_KOJO_SPEVENT_K*</sp_event>
+            <event>@M_KOJO_EVENT_K*</event>
+            <command>@M_KOJO_MESSAGE_COM_K*</command>
+            <command_branch>@M_KOJO_MESSAGE_SCOM_K*</command_branch>
+            <common_message>@TRAIN_MESSAGE</common_message>
+        </temp>
+    </templets>
+</root>
