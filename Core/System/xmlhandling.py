@@ -1,4 +1,10 @@
-"""코드 내 외부 설정/사전 파일을 불러올 때 사용하는 모듈"""
+"""코드 내 외부 설정/사전 XML파일을 불러올 때 사용하는 모듈
+
+Classes:
+    ImportXML
+    ERBGrammarXML
+    SettingXML
+"""
 import xml.etree.ElementTree as ET
 from util import DataFilter
 
@@ -66,7 +72,7 @@ class ImportXML:
 
 
 class ERBGrammarXML(ImportXML):
-#TODO : {md문법:ERB문법} 또는 {분류(ex:MASTER):{md문법:ERB문법}}
+# {md문법:ERB문법} 또는 {분류(ex:MASTER):{md문법:ERB문법}}
     def __init__(self,filename='CustomMarkdown.xml'):
         super().__init__(filename)
         self.tags_callname = self.find_all_tags('callname')

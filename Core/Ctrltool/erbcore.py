@@ -3,6 +3,7 @@ from customdb import ERBMetaInfo, InfoDict
 from usefile import FileFilter, LoadFile, MakeLog, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import StatusNum
+from System.xmlhandling import ERBGrammarXML
 from . import CSVFunc
 
 class ERBLoad(LoadFile):
@@ -41,38 +42,69 @@ class ERBLoad(LoadFile):
                     self.targeted_list.append(line_word[loc_num])
         return self.targeted_list
 
-
-class ERBWrite(LoadFile):
+#TODO ERB 구상 번역기 공사중.
+'''class ERBWrite(LoadFile):
     def __init__(self,NameDir,EncodeType):
         super().__init__(NameDir,EncodeType)
-
-    def txt_to_metalines(self): #TODO 구상 번역기
+        self.set_xml = ERBGrammarXML('EraSetting.xml')
+        self.gram_xml = ERBGrammarXML('CustomMarkdown.xml')
         with self.readonly() as txt_origin:
-            txt_text_list = txt_origin.readlines()
+            self.txt_bulklines = txt_origin.readlines()
+
+    def __replace_csvvar(self):
+        csv_dict = CSVFunc().make_csv_var_dict() #TODO 임시 {csvvar:[csvname,num]}
+
+    def __replace_command(self,line,era_type,chara_num):
+        temp_dict = self.set_xml.check_templet(era_type)
+        command = temp_dict['command'].replace('*',chara_num)
+        command_with_num = command + line.split()[1]
+        return command_with_num
+
+    def __replace_situation(self,line):
+        csvvar_dict = self.__replace_csvvar()
+        namedict_situ = self.gram_xml.zname_dict_situ()
+        var_dict = self.gram_xml.vars_dict()
+        splited_line = line.split()
+        for word in splited_line:
+            if word in namedict_situ:
+                line = line.replace(word,namedict_situ[word])
+            elif word in var_dict:
+                line = line.replace(word,var_dict[word])
+        return 'IF '+line
+
+    def __replace_branch(self,line):
+        pass
+
+    def txt_to_metalines(self,era_type,option_num=0): #TODO 구상 번역기
+        if option_num == 0: zname_dict = self.gram_xml.znames_dict()
+        elif option_num == 1:
+            print("ZNAME.erb 관련 변수를 사용하지 않습니다.")
+            zname_dict = self.gram_xml.znames_dict(option_num=3)
         erb_translated_list = []
-        for line in txt_text_list:
-            splited_line = line.split()
-            try:
-                if "!~" in splited_line[0]:
-                    if "또는" in line:
-                        line = line.replace("또는", "||")
-                    if "이고" in line:
-                        line = line.replace("이고","&&")
-                    if "일떄:" in line:
-                        line = "IF "+line
-                    erb_translated_list.append(line)
-                elif "\t" in line:
-                    if "(아나타)" in line or "(당신)" in line:
-                        line = line.replace("(아나타)","%CALLNAME:MASTER%")
-                        line = line.replace("(당신)","%CALLNAME:MASTER%")
-                    erb_translated_list.append(line)
-            except IndexError: pass
-            erb_metalines = ERBFilter().make_metainfo_lines(erb_translated_list,0,self.NameDir)
+        command_switch = 0
+        if_switch = 0
+        for line in self.txt_bulklines:
+            if line.startswith('상황:'):
+                erb_translated_list.append(self.__replace_situation(line))
+            #TODO {'var':{class:{type:{md:og}}}
+            elif line.startswith('분기:'):
+                erb_translated_list.append(self.__replace_branch(line))
+            elif line.startswith('커맨드:'):
+                chara_num = input("캐릭터의 번호를 입력해주세요. : ")
+                erb_translated_list.append(self.__replace_command(line,era_type,chara_num))
+            elif line == '\n':
+                pass
+            else:
+                erb_translated_list.append('PRINTFORMW '+line)
+        if if_switch >= 1:
+            for num in range(if_switch)-1:
+                erb_translated_list.append('ENDIF\n')
+        erb_metalines = ERBFilter().make_metainfo_lines(erb_translated_list,0,self.NameDir)
         return erb_metalines.linelist # list형 line
 
     def import_erbtext_info(self,situation,context,cases):
         pass
-
+'''
 
 class ERBFilter:
     def indent_maker(self,target_metalines): # metaline을 들여쓰기된 lines로 만듦

@@ -1,4 +1,9 @@
-# 생성된 결과물 처리 모듈
+"""EZworkEra에서 생성된 데이터를 출력하는데 사용되는 모듈.
+
+Classes:
+    ExportData
+    ResultFunc
+"""
 import os
 from customdb import ERBMetaInfo, InfoDict
 from usefile import DirFilter, FileFilter, LoadFile, MakeLog, MenuPreset
@@ -7,6 +12,12 @@ from System.interface import Menu
 
 
 class ExportData:
+    """입력받은 데이터를 특정 파일 양식에 맞게 출력하는 클래스.
+
+    Functions:
+        to_TXT([filetype,option_num,encode_type])
+        to_SRS([srsname])
+    """
     def __init__(self,dest_dir,target_name,target_data):
         self.dest_dir = dest_dir # 결과물 저장 폴더
         self.target_name = target_name
@@ -17,7 +28,8 @@ class ExportData:
     single_namedict = {'ONLYONE':None,'ONLYDICT':dict,
                         'ONLYLIST':list,'ONLYMETALINES':ERBMetaInfo}
 
-    def __multi_data_input(self): # 작성시 필요 데이터 2개일때
+    def __multi_data_input(self):
+        """입력받는 데이터가 2개인 경우 사용. sav 디랙토리의 저장 파일을 불러옴."""
         if bool(self.target_data) == True:
             print("현 구동 중 실행된 데이터의 종류를 입력해주세요.")
             origin_switch = MenuPreset(
@@ -37,7 +49,8 @@ class ExportData:
             trans_data = MenuPreset().load_saved_data(1)
         return orig_data,trans_data
 
-    def __data_type_check(self,*data_names): # 입력받은 데이터 체크 및 양식 InfoDict.dict_main화
+    def __data_type_check(self,*data_names):
+        """입력받은 데이터 체크 후 InfoDict.dict_main 형으로 출력"""
         checked_datalist = []
         for data in data_names:
             if isinstance(data,InfoDict) == True: # InfoDict 자료형인 경우
@@ -70,6 +83,7 @@ class ExportData:
         return checked_datalist # [{InfoDict.dict_main},{InfoDict.dict_main}...]
 
     def __SRS_multi_write(self,orig_dict,trans_dict,keyname):
+        """SRS용 교차출력 함수. 유효하지 않은 내용 판단이 동시에 이루어짐."""
         if orig_dict == None or trans_dict == None:
             print("SRS를 작성할 수 없습니다.")
             return None
@@ -90,7 +104,10 @@ class ExportData:
                     srs_file.write(";{}번확인필요\n\n".format(total_key))
                     self.cantwrite_srs_count += 1
 
-    def to_TXT(self,filetype='txt',option_num=0,encode_type='UTF-8'): # txt, erb 공용
+    def to_TXT(self,filetype='txt',option_num=0,encode_type='UTF-8'):
+        """입력받은 데이터를 텍스트 파일 형태로 출력하는 함수.
+        """
+        # txt, erb 공용
         # erb metaline은 ERBFilter.indent_maker에서 텍스트.readlines형으로 양식화됨
         if self.target_data == None:
             print("미리 실행된 자료가 없습니다.")
@@ -107,7 +124,7 @@ class ExportData:
         if self.lazy_switch == 1:
             print("데이터가 선택되지 않았습니다.")
             return 0
-        else: #TODO 수정중
+        else:
             checked_data = self.__data_type_check(self.target_data) # [{infodict},{infodict}]
             checked_data.append({"돌아가기":"돌아가기"})
             chk_data_listdict = {}
@@ -117,7 +134,7 @@ class ExportData:
             chkdata_no = menu_chk_datalist.run_menu()
             selected_infodict = chk_data_listdict[chkdata_no]
             if list(selected_infodict)[0] == "돌아가기": return 0
-            #TODO 공사중
+            #TODO 복수의 InfoDict 데이터를 불러온 경우의 지원
             unpacked_data = list(checked_data[0].values())
             with LoadFile(self.dest_dir+result_filename,encode_type).readwrite() as txt_file:
                 txt_file.write("{}에서 불러옴\n".format(self.target_name))
@@ -182,7 +199,22 @@ class ExportData:
 
 
 class ResultFunc:
-    def make_result(self,target_name,target_data,result_type=0): # 0:txt, 1:erb, 2:srs
+    """입력받은 정보를 바탕으로 ExportData를 활용하는 취합용 클래스.
+
+    Functions:
+        make_result(target_name,target_data,[result_type])
+    """
+    def make_result(self,target_name,target_data,result_type=0):
+        """입력받은 정보를 ExportData에 전달하는 함수.
+
+        Factors:
+            target_name
+                출력될 파일의 이름
+            target_data
+                출력될 데이터
+            result_type
+                출력될 파일의 확장자 타입. 0:txt, 1:erb, 2:srs 이고 미입력시 txt가 출력됨.
+        """
         dirname = DirFilter('ResultFiles').dir_exist()
         result_file = ExportData(dirname,target_name,target_data)
         if result_type == 0:
@@ -207,4 +239,3 @@ class ResultFunc:
         input("엔터를 눌러 계속...")
 
 #TODO MakeLog 클래스 이식
-#TODO to_txt 함수 - 복수의 InfoDict 데이터를 불러온 경우의 지원

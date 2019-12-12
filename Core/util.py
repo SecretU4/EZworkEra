@@ -126,5 +126,3 @@ class KoreanSupport:
 # 디버그용 코드
 if __name__ == "__main__":
     pass
-
-#TODO 설정 외부 파일화(xml나 config 등)
