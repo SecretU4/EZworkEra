@@ -1,85 +1,54 @@
-# ERB 관련 모듈
+from System.xmlhandling import ERBGrammarXML
+from Ctrltool import CSVFunc
 from customdb import ERBMetaInfo, InfoDict
 from usefile import FileFilter, LoadFile, MakeLog, MenuPreset
-from util import CommonSent, DataFilter
-from System.interface import StatusNum
-from System.xmlhandling import ERBGrammarXML
-from . import CSVFunc
 
-class ERBLoad(LoadFile):
-    def make_bulk_lines(self):
-        with self.readonly() as erb_origin:
-            self.erb_context_list = erb_origin.readlines()
-            return self.erb_context_list
-
-    def search_line(self,*args,except_args=None):
-        self.make_bulk_lines()
-        self.targeted_list = []
-        skip_switch = 0
-        for line in self.erb_context_list:
-            if skip_switch == 1:
-                if '[SKIPEND]' in line: skip_switch = 0
-                continue
-            else:
-                if '[SKIPSTART]' in line:
-                    skip_switch = 1
-                    continue
-                elif except_args != None:
-                    for except_arg in except_args:
-                        if except_arg in line: continue
-                for target in args:
-                    if target in line:
-                        self.targeted_list.append(line)
-        return self.targeted_list
-
-    def search_word(self,loc_num,*args):
-        self.make_bulk_lines()
-        self.targeted_list = []
-        for line in self.erb_context_list:
-            line_word = line.split()
-            for target in args:
-                if target in line_word[loc_num]:
-                    self.targeted_list.append(line_word[loc_num])
-        return self.targeted_list
-
-#TODO ERB 구상 번역기 공사중.
-'''class ERBWrite(LoadFile):
-    def __init__(self,NameDir,EncodeType):
+class ERBWrite(LoadFile):
+    def __init__(self,NameDir,EncodeType,era_type):
         super().__init__(NameDir,EncodeType)
+        self.era_type = era_type
+        self.chara_num = input("캐릭터의 번호를 입력해주세요. : ")
+        # self.chara_num = chara_num
         self.set_xml = ERBGrammarXML('EraSetting.xml')
         self.gram_xml = ERBGrammarXML('CustomMarkdown.xml')
         with self.readonly() as txt_origin:
             self.txt_bulklines = txt_origin.readlines()
 
-    def __replace_csvvar(self):
-        csv_dict = CSVFunc().make_csv_var_dict() #TODO 임시 {csvvar:[csvname,num]}
+    def __make_dict(self,option_num):
+        # 사전 데이터 준비작업. 추후 __init__이나 최초 1회 실행 구문으로 이관 필요 있음.
+        self.csvvar_dict = CSVFunc().make_csv_var_dict() #TODO 임시 {csvvar:[csvname,num]}
+        self.temp_dict = self.set_xml.check_templet(self.era_type)
+        if option_num == 0: self.zname_dict = self.gram_xml.znames_dict()
+        elif option_num == 1:
+            print("ZNAME.erb 관련 변수를 사용하지 않습니다.")
+            self.zname_dict = self.gram_xml.znames_dict(option_num=3)
+        self.namedict_situ = self.gram_xml.zname_dict_situ()
+        self.var_dict = self.gram_xml.vars_dict()
 
-    def __replace_command(self,line,era_type,chara_num):
-        temp_dict = self.set_xml.check_templet(era_type)
-        command = temp_dict['command'].replace('*',chara_num)
+    def __replace_command(self,line):
+        # '커맨드' 용 함수
+        command = self.temp_dict['command'].replace('*',self.chara_num)
         command_with_num = command + line.split()[1]
         return command_with_num
 
     def __replace_situation(self,line):
-        csvvar_dict = self.__replace_csvvar()
-        namedict_situ = self.gram_xml.zname_dict_situ()
-        var_dict = self.gram_xml.vars_dict()
+        # '상황' 용 함수. IF문을 관리
         splited_line = line.split()
         for word in splited_line:
-            if word in namedict_situ:
-                line = line.replace(word,namedict_situ[word])
-            elif word in var_dict:
-                line = line.replace(word,var_dict[word])
+            if word in self.namedict_situ:
+                line = line.replace(word,self.namedict_situ[word])
+            elif word in self.var_dict:
+                line = line.replace(word,self.var_dict[word])
         return 'IF '+line
 
     def __replace_branch(self,line):
+        # '분기' 용 함수. CASE문이나 DATALIST문 관리
         pass
 
-    def txt_to_metalines(self,era_type,option_num=0): #TODO 구상 번역기
-        if option_num == 0: zname_dict = self.gram_xml.znames_dict()
-        elif option_num == 1:
-            print("ZNAME.erb 관련 변수를 사용하지 않습니다.")
-            zname_dict = self.gram_xml.znames_dict(option_num=3)
+    def txt_to_metalines(self,option_num=0):
+        #TODO 구상 번역기 총괄
+        #TODO 스위치구문 등 활용해 커맨드별, IF문별, CASE문별 블럭 형성 가능하게
+        self.__make_dict(option_num)
         erb_translated_list = []
         command_switch = 0
         if_switch = 0
@@ -90,8 +59,7 @@ class ERBLoad(LoadFile):
             elif line.startswith('분기:'):
                 erb_translated_list.append(self.__replace_branch(line))
             elif line.startswith('커맨드:'):
-                chara_num = input("캐릭터의 번호를 입력해주세요. : ")
-                erb_translated_list.append(self.__replace_command(line,era_type,chara_num))
+                erb_translated_list.append(self.__replace_command(line))
             elif line == '\n':
                 pass
             else:
@@ -101,10 +69,6 @@ class ERBLoad(LoadFile):
                 erb_translated_list.append('ENDIF\n')
         erb_metalines = ERBFilter().make_metainfo_lines(erb_translated_list,0,self.NameDir)
         return erb_metalines.linelist # list형 line
-
-    def import_erbtext_info(self,situation,context,cases):
-        pass
-'''
 
 class ERBFilter:
     def indent_maker(self,target_metalines): # metaline을 들여쓰기된 lines로 만듦
@@ -231,70 +195,3 @@ class ERBFilter:
                 erb_info.add_line_list(line)
                 erb_log.write_error_log('미상정',line)
         return erb_info
-
-
-class ERBFunc:
-    def __init__(self):
-        self.result_infodict = InfoDict()
-
-    def extract_printfunc(self):
-        print("PRINT/DATAFORM 구문의 추출을 시작합니다.")
-        erb_files, encode_type = FileFilter().get_filelist('ERB')
-        file_count_check = StatusNum(erb_files,'파일')
-        file_count_check.how_much_there()
-        for filename in erb_files:
-            bulk_lines = ERBLoad(filename, encode_type)
-            printfunc_list = bulk_lines.search_line(
-                    'PRINT', 'DATAFORM',except_args=['PRINTDATA'])
-            for line in printfunc_list:
-                if len(line.split()) == 1:
-                    printfunc_list.remove(line)
-            self.result_infodict.add_dict(filename,printfunc_list)
-            file_count_check.how_much_done()
-        CommonSent.extract_finished()
-        return self.result_infodict # {파일명:lines} 형태가 포함된 infodict
-
-    def search_csv_var(self,var_list=None):
-        print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
-        if var_list == None:
-            var_list = CSVFunc().implement_csv_datalist('CSVfnclist.csv')
-        erb_files, encode_type = FileFilter().get_filelist('ERB')
-        file_count_check = StatusNum(erb_files,'파일')
-        file_count_check.how_much_there()
-        for filename in erb_files:
-            filtered_con_list = None
-            bulk_lines = ERBLoad(filename, encode_type)
-            var_context_list = bulk_lines.search_line(*var_list,except_args=['name'])
-            if bool(var_context_list) is True:
-                filtered_con_list = DataFilter().dup_filter(var_context_list)
-                self.result_infodict.add_dict(filename,filtered_con_list)
-            file_count_check.how_much_done()
-        CommonSent.extract_finished()
-        return self.result_infodict # {파일명:lines} 형태가 포함된 infodict
-
-    def remodel_indent(self,metainfo_option_num=None,target_metalines=None):
-        print("들여쓰기를 자동 교정하는 유틸리티입니다.")
-        if target_metalines == None:
-            erb_files, encode_type = FileFilter().get_filelist('ERB')
-            file_count_check = StatusNum(erb_files,'파일')
-            file_count_check.how_much_there()
-            for filename in erb_files:
-                erb_bulk = ERBLoad(filename,encode_type).make_bulk_lines()
-                lines = ERBFilter.make_metainfo_lines(
-                    erb_bulk,metainfo_option_num,filename).linelist
-                lines.insert(0,[0,0,0,";{}에서 불러옴\n".format(filename)])
-                self.result_infodict.add_dict(filename,ERBFilter().indent_maker(lines))
-                file_count_check.how_much_done()
-            result_dataset = self.result_infodict #InfoDict 클래스 {파일명:[erb 텍스트 라인]}
-        else:
-            print("특정 데이터셋으로 작업합니다.")
-            result_dataset = ERBFilter().indent_maker(target_metalines) # [erb 텍스트 라인]
-        CommonSent.extract_finished()
-        return result_dataset
-
-    def translate_txt_to_erb(self):
-        #TODO 구상 번역기 이식 공사 예정.
-        txt_files, encode_type = FileFilter().get_filelist('TXT')
-        file_count_check = StatusNum(txt_files,'파일')
-        file_count_check.how_much_there()
-        # for filename in txt_files:
