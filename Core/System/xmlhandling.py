@@ -1,5 +1,6 @@
 """코드 내 외부 설정/사전 파일을 불러올 때 사용하는 모듈"""
 import xml.etree.ElementTree as ET
+from util import DataFilter
 
 class ImportXML:
     """XML을 파싱하는 클래스
@@ -56,7 +57,7 @@ class ImportXML:
     def check_templet(self,era_type):
         templets = self.find_all_tags('temp')
         for temp in templets:
-            if temp.attrib[eratype] == era_type:
+            if temp.attrib[era_type] == era_type:
                 tags = temp.iter()
                 templet_dict = {}
                 for target in tags:
@@ -74,16 +75,16 @@ class ERBGrammarXML(ImportXML):
 
     def znames_dict(self,origin=None,option_num=0):
         # {'zname':{class:{particle:{md:og}}}}
-        if option_num == 0: the_list = self.tags_callname
-        elif option_num == 1: the_list = self.tags_name
-        elif option_num == 2: the_list = list(self.tags_callname)+list(self.tags_name)
+        if option_num in [0,3]: the_list = list(self.tags_callname)+list(self.tags_name)
+        elif option_num == 1: the_list = self.tags_callname
+        elif option_num == 2: the_list = self.tags_name
         the_dict = {}
         for zname in the_list:
             if origin == None or zname.attrib['origin'] == origin:
                 part_list = ImportXML.find_all_tags('particle',zname)
                 part_dict = {}
                 for particle in part_list:
-                    if option_num == 2 and particle.attrib['type'] != 'None': continue
+                    if option_num == 3 and particle.attrib['type'] != 'None': continue
                     md_name = particle.find('mkdn_name').text
                     og_name = particle.find('orig_name').text
                     part_dict[particle.attrib['type']] = {md_name:og_name}
@@ -102,30 +103,18 @@ class ERBGrammarXML(ImportXML):
                     md_var = arg.find('mkdn_var').text
                     og_var = arg.find('orig_var').text
                     type_dict[arg.attrib['type']] = {md_var:og_var}
-            var_dict[var.attrib['class']] = type_dict
+                var_dict[var.attrib['class']] = type_dict
             else: continue
         return var_dict
-
-    def znames(self,origin=None,option_num=0):
-        zname_dict = {}
-        if option_num == 0:
-            self.cname_dict = self.znames_dict(origin,0)
-            self.name_dict = self.znames_dict(origin,1)
-            zname_dict.update(cn_dict)
-            zname_dict.update(n_dict)
-            return zname_dict
-        elif option_num == 1:
-            return self.znames_dict(origin,0)
-        elif option_num == 2:
-            return self.znames_dict(origin,1)
 
     def crawl_dict(self):
         """f_dict = {'var':vardict,'zname':znamedict} 생성"""
         self.f_dict = {}
         self.v_dict = self.vars_dict()
-        self.z_dict = self.znames()
+        self.z_dict = self.znames_dict()
         self.f_dict['var'] = self.v_dict
         self.f_dict['zname'] = self.z_dict
+        return self.f_dict
 
     def classify_dict(self,origin=None,clas=None):
         if origin == None and clas == None:
@@ -134,19 +123,30 @@ class ERBGrammarXML(ImportXML):
         elif origin == None and bool(clas):
             return self.vars_dict(clas)
         elif bool(origin) and clas == None:
-            return self.znames(origin)
+            return self.znames_dict(origin)
         else:
             v_dict = self.vars_dict(clas)
-            z_dict = self.znames(origin)
+            z_dict = self.znames_dict(origin)
             clas_dict = {}
             clas_dict.update(z_dict)
             clas_dict.update(v_dict)
             return clas_dict
 
-    def class_list(self,option_num=0):
+    def zname_class_list(self,option_num=0):
         callname_classes = ImportXML.export_attriblist(self.tags_callname,'class')
         name_classes = ImportXML.export_attriblist(self.tags_name,'class')
         merged_list = callname_classes + name_classes
+        return merged_list
+
+    def zname_dict_situ(self):
+        """상황 명칭 변환용 사전"""
+        situ_dict = {}
+        class_origin_list = self.export_attriblist(
+            self.tags_callname) + self.export_attriblist(self.tags_name)
+        class_origin_list = DataFilter().dup_filter(class_origin_list)
+        for attrib in class_origin_list:
+            situ_dict[attrib['class']] = attrib['origin']
+        return situ_dict
 
 
 class SettingXML(ImportXML):

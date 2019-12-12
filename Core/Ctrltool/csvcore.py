@@ -39,8 +39,7 @@ class CSVFunc:
         debug_log = MakeLog('csv_debug.log')
         debug_log.first_log()
         debug_log.write_log("""오류코드 0xef는 UTF-8-sig,
-        다른 경우 cp932(일본어)나 cp949(한국어)로 시도하세요.
-
+        다른 경우 cp932(일본어)나 cp949(한국어)로 시도하세요.\n
         """)
         csv_files, encode_type = FileFilter().get_filelist('CSV')
         self.dic_assemble = InfoDict()
@@ -93,3 +92,29 @@ class CSVFunc:
         csv_data.core_csv()
         csv_data.list_csvdata = DataFilter().dup_filter(csv_data.list_csvdata)
         return csv_data.list_csvdata
+
+    def make_csv_var_dict(self):
+        """{csv변수명:[파일명,번호]} 형태 딕셔너리 제작"""
+        print("csv 변수 대응 딕셔너리를 제작합니다.")
+        debug_log = MakeLog('csv_debug.log')
+        debug_log.first_log()
+        debug_log.write_log("""오류코드 0xef는 UTF-8-sig,
+        다른 경우 cp932(일본어)나 cp949(한국어)로 시도하세요.\n
+        """)
+        csv_files, encode_type = FileFilter().get_filelist('CSV')
+        count_check = StatusNum(csv_files,'파일',debug_log.NameDir)
+        count_check.how_much_there()
+        csvvar_dict = {}
+        for csvname in csv_files:
+            csv_data = CSVLoad(csvname,encode_type)
+            try:
+                csv_data.core_csv(1) # {변수명:숫자}
+                for var in csv_data.dict_csvdata.keys():
+                    csvvar_dict[var] = [csvname,csv_data.dict_csvdata[var]]
+            except UnicodeDecodeError as UniDecode:
+                debug_log.write_error_log(UniDecode,csvname)
+                count_check.error_num += 1
+            count_check.how_much_done()
+        CommonSent.extract_finished()
+        CommonSent.print_line()
+        return csvvar_dict

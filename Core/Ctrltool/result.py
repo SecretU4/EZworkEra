@@ -112,7 +112,7 @@ class ExportData:
             checked_data.append({"돌아가기":"돌아가기"})
             chk_data_listdict = {}
             for data in checked_data:
-                chk_data_listdict[checked_data.index(data)]=data
+                chk_data_listdict[checked_data.index(data)]=list(data.keys())[0]
             menu_chk_datalist = Menu(chk_data_listdict)
             chkdata_no = menu_chk_datalist.run_menu()
             selected_infodict = chk_data_listdict[chkdata_no]
@@ -126,7 +126,7 @@ class ExportData:
                         print("{}\n".format(context),file=txt_file)
                     elif option_num == 1:
                         if type(context) == list: txt_file.writelines(context)
-                        else: print("텍스트화 할 수 없는 데이터입니다. 옵션을 바궈 시도해주세요.")
+                        else: print("텍스트화 할 수 없는 데이터입니다. 옵션을 바꿔 다시 시도해주세요.")
 
     def to_SRS(self,srsname='autobuild'):
         self.cantwrite_srs_count = 0

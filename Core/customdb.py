@@ -34,6 +34,7 @@ class InfoDict:
         """클래스 내 자료형 안의 data 중 dict형에 대해
         해당 dict의 value 값 list를 추출해 새로운 dict를 만듦.\n
         dict형이 아닌 data가 있을 시 작업 완료 후 메세지를 출력함.
+        ex) {filename:[func1,func2,func3...]}
         """
         error_count = 0
         for name in list(self.dict_main):
@@ -43,6 +44,7 @@ class InfoDict:
                 error_count += 1
         if error_count != 0:
             print("작업 도중 dict형이 아닌 자료형이 확인되었습니다.")
+        return self.dict_name_dictvals
 
 
 class ERBMetaInfo:

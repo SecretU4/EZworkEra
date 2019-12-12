@@ -19,7 +19,8 @@ while True:
 # [0] CSV 파일의 처리
     if menu_main.selected_menu == 'CSV 파일 처리':
         CommonSent.print_line()
-        menu_dict_csv = {0: 'CSV 변수 목록 추출',1: 'CSV 변수 목록 추출(SRS 최적화)',2: '이전으로'}
+        menu_dict_csv = {0: 'CSV 변수 목록 추출',1: 'CSV 변수 목록 추출(SRS 최적화)',
+        2: 'CSV 변수 명칭 사전',3: '이전으로'}
         menu_csv = Menu(menu_dict_csv)
         menu_csv.title("CSV 파일 처리 유틸리티입니다.")
         menu_csv.run_menu()
@@ -42,6 +43,10 @@ while True:
                 csv_srs_friendly_infodict = CSVFunc().import_all_CSV(menu_csv_srs_friendly.selected_num+3)
                 MenuPreset().shall_save_data(csv_srs_friendly_infodict,'infodict')
                 last_work = csv_srs_friendly_infodict
+        elif menu_csv.selected_num == 2:
+            csvvar_dict = CSVFunc().make_csv_var_dict()
+            MenuPreset().shall_save_data(csvvar_dict,'dict')
+            last_work = csvvar_dict
         if menu_csv.selected_menu != '이전으로':
             last_work_name = menu_csv.selected_menu # 마지막 작업 명칭 저장
 # [1] ERB 파일의 처리
