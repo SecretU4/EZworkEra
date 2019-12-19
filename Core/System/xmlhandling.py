@@ -153,6 +153,9 @@ class ERBGrammarXML(ImportXML):
             situ_dict[attrib['class']] = attrib['origin']
         return situ_dict
 
+    def user_dict(self):
+        #TODO 사용자사전 공사
+        pass
 
 class SettingXML(ImportXML):
 #TODO xml 양식의 세팅값 인식(ex: 기본 디렉토리)

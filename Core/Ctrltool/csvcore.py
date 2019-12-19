@@ -113,6 +113,7 @@ class CSVFunc:
                 csv_data.core_csv(1) # {변수명:숫자}
                 for var in csv_data.dict_csvdata.keys():
                     if var == '': continue
+                    core_var = var
                     var = var.split(';')[0]
                     nospace_var = var.replace(' ','__')
                     all_var_list.append(var)
@@ -120,9 +121,9 @@ class CSVFunc:
                         if csvvar_dict.get(nospace_var):
                             dup_count = all_var_list.count(var) - 1
                             csvvar_dict['dup{}_{}'.format(
-                                dup_count,nospace_var)] = [csvname,int(csv_data.dict_csvdata[var])]
+                                dup_count,nospace_var)] = [csvname,int(csv_data.dict_csvdata[core_var])]
                         else:
-                            csvvar_dict[nospace_var] = [csvname,int(csv_data.dict_csvdata[var])]
+                            csvvar_dict[nospace_var] = [csvname,int(csv_data.dict_csvdata[core_var])]
                     except ValueError: continue
             except UnicodeDecodeError as UniDecode:
                 debug_log.write_error_log(UniDecode,csvname)

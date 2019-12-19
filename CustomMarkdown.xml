@@ -645,4 +645,10 @@
             </arg>
         </var>
     </vars>
+    <userdict>
+        <ud_var type="처음">
+            <orig_var>FIRSTTIME(SELECTCOM)</orig_var>
+            <mkdn_var>처음</mkdn_var>
+        </ud_var>
+    </userdict>
 </mdform>
