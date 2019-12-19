@@ -105,16 +105,31 @@ class CSVFunc:
         count_check = StatusNum(csv_files,'파일',debug_log.NameDir)
         count_check.how_much_there()
         csvvar_dict = {}
+        all_var_list = []
+        dup_count = 0
         for csvname in csv_files:
             csv_data = CSVLoad(csvname,encode_type)
             try:
                 csv_data.core_csv(1) # {변수명:숫자}
                 for var in csv_data.dict_csvdata.keys():
-                    csvvar_dict[var] = [csvname,csv_data.dict_csvdata[var]]
+                    if var == '': continue
+                    var = var.split(';')[0]
+                    nospace_var = var.replace(' ','__')
+                    all_var_list.append(var)
+                    try:
+                        if csvvar_dict.get(nospace_var):
+                            dup_count = all_var_list.count(var) - 1
+                            csvvar_dict['dup{}_{}'.format(
+                                dup_count,nospace_var)] = [csvname,int(csv_data.dict_csvdata[var])]
+                        else:
+                            csvvar_dict[nospace_var] = [csvname,int(csv_data.dict_csvdata[var])]
+                    except ValueError: continue
             except UnicodeDecodeError as UniDecode:
                 debug_log.write_error_log(UniDecode,csvname)
                 count_check.error_num += 1
             count_check.how_much_done()
+        total_dup = len(all_var_list) - len(set(all_var_list))
+        if dup_count != 0: print("{}건의 중복변수가 존재합니다. 추후 유의해주세요.".format(total_dup))
         CommonSent.extract_finished()
         CommonSent.print_line()
         return csvvar_dict

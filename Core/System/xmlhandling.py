@@ -63,7 +63,7 @@ class ImportXML:
     def check_templet(self,era_type):
         templets = self.find_all_tags('temp')
         for temp in templets:
-            if temp.attrib[era_type] == era_type:
+            if temp.attrib['eratype'] == era_type:
                 tags = temp.iter()
                 templet_dict = {}
                 for target in tags:
@@ -87,7 +87,7 @@ class ERBGrammarXML(ImportXML):
         the_dict = {}
         for zname in the_list:
             if origin == None or zname.attrib['origin'] == origin:
-                part_list = ImportXML.find_all_tags('particle',zname)
+                part_list = self.find_all_tags('particle',zname)
                 part_dict = {}
                 for particle in part_list:
                     if option_num == 3 and particle.attrib['type'] != 'None': continue
@@ -103,7 +103,7 @@ class ERBGrammarXML(ImportXML):
         var_dict = {}
         for var in self.tags_var:
             if clas == None or var.attrib['class'] == clas:
-                arg_list = ImportXML.find_all_tags('arg',var)
+                arg_list = self.find_all_tags('arg',var)
                 type_dict = {}
                 for arg in arg_list:
                     md_var = arg.find('mkdn_var').text
@@ -139,8 +139,8 @@ class ERBGrammarXML(ImportXML):
             return clas_dict
 
     def zname_class_list(self,option_num=0):
-        callname_classes = ImportXML.export_attriblist(self.tags_callname,'class')
-        name_classes = ImportXML.export_attriblist(self.tags_name,'class')
+        callname_classes = self.export_attriblist(self.tags_callname,'class')
+        name_classes = self.export_attriblist(self.tags_name,'class')
         merged_list = callname_classes + name_classes
         return merged_list
 
@@ -149,7 +149,6 @@ class ERBGrammarXML(ImportXML):
         situ_dict = {}
         class_origin_list = self.export_attriblist(
             self.tags_callname) + self.export_attriblist(self.tags_name)
-        class_origin_list = DataFilter().dup_filter(class_origin_list)
         for attrib in class_origin_list:
             situ_dict[attrib['class']] = attrib['origin']
         return situ_dict
