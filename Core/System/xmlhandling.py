@@ -75,17 +75,22 @@ class ERBGrammarXML(ImportXML):
 # {md문법:ERB문법} 또는 {분류(ex:MASTER):{md문법:ERB문법}}
     def __init__(self,filename='CustomMarkdown.xml'):
         super().__init__(filename)
-        self.tags_callname = self.find_all_tags('callname')
-        self.tags_name = self.find_all_tags('name')
-        self.tags_var = self.find_all_tags('var')
+        self.tags_callname = self.find_all_tags('callname',self.xmlroot.find('callnames'),1)
+        self.tags_name = self.find_all_tags('name',self.xmlroot.find('names'),1)
+        self.tags_var = self.find_all_tags('var',self.xmlroot.find('vars'),1)
 
     def znames_dict(self,origin=None,option_num=0):
-        # {'zname':{class:{particle:{md:og}}}}
+        # {class,name:{particle:{md:og}}}}
+        #TODO 사전 생성 방식 변경 고려
         if option_num in [0,3]: the_list = list(self.tags_callname)+list(self.tags_name)
         elif option_num == 1: the_list = self.tags_callname
         elif option_num == 2: the_list = self.tags_name
         the_dict = {}
+        self.zname_comp_dict = {}
         for zname in the_list:
+            if zname in list(self.tags_callname): nametag = 'callname'
+            elif zname in list(self.tags_name): nametag = 'name'
+            else: nametag = None
             if origin == None or zname.attrib['origin'] == origin:
                 part_list = self.find_all_tags('particle',zname)
                 part_dict = {}
@@ -94,12 +99,13 @@ class ERBGrammarXML(ImportXML):
                     md_name = particle.find('mkdn_name').text
                     og_name = particle.find('orig_name').text
                     part_dict[particle.attrib['type']] = {md_name:og_name}
-                the_dict[zname.attrib['class']] = part_dict
+                    self.zname_comp_dict[md_name]=og_name
+                the_dict[zname.attrib['class']+','+nametag] = part_dict
             else: continue
         return the_dict
 
     def vars_dict(self,clas=None):
-        # {'var':{class:{type:{md:og}}}}
+        # {class:{type:{md:og}}}}
         var_dict = {}
         for var in self.tags_var:
             if clas == None or var.attrib['class'] == clas:
@@ -155,7 +161,15 @@ class ERBGrammarXML(ImportXML):
 
     def user_dict(self):
         #TODO 사용자사전 공사
-        pass
+        user_dictornary = {}
+        userdict_tag = self.xmlroot.find('userdict')
+        tags_userdict = self.find_all_tags('element',userdict_tag,1)
+        for element in tags_userdict:
+            element_cls = element.attrib['class']
+            og_word = element.find('orig').text
+            mk_word = element.find('mkdn').text
+            user_dictornary.update({element_cls:{og_word:mk_word}})
+        return user_dictornary
 
 class SettingXML(ImportXML):
 #TODO xml 양식의 세팅값 인식(ex: 기본 디렉토리)
