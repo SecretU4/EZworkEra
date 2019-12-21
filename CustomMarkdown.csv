@@ -1,9 +1,0 @@
-;해당 특수문법,;변환된 문자열
-;호칭 관련 변수.
-~아나타,%CALLNAME:MASTER%
-~당신,%CALLNAME:MASTER%
-;조건절 관련 변수
-또는,||
-이고,&&
-;
-경우,DATALIST
