@@ -93,7 +93,15 @@ class ExportData:
             total_keys = DataFilter().dup_filter(orig_keys+trans_keys)
             for total_key in total_keys:
                 if total_key in orig_keys and total_key in trans_keys:
-                    srs_file.write("{}\n{}\n\n".format(orig_dict[total_key],trans_dict[total_key]))
+                    if orig_dict[total_key].strip() == '' and trans_dict[total_key].strip() == '':
+                        self.srslog_file.write('{}번 숫자의 내용이 빈칸입니다.\n'.format(total_key))
+                        self.cantwrite_srs_count += 1
+                    try:
+                        self.for_dup_vals.index(orig_dict[total_key])
+                    except ValueError:
+                        self.for_dup_vals.append(orig_dict[total_key])
+                        srs_file.write("{}\n{}\n\n".format(
+                            orig_dict[total_key],trans_dict[total_key]))
                 else:
                     if total_key not in orig_keys:
                         error_dictname = self.orig_dictname
@@ -173,6 +181,7 @@ class ExportData:
                         if wordwrap_yn != 0: srs_file.write("[-TRIM-][-SORT-]\n\n")
                         else: srs_file.write("[-TRIM-][-SORT-][-WORDWRAP-]\n\n")
                         # TRIM:앞뒤공백 제거, SORT:긴 순서/알파벳 정렬, WORDWRAP:정확히 단어 단위일때만 치환
+                self.for_dup_vals = []
                 for num in range(len(orig_dictinfo)):
                     try:
                         self.orig_dictname = orig_dictnames[num]
