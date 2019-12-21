@@ -56,33 +56,33 @@ class CSVFunc:
                 elif mode_num == 2: # 문자/숫자 변환 - {변수:숫자} 형태(chara 제외)
                     if 'chara' in filename.lower(): continue
                     option_tuple = (1,)
-                else:
-                    if mode_num == 3: # srs 최적화 - 이름
-                        if 'chara' in filename.lower():
-                            option_tuple = (0,['CALLNAME','呼び名'])
-                        elif 'name' in filename.lower():
-                            option_tuple = (0,)
-                        else: continue
-                    elif mode_num == 4: # srs 최적화 - 변수
-                        if 'chara' in filename.lower():
-                            continue
-                        elif 'variable' in filename.lower():
-                            continue
-                        elif 'name' in filename.lower():
-                            continue
-                        elif 'replace' in filename.lower():
-                            continue
-                        else: option_tuple = (0,)
-                with open_csv.readonly():
-                    try:
-                        open_csv.core_csv(*option_tuple)
-                    except UnicodeDecodeError as UniDecode:
-                        debug_log.write_error_log(UniDecode,filename)
-                        count_check.error_num += 1
-                open_csv.dict_csvdata = DataFilter(
-                ).erase_quote(open_csv.dict_csvdata, ';')
-                self.dic_assemble.add_dict(filename,open_csv.dict_csvdata)
-                count_check.how_much_done()
+            else:
+                if mode_num == 3: # srs 최적화 - 이름
+                    if 'chara' in filename.lower():
+                        option_tuple = (0,['CALLNAME','呼び名'])
+                    elif 'name' in filename.lower():
+                        option_tuple = (0,)
+                    else: continue
+                elif mode_num == 4: # srs 최적화 - 변수
+                    if 'chara' in filename.lower():
+                        continue
+                    elif 'variable' in filename.lower():
+                        continue
+                    elif 'name' in filename.lower():
+                        continue
+                    elif 'replace' in filename.lower():
+                        continue
+                    else: option_tuple = (0,)
+            with open_csv.readonly():
+                try:
+                    open_csv.core_csv(*option_tuple)
+                except UnicodeDecodeError as UniDecode:
+                    debug_log.write_error_log(UniDecode,filename)
+                    count_check.error_num += 1
+            open_csv.dict_csvdata = DataFilter(
+            ).erase_quote(open_csv.dict_csvdata, ';')
+            self.dic_assemble.add_dict(filename,open_csv.dict_csvdata)
+            count_check.how_much_done()
         CommonSent.extract_finished()
         CommonSent.print_line()
         return self.dic_assemble
