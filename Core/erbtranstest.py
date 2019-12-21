@@ -3,6 +3,7 @@ from Ctrltool import CSVFunc
 from customdb import ERBMetaInfo, InfoDict
 from usefile import FileFilter, LoadFile, MakeLog, MenuPreset
 
+'''
 class ERBWrite(LoadFile):
     def __init__(self,NameDir,EncodeType,era_type,zname_type=0,csvvar_type=0,casetype_mod=0):
         super().__init__(NameDir,EncodeType)
@@ -25,10 +26,10 @@ class ERBWrite(LoadFile):
         # Era 파생에 따라 다른 탬플릿을 불러옴.
         self.temp_dict = self.set_xml.check_templet(self.era_type)
         # 선택에 따라 다르지만, 호칭 관련 변수를 관리함. {class,name:{particle:{md:og}}}
-        if self.zname_type == 0: bulk_zname_dict = self.gram_xml.znames_dict()
+        if self.zname_type == 0: self.gram_xml.znames_dict()
         elif self.zname_type == 1:
             print("ZNAME.erb 관련 변수를 사용하지 않습니다.")
-            bulk_zname_dict = self.gram_xml.znames_dict(option_num=3)
+            self.gram_xml.znames_dict(option_num=3)
         self.zname_dict = self.gram_xml.zname_comp_dict
         # {호칭 class:호칭 origin} ex: {당신:MASTER}
         self.namedict_situ = self.gram_xml.zname_dict_situ()
@@ -416,3 +417,4 @@ if __name__ == "__main__":
     test = ERBWrite('sample\\sampletext.txt','utf-8','TW')
     for line in ERBFilter().indent_maker(test.txt_to_metalines()):
         print(line)
+'''

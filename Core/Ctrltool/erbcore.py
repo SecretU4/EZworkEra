@@ -3,7 +3,7 @@ from customdb import ERBMetaInfo, InfoDict
 from usefile import FileFilter, LoadFile, MakeLog, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import StatusNum
-from System.xmlhandling import ERBGrammarXML
+from System.xmlhandling import ERBGrammarXML, SettingXML
 from . import CSVFunc
 
 class ERBLoad(LoadFile):
@@ -42,17 +42,12 @@ class ERBLoad(LoadFile):
                     self.targeted_list.append(line_word[loc_num])
         return self.targeted_list
 
-
 class ERBWrite(LoadFile):
-    def __init__(self,NameDir,EncodeType,era_type,zname_type=0,csvvar_type=0,casetype_mod=0):
+    def __init__(self,NameDir,EncodeType,era_type,chara_num):
         super().__init__(NameDir,EncodeType)
         self.era_type = era_type
-        self.chara_num = input("캐릭터의 번호를 입력해주세요. : ")
-        # self.chara_num = chara_num
-        self.zname_type = zname_type
-        self.csvvar_type = csvvar_type # 0: 단어형 1: 숫자형
-        self.casetype_mod = casetype_mod # 0: CASE 1: DATALIST
-        self.set_xml = ERBGrammarXML('EraSetting.xml')
+        self.chara_num = chara_num
+        self.set_xml = SettingXML('EraSetting.xml')
         self.gram_xml = ERBGrammarXML('CustomMarkdown.xml')
         with self.readonly() as txt_origin:
             self.txt_bulklines = txt_origin.readlines()
@@ -60,15 +55,15 @@ class ERBWrite(LoadFile):
     def __make_dict(self):
         # 사전 데이터 준비작업. 추후 __init__이나 최초 1회 실행 구문으로 이관 필요 있음.
         # csv 변수 양식에 맞게 불러줌. {csvvar:[csvname,num]}
-        print('csvvar 딕셔너리를 불러와주세요.')
-        self.csvvar_dict = MenuPreset().load_saved_data(1)
+        if self.csvvar_dict == None:
+            self.csvvar_dict = CSVFunc().make_csv_var_dict()
         # Era 파생에 따라 다른 탬플릿을 불러옴.
         self.temp_dict = self.set_xml.check_templet(self.era_type)
         # 선택에 따라 다르지만, 호칭 관련 변수를 관리함. {class,name:{particle:{md:og}}}
-        if self.zname_type == 0: bulk_zname_dict = self.gram_xml.znames_dict()
+        if self.zname_type == 0: self.gram_xml.znames_dict()
         elif self.zname_type == 1:
             print("ZNAME.erb 관련 변수를 사용하지 않습니다.")
-            bulk_zname_dict = self.gram_xml.znames_dict(option_num=3)
+            self.gram_xml.znames_dict(option_num=3)
         self.zname_dict = self.gram_xml.zname_comp_dict
         # {호칭 class:호칭 origin} ex: {당신:MASTER}
         self.namedict_situ = self.gram_xml.zname_dict_situ()
@@ -77,6 +72,7 @@ class ERBWrite(LoadFile):
         for dic in self.gram_xml.vars_dict()['IF'].values():
             if_dict.update(dic)
         self.var_dict = if_dict
+        self.user_dict = self.gram_xml.user_dict()
 
     casetype_dict = {0:{'b_start':'SELECTCASE','c_start':'CASE','b_end':'ENDSELECT','c_end':None},
         1:{'b_start':'PRINTDATA','c_start':'DATALIST','b_end':'ENDDATA','c_end':'ENDLIST'}}
@@ -85,11 +81,11 @@ class ERBWrite(LoadFile):
         dup_datalist = []
         dup_switch = 0
         now_switch = 0
-        if '(지금)' in word:
-            word.replace('(지금)','')
+        if '<지금>' in word:
+            word.replace('<지금>','')
             now_switch = 1
         if self.csvvar_dict.get('dup1_'+word):
-            self.csvvar_dup_count += 1
+            self.__csvvar_dup_count += 1
             dup_switch = 1
             target_list = list(self.csvvar_dict.keys())
         else: target_list = [word]
@@ -110,13 +106,13 @@ class ERBWrite(LoadFile):
             result = word_withcsv
         if last_word in self.namedict_situ.values():
             result = result.replace(':',':{}:'.format(last_word))
-            self.namedict_used_switch = 1
+            self.__namedict_used_switch = 1
         return result
 
     def handle_line(self,splited_line,*dicts):
         """분리된 문자열 리스트 받아 처리 후 문자열 리스트 return함."""
         re_splited_line = []
-        self.namedict_used_switch = 0
+        self.__namedict_used_switch = 0
         last_word = None
         for word in splited_line:
             if word in self.namedict_situ: word = self.namedict_situ[word]
@@ -126,9 +122,9 @@ class ERBWrite(LoadFile):
             else:
                 for dic in dicts:
                     if isinstance(dic,dict) and word in dic: word = dic[word]
-            if self.namedict_used_switch != 0:
+            if self.__namedict_used_switch != 0:
                 re_splited_line.pop()
-                self.namedict_used_switch = 0
+                self.__namedict_used_switch = 0
             re_splited_line.append(word)
             last_word = word
         if re_splited_line == []: re_splited_line.append('')
@@ -145,19 +141,19 @@ class ERBWrite(LoadFile):
         # '상황' 용 함수. IF문을 관리
         splited_line = line.split()
         sit_head = splited_line.pop(0).replace('상황:','')
-        if sit_head == '': self.if_level = 1
+        if sit_head == '': self.__if_lv = 1
         else:
             try:
-                self.if_level = self.if_level_list.index(sit_head) + 1
+                self.__if_lv = self.__if_lv_list.index(sit_head) + 1
             except ValueError:
-                self.if_level_list.append(sit_head)
-                self.if_level = len(self.if_level_list)
+                self.__if_lv_list.append(sit_head)
+                self.__if_lv = len(self.__if_lv_list)
         re_splited_line = []
         if splited_line[0] in ['이외','기타']:
             re_splited_line.append('ELSE')
         else:
-            re_splited_line.extend(self.handle_line(splited_line))
-            if before_if_level < self.if_level:
+            re_splited_line.extend(self.handle_line(splited_line,self.user_dict))
+            if before_if_level < self.__if_lv:
                 re_splited_line.insert(0,'IF')
             else:
                 re_splited_line.insert(0,'ELSEIF')
@@ -170,45 +166,46 @@ class ERBWrite(LoadFile):
         splited_line = line.split()
         b_head = splited_line.pop(0).replace('분기:','')
         case_start = self.casetype_dict[self.casetype_mod]['c_start']
-        if b_head == '': self.case_level = 1
+        if b_head == '': self.__cs_lv = 1
         elif b_head == '끝':
-            self.case_level -= 1
-            self.case_randswitch = 0
-            self.erb_translated_list.append('=DONEBRANCH=')
+            self.__cs_lv -= 1
+            self.__case_randswitch = 0
+            self.erb_translated_list.append(line)
             return 0
         else:
             try:
-                self.case_level = self.case_level_list.index(b_head) + 1
+                self.__cs_lv = self.__cs_lv_list.index(b_head) + 1
             except ValueError:
-                self.case_level_list.append(b_head)
-                self.case_level = len(self.case_level_list)
+                self.__cs_lv_list.append(b_head)
+                self.__cs_lv = len(self.__cs_lv_list)
         if self.casetype_mod == 0: # CASE
-            re_splited_line = self.handle_line(splited_line)
-            if self.case_count == 0:
+            re_splited_line = self.handle_line(splited_line,self.user_dict)
+            if self.__cs_count == 0:
                 if re_splited_line[0] in ['랜덤','RAND','RANDOM']:
                     start_case_line = 'RAND:'
-                    self.case_randswitch = 1
+                    self.__case_randswitch = 1
                 else:
                     case_line = re_splited_line.pop()
-                    start_case_line = ' '.join(re_splited_line)+ '\n'
+                    start_case_line = ' '.join(re_splited_line)
                     re_splited_line = [case_line]
-                self.addline_loc[self.line_count] = 'BRANCH_START ' + start_case_line
-            if self.case_randswitch == 1:
-                case_start = '{} {}'.format(case_start,self.case_count)
+                self.__addline_loc[self.__line_count] = 'BRANCH_START ' + start_case_line
+            if self.__case_randswitch == 1:
+                case_start = '{} {}'.format(case_start,self.__cs_count)
             elif re_splited_line[0] in ['이외','기타']:
                 case_start = case_start + 'ELSE'
-                self.case_level -= 1
+                self.__cs_lv -= 1
             else:
                 case_start = case_start + ' ' + ' '.join(re_splited_line)
         elif self.casetype_mod == 1: # DATALIST
-            if self.case_count == 0:
-                self.addline_loc[self.line_count] = 'BRANCH_START'
+            if self.__cs_count == 0:
+                self.__addline_loc[self.__line_count] = 'BRANCH_START'
             else:
-                self.addline_loc[self.line_count] = 'CASE_END'
-        self.case_count += 1
+                self.__addline_loc[self.__line_count] = 'CASE_END'
+        self.__cs_count += 1
         self.erb_translated_list.append(case_start + '\n')
 
     def __replace_print(self,line):
+        raw_switch = 0
         splited_line = line.split()
         re_splited_line = []
         header_word = splited_line[0]
@@ -217,10 +214,14 @@ class ERBWrite(LoadFile):
             head_word = 'PRINTFORML '
         elif header_word == '=RAW=':
             splited_line.pop(0)
-            head_word = ''
+            head_word = 'PRINTFORM '
+            raw_switch = 1
         else:
             head_word = 'PRINTFORMW '
         for word in splited_line:
+            if raw_switch == 1:
+                re_splited_line = splited_line
+                break
             word_search = word.split('>')[0]+'>'
             if word.startswith(';'): break
             elif self.zname_dict.get(word_search):
@@ -231,72 +232,76 @@ class ERBWrite(LoadFile):
 
     def __check_addline(self,before_if_level,before_case_level):
         # ENDIF,ENDSELECT 유무 판별
-        if before_if_level > self.if_level:
-            self.addline_loc[self.line_count] = 'ENDIF'
-        elif before_case_level > self.case_level:
-            self.addline_loc[self.line_count] = 'BRANCH_END {}'.format(self.case_count)
-            self.case_count = 0
-        elif before_case_level < self.case_level:
+        if before_if_level > self.__if_lv:
+            self.__addline_loc[self.__line_count] = 'ENDIF'
+        elif before_case_level > self.__cs_lv:
+            self.__addline_loc[self.__line_count] = 'BRANCH_END {}'.format(self.__cs_count)
+            self.__cs_count = 0
+        elif before_case_level < self.__cs_lv:
             pass
-        if len(self.txt_bulklines) == self.line_count + 1: # 모든 줄 변환 완료시
+        if len(self.txt_bulklines) == self.__line_count + 1: # 모든 줄 변환 완료시
             branch_start = self.casetype_dict[self.casetype_mod]['b_start']
             branch_end = self.casetype_dict[self.casetype_mod]['b_end'] + '\n'
             case_end = str(self.casetype_dict[self.casetype_mod]['c_end']) + '\n'
             b_lv = 0
             loc_count = 0
-            addline_loclist = list(self.addline_loc.keys())
-            addline_loclist.sort()
-            addline_loclist.reverse()
-            for loc in addline_loclist:
-                if self.addline_loc[loc] == 'ENDIF':
+            self.__addline_loclist = list(self.__addline_loc.keys())
+            self.__addline_loclist.sort()
+            self.__addline_loclist.reverse()
+            for loc in self.__addline_loclist:
+                if self.__addline_loc[loc] == 'ENDIF':
                     self.erb_translated_list.insert(loc,'ENDIF\n')
                     loc_count += 1
-                elif 'CASE_END' in self.addline_loc[loc]:
+                elif 'CASE_END' in self.__addline_loc[loc]:
                     self.erb_translated_list.insert(loc,case_end)
                     loc_count += 1
-                elif 'BRANCH_END' in self.addline_loc[loc]:
+                elif 'BRANCH_END' in self.__addline_loc[loc]:
                     self.erb_translated_list[loc] = branch_end
                     if self.casetype_mod == 0:
-                        c_count = self.addline_loc[loc].split()[-1]
-                        self.case_randswitch = 0
+                        c_count = self.__addline_loc[loc].split()[-1]
+                        self.__case_randswitch = 0
                     elif self.casetype_mod == 1:
                         self.erb_translated_list.insert(loc,case_end)
                     b_lv += 1
-                elif 'BRANCH_START' in self.addline_loc[loc]:
-                    if 'BRANCH_START RAND:' == self.addline_loc[loc]:
+                elif 'BRANCH_START' in self.__addline_loc[loc]:
+                    if 'BRANCH_START RAND:' == self.__addline_loc[loc]:
                         self.erb_translated_list.insert(loc,'{} RAND:{}'.format(branch_start,c_count))
                         c_count = 0
                     else:
                         if self.casetype_mod == 0:
-                            orig_line = self.addline_loc[loc].replace('BRANCH_START',branch_start)
+                            orig_line = self.__addline_loc[loc].replace('BRANCH_START',branch_start)
                             self.erb_translated_list.insert(loc,orig_line)
                         elif self.casetype_mod == 1:
                             self.erb_translated_list.insert(loc,branch_start+'\n')
                             loc_count += 1
                     b_lv -= 1
                     loc_count = 0
-            while self.if_level > 0:
+            while self.__if_lv > 0:
                 self.erb_translated_list.append('ENDIF\n')
-                self.if_level -= 1
+                self.__if_lv -= 1
             if b_lv != 0:
                 print("분기문 관리에 이상 있음.")
 
-    def txt_to_metalines(self):
+    def txt_to_erblines(self,csvvar_dict,zname_type=0,csvvar_type=0,casetype_mod=0):
         # 구상 번역기 총괄
-        self.csvvar_dup_count = 0
+        self.csvvar_dict = csvvar_dict
+        self.zname_type = zname_type
+        self.csvvar_type = csvvar_type # 0: 단어형 1: 숫자형
+        self.casetype_mod = casetype_mod # 0: CASE 1: DATALIST
+        self.__csvvar_dup_count = 0
         self.__make_dict()
         self.erb_translated_list = []
-        self.if_level_list = [] # if 단계 구별자
-        self.case_level_list = []
-        self.addline_loc = {}
-        self.case_randswitch = 0
-        self.if_level = 0
-        self.case_level = 0
-        self.case_count = 0
-        self.line_count = 0
+        self.__if_lv_list = [] # if 단계 구별자
+        self.__cs_lv_list = []
+        self.__addline_loc = {}
+        self.__case_randswitch = 0
+        self.__if_lv = 0
+        self.__cs_lv = 0
+        self.__cs_count = 0
+        self.__line_count = 0
         for line in self.txt_bulklines:
-            before_if_level = self.if_level
-            before_case_level = self.case_level
+            before_if_level = self.__if_lv
+            before_case_level = self.__cs_lv
             line = line.strip()
             if line.startswith(';'):
                 self.erb_translated_list.append(line)
@@ -306,7 +311,7 @@ class ERBWrite(LoadFile):
                 self.__replace_command(line)
             elif line.startswith('분기:'):
                 self.__replace_branch(line)
-            elif self.casetype_mod == 1 and self.case_level != 0:
+            elif self.casetype_mod == 1 and self.__cs_lv != 0:
                 self.erb_translated_list.append('DATAFORM '+self.__replace_print(line))
             else:
                 if line.startswith('===') or line.startswith('---'):
@@ -314,11 +319,11 @@ class ERBWrite(LoadFile):
                 else:
                     self.erb_translated_list.append(self.__replace_print(line))
             self.__check_addline(before_if_level,before_case_level)
-            self.line_count += 1
-        if self.csvvar_dup_count != 0:
+            self.__line_count += 1
+        if self.__csvvar_dup_count != 0:
             print("중의적인 csv변수가 발견되었습니다. '!중복변수!'를 결과물에서 검색하세요.")
-        erb_metalines = ERBFilter().make_metainfo_lines(self.erb_translated_list,0,self.NameDir)
-        return erb_metalines.linelist # list형 line
+        self.erb_translated_list.insert(0,';{}에서 가져옴\n'.format(self.NameDir))
+        return self.erb_translated_list
 
 
 class ERBFilter:
@@ -326,11 +331,10 @@ class ERBFilter:
         self.filtered_lines = []
         for line in target_metalines:
                 if_level, case_level, _, context = line
-                if context.startswith(';'):
-                    self.filtered_lines.append(context)
-                else:
-                    self.filtered_lines.append('{}{}{}\n'.format('\t'*if_level,
-                        '\t'*case_level,context))
+                if context.startswith(';'): filtered_line = context
+                else: filtered_line = '{}{}{}'.format('\t'*if_level,'\t'*case_level,context)
+                if context.endswith('\n') != True: filtered_line = filtered_line + '\n'
+                self.filtered_lines.append(filtered_line)
         if self.filtered_lines == []:
             print("결과물이 없습니다.")
             return None
@@ -493,8 +497,8 @@ class ERBFunc:
         return self.result_infodict # {파일명:lines} 형태가 포함된 infodict
 
     def remodel_indent(self,metainfo_option_num=None,target_metalines=None):
-        print("들여쓰기를 자동 교정하는 유틸리티입니다.")
         if target_metalines == None:
+            print("들여쓰기를 자동 교정하는 유틸리티입니다.")
             erb_files, encode_type = FileFilter().get_filelist('ERB')
             file_count_check = StatusNum(erb_files,'파일')
             file_count_check.how_much_there()
@@ -507,14 +511,19 @@ class ERBFunc:
                 file_count_check.how_much_done()
             result_dataset = self.result_infodict #InfoDict 클래스 {파일명:[erb 텍스트 라인]}
         else:
-            print("특정 데이터셋으로 작업합니다.")
             result_dataset = ERBFilter().indent_maker(target_metalines) # [erb 텍스트 라인]
         CommonSent.extract_finished()
         return result_dataset
 
-    def translate_txt_to_erb(self):
-        #TODO 구상 번역기 이식 공사 예정.
-        txt_files, encode_type = FileFilter().get_filelist('TXT')
+    def translate_txt_to_erb(self,era_type,csvvar_dict):
+        txt_files,encode_type = FileFilter().get_filelist('TXT')
         file_count_check = StatusNum(txt_files,'파일')
         file_count_check.how_much_there()
-        # for filename in txt_files:
+        chara_num = input("작성하실 캐릭터의 번호를 입력해주세요. : ")
+        self.comp_lines = []
+        for filename in txt_files:
+           file_lines = ERBWrite(filename,encode_type,era_type,chara_num).txt_to_erblines(csvvar_dict)
+           print("{}의 처리가 완료되었습니다.".format(filename))
+           self.comp_lines.extend(file_lines)
+        erb_metainfo = ERBFilter().make_metainfo_lines(self.comp_lines,0,filename)
+        return erb_metainfo

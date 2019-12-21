@@ -9,6 +9,7 @@ from customdb import ERBMetaInfo, InfoDict
 from usefile import DirFilter, FileFilter, LoadFile, MakeLog, MenuPreset
 from util import DataFilter
 from System.interface import Menu
+from . import ERBFunc
 
 
 class ExportData:
@@ -30,23 +31,21 @@ class ExportData:
 
     def __multi_data_input(self):
         """입력받는 데이터가 2개인 경우 사용. sav 디랙토리의 저장 파일을 불러옴."""
+        please_orig_data = "원본 데이터를 불러와주세요."
+        please_trans_data = "번역본 데이터를 불러와주세요."
         if bool(self.target_data) == True:
             print("현 구동 중 실행된 데이터의 종류를 입력해주세요.")
             origin_switch = MenuPreset(
             ).yesno("실행된 데이터는 번역문인가요? 아니라면 원문으로 간주합니다.")
             if origin_switch == 0:
                 trans_data = self.target_data
-                print("원본 데이터를 불러와주세요.")
-                orig_data = MenuPreset().load_saved_data(1)
+                orig_data = MenuPreset().load_saved_data(1,please_orig_data)
             elif origin_switch == 1:
                 orig_data = self.target_data
-                print("번역본 데이터를 불러와주세요.")
-                trans_data = MenuPreset().load_saved_data(1)
+                trans_data = MenuPreset().load_saved_data(1,please_trans_data)
         else:
-            print("원본 데이터를 불러와주세요.")
-            orig_data = MenuPreset().load_saved_data(1)
-            print("번역본 데이터를 불러와주세요.")
-            trans_data = MenuPreset().load_saved_data(1)
+            orig_data = MenuPreset().load_saved_data(1,please_orig_data)
+            trans_data = MenuPreset().load_saved_data(1,please_trans_data)
         return orig_data,trans_data
 
     def __data_type_check(self,*data_names):
@@ -71,7 +70,7 @@ class ExportData:
                             "올바르지 않은 자료형({})이 InfoDict에 포함되어 있습니다.".format(type(data)))
                         checked_datalist.append(None)
             elif isinstance(data,ERBMetaInfo) == True:
-                checked_datalist.append({'ONLYMETALINES':data.linelist})
+                checked_datalist.append({'ONLYMETALINES':data})
             elif isinstance(data,dict) == True: # InfoDict 결과물이 아닌 순수 dict
                     checked_datalist.append({'ONLYDICT':data})
             elif isinstance(data,list) == True: # list 자료형
@@ -110,9 +109,8 @@ class ExportData:
         # txt, erb 공용
         # erb metaline은 ERBFilter.indent_maker에서 텍스트.readlines형으로 양식화됨
         if self.target_data == None:
-            print("미리 실행된 자료가 없습니다.")
             print_data = MenuPreset()
-            self.target_data = print_data.load_saved_data()
+            self.target_data = print_data.load_saved_data(0,"미리 실행된 자료가 없습니다.")
             if self.target_data == None: self.lazy_switch = 1
             else:
                 result_filename = FileFilter(2).sep_filename(
@@ -137,12 +135,16 @@ class ExportData:
             #TODO 복수의 InfoDict 데이터를 불러온 경우의 지원
             unpacked_data = list(checked_data[0].values())
             with LoadFile(self.dest_dir+result_filename,encode_type).readwrite() as txt_file:
-                txt_file.write("{}에서 불러옴\n".format(self.target_name))
+                if filetype == 'TXT':
+                    txt_file.write("{}에서 불러옴\n".format(self.target_name))
                 for context in unpacked_data:
                     if option_num == 0:
                         print("{}\n".format(context),file=txt_file)
                     elif option_num == 1:
                         if type(context) == list: txt_file.writelines(context)
+                        elif isinstance(context,ERBMetaInfo):
+                            the_lines = ERBFunc().remodel_indent(target_metalines=context.linelist)
+                            txt_file.writelines(the_lines)
                         else: print("텍스트화 할 수 없는 데이터입니다. 옵션을 바꿔 다시 시도해주세요.")
 
     def to_SRS(self,srsname='autobuild'):

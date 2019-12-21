@@ -290,7 +290,7 @@ class MenuPreset:
         encode()
         yesno(sentence)
         shall_save_data(data,datatype)
-        load_saved_data(opt_no)
+        load_saved_data(opt_no,[sentence])
     """
     def encode(self):
         """인코딩 선택시 해당 인코딩 str을 반환."""
@@ -308,11 +308,11 @@ class MenuPreset:
             EncodeType = 'cp949'
         return EncodeType
 
-    def yesno(self,sentence):
+    def yesno(self,*sentences):
         """예/아니오 선택창. sentence로 선택창 앞에 문자열 출력 필요."""
         yesno_dict={0:'예',1:'아니오'}
         yesno = Menu(yesno_dict)
-        yesno.title(sentence)
+        yesno.title(*sentences)
         yesno.run_menu()
         return yesno.selected_num
 
@@ -332,15 +332,19 @@ class MenuPreset:
                 except FileExistsError:
                     print("같은 이름의 파일이 존재합니다. 다시 시도해주세요.")
 
-    def load_saved_data(self,opt_no=0):
+    def load_saved_data(self,opt_no=0,sentence=None):
         """저장해둔 데이터의 로드 메뉴.
-
+        sentence:
+            불러오기 화면에 추가로 표시할 문장.
         opt_no:
             0: 불러올지 말지 선택. 아니라면 None 반환.
             1: 무조건 불러옴.
         """
+        yesno_sentence = "저장된 데이터 파일을 불러오시겠습니까?"
+        if isinstance(sentence,str):
+            yesno_sentence = sentence,yesno_sentence
         if opt_no == 0:
-            load_switch = MenuPreset().yesno("저장된 데이터 파일을 불러오시겠습니까?")
+            load_switch = MenuPreset().yesno(*yesno_sentence)
         elif opt_no == 1:
             print("불러올 데이터 파일을 선택해주세요.")
             load_switch = 0

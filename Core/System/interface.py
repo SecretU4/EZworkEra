@@ -40,10 +40,11 @@ class Menu:
         CommonSent.print_line()
         self.selected_num = input("번호를 입력하세요. 클릭은 지원하지 않습니다. :")
 
-    def title(self,title_name):
+    def title(self,*title_names):
         """메뉴 제목용 함수. 메뉴 내 문장 출력에도 사용 가능"""
         CommonSent.print_line()
-        print(title_name.center(100," "))
+        for title_name in title_names:
+            print(title_name.center(100," "))
         CommonSent.print_line()
 
     def run_menu(self):
