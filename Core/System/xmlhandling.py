@@ -60,16 +60,6 @@ class ImportXML:
                 attrib_list.append(tag.attrib[keyword])
         return attrib_list
 
-    def check_templet(self,era_type):
-        templets = self.find_all_tags('temp')
-        for temp in templets:
-            if temp.attrib['eratype'] == era_type:
-                tags = temp.iter()
-                templet_dict = {}
-                for target in tags:
-                    templet_dict[target.tag] = target.text
-                return templet_dict
-
 
 class ERBGrammarXML(ImportXML):
 # {md문법:ERB문법} 또는 {분류(ex:MASTER):{md문법:ERB문법}}
@@ -81,7 +71,6 @@ class ERBGrammarXML(ImportXML):
 
     def znames_dict(self,origin=None,option_num=0):
         # {class,name:{particle:{md:og}}}}
-        #TODO 사전 생성 방식 변경 고려
         if option_num in [0,3]: the_list = list(self.tags_callname)+list(self.tags_name)
         elif option_num == 1: the_list = self.tags_callname
         elif option_num == 2: the_list = self.tags_name
@@ -160,7 +149,6 @@ class ERBGrammarXML(ImportXML):
         return situ_dict
 
     def user_dict(self):
-        #TODO 사용자사전 공사
         user_dictornary = {}
         userdict_tag = self.xmlroot.find('userdict')
         tags_userdict = self.find_all_tags('element',userdict_tag,1)
@@ -175,6 +163,23 @@ class SettingXML(ImportXML):
 #TODO xml 양식의 세팅값 인식(ex: 기본 디렉토리)
     def __init__(self,filename='EraSetting.xml'):
         super().__init__(filename)
+        self.info_tag = self.xmlroot.find('settings').find('information')
+
+    def check_templet(self,era_type):
+        templets = self.find_all_tags('temp')
+        for temp in templets:
+            if temp.attrib['eratype'] == era_type:
+                tags = temp.iter()
+                templet_dict = {}
+                for target in tags:
+                    templet_dict[target.tag] = target.text
+                return templet_dict
+
+    def show_info(self,info_type):
+        version_num = self.info_tag.find(info_type).text
+        if version_num == None or version_num.strip() == None:
+            version_num = 'N/A'
+        return version_num
 
 
 if __name__ == "__main__":

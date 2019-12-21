@@ -4,6 +4,11 @@
         <information>
             <version>3.3 beta</version>
             <github>https://github.com/SecretU4/EZworkEra/</github>
+            <caution>
+            아직 완성된 프로그램이 아닙니다. 사용 시 문제가 발생하면 오류를 보고해주세요.
+            여러분의 도움으로 더 나은 프로그램을 만들어 노가다를 줄입니다.
+            현재 윈도우 환경만 지원합니다. 어차피 원본 엔진도 윈도우용이잖아요.
+            </caution>
         </information>
     </settings>
     <templets>
