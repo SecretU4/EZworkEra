@@ -471,27 +471,27 @@
                 <mkdn_name>&lt;^당신&gt;</mkdn_name>
             </particle>
             <particle type="은">
-                <orig_name>%&lt;NAME:MASTER,"는")%</orig_name>
+                <orig_name>%조사처리(NAME:MASTER,"는")%</orig_name>
                 <mkdn_name>&lt;^당신은&gt;</mkdn_name>
             </particle>
             <particle type="이">
-                <orig_name>%&lt;NAME:MASTER,"이")%</orig_name>
+                <orig_name>%조사처리(NAME:MASTER,"이")%</orig_name>
                 <mkdn_name>&lt;^당신이&gt;</mkdn_name>
             </particle>
             <particle type="을">
-                <orig_name>%&lt;NAME:MASTER,"을")%</orig_name>
+                <orig_name>%조사처리(NAME:MASTER,"을")%</orig_name>
                 <mkdn_name>&lt;^당신을&gt;</mkdn_name>
             </particle>
             <particle type="과">
-                <orig_name>%&lt;NAME:MASTER,"과")%</orig_name>
+                <orig_name>%조사처리(NAME:MASTER,"과")%</orig_name>
                 <mkdn_name>&lt;^당신과&gt;</mkdn_name>
             </particle>
             <particle type="의">
-                <orig_name>%&lt;NAME:MASTER,"의")%</orig_name>
+                <orig_name>%조사처리(NAME:MASTER,"의")%</orig_name>
                 <mkdn_name>&lt;^당신의&gt;</mkdn_name>
             </particle>
             <particle type="에게">
-                <orig_name>%&lt;NAME:MASTER,"에게")%</orig_name>
+                <orig_name>%조사처리(NAME:MASTER,"에게")%</orig_name>
                 <mkdn_name>&lt;^당신에게&gt;</mkdn_name>
             </particle>
         </name>
@@ -501,27 +501,27 @@
                 <mkdn_name>&lt;^아나타&gt;</mkdn_name>
             </particle>
             <particle type="는">
-                <orig_name>%&lt;NAME:MASTER,"는")%</orig_name>
+                <orig_name>%조사처리(NAME:MASTER,"는")%</orig_name>
                 <mkdn_name>&lt;^아나타는&gt;</mkdn_name>
             </particle>
             <particle type="가">
-                <orig_name>%&lt;NAME:MASTER,"이")%</orig_name>
+                <orig_name>%조사처리(NAME:MASTER,"이")%</orig_name>
                 <mkdn_name>&lt;^아나타가&gt;</mkdn_name>
             </particle>
             <particle type="를">
-                <orig_name>%&lt;NAME:MASTER,"을")%</orig_name>
+                <orig_name>%조사처리(NAME:MASTER,"을")%</orig_name>
                 <mkdn_name>&lt;^아나타를&gt;</mkdn_name>
             </particle>
             <particle type="와">
-                <orig_name>%&lt;NAME:MASTER,"과")%</orig_name>
+                <orig_name>%조사처리(NAME:MASTER,"과")%</orig_name>
                 <mkdn_name>&lt;^아나타와&gt;</mkdn_name>
             </particle>
             <particle type="의">
-                <orig_name>%&lt;NAME:MASTER,"의")%</orig_name>
+                <orig_name>%조사처리(NAME:MASTER,"의")%</orig_name>
                 <mkdn_name>&lt;^아나타의&gt;</mkdn_name>
             </particle>
             <particle type="에게">
-                <orig_name>%&lt;NAME:MASTER,"에게")%</orig_name>
+                <orig_name>%조사처리(NAME:MASTER,"에게")%</orig_name>
                 <mkdn_name>&lt;^아나타에게&gt;</mkdn_name>
             </particle>
         </name>
@@ -531,27 +531,27 @@
                 <mkdn_name>&lt;^플레이어&gt;</mkdn_name>
             </particle>
             <particle type="는">
-                <orig_name>%&lt;NAME:PLAYER,"는")%</orig_name>
+                <orig_name>%조사처리(NAME:PLAYER,"는")%</orig_name>
                 <mkdn_name>&lt;^플레이어는&gt;</mkdn_name>
             </particle>
             <particle type="가">
-                <orig_name>%&lt;NAME:PLAYER,"이")%</orig_name>
+                <orig_name>%조사처리(NAME:PLAYER,"이")%</orig_name>
                 <mkdn_name>&lt;^플레이어가&gt;</mkdn_name>
             </particle>
             <particle type="를">
-                <orig_name>%&lt;NAME:PLAYER,"을")%</orig_name>
+                <orig_name>%조사처리(NAME:PLAYER,"을")%</orig_name>
                 <mkdn_name>&lt;^플레이어를&gt;</mkdn_name>
             </particle>
             <particle type="와">
-                <orig_name>%&lt;NAME:PLAYER,"과")%</orig_name>
+                <orig_name>%조사처리(NAME:PLAYER,"과")%</orig_name>
                 <mkdn_name>&lt;^플레이어와&gt;</mkdn_name>
             </particle>
             <particle type="의">
-                <orig_name>%&lt;NAME:PLAYER,"의")%</orig_name>
+                <orig_name>%조사처리(NAME:PLAYER,"의")%</orig_name>
                 <mkdn_name>&lt;^플레이어의&gt;</mkdn_name>
             </particle>
             <particle type="에게">
-                <orig_name>%&lt;NAME:PLAYER,"에게")%</orig_name>
+                <orig_name>%조사처리(NAME:PLAYER,"에게")%</orig_name>
                 <mkdn_name>&lt;^플레이어에게&gt;</mkdn_name>
             </particle>
         </name>
@@ -561,27 +561,27 @@
                 <mkdn_name>&lt;^타겟&gt;</mkdn_name>
             </particle>
             <particle type="은">
-                <orig_name>%&lt;NAME:TARGET,"는")%</orig_name>
+                <orig_name>%조사처리(NAME:TARGET,"는")%</orig_name>
                 <mkdn_name>&lt;^타겟은&gt;</mkdn_name>
             </particle>
             <particle type="이">
-                <orig_name>%&lt;NAME:TARGET,"이")%</orig_name>
+                <orig_name>%조사처리(NAME:TARGET,"이")%</orig_name>
                 <mkdn_name>&lt;^타겟이&gt;</mkdn_name>
             </particle>
             <particle type="을">
-                <orig_name>%&lt;NAME:TARGET,"을")%</orig_name>
+                <orig_name>%조사처리(NAME:TARGET,"을")%</orig_name>
                 <mkdn_name>&lt;^타겟을&gt;</mkdn_name>
             </particle>
             <particle type="과">
-                <orig_name>%&lt;NAME:TARGET,"과")%</orig_name>
+                <orig_name>%조사처리(NAME:TARGET,"과")%</orig_name>
                 <mkdn_name>&lt;^타겟과&gt;</mkdn_name>
             </particle>
             <particle type="의">
-                <orig_name>%&lt;NAME:TARGET,"의")%</orig_name>
+                <orig_name>%조사처리(NAME:TARGET,"의")%</orig_name>
                 <mkdn_name>&lt;^타겟의&gt;</mkdn_name>
             </particle>
             <particle type="에게">
-                <orig_name>%&lt;NAME:TARGET,"에게")%</orig_name>
+                <orig_name>%조사처리(NAME:TARGET,"에게")%</orig_name>
                 <mkdn_name>&lt;^타겟에게&gt;</mkdn_name>
             </particle>
         </name>
@@ -591,27 +591,27 @@
                 <mkdn_name>&lt;^조수&gt;</mkdn_name>
             </particle>
             <particle type="는">
-                <orig_name>%&lt;NAME:ASSI,"는")%</orig_name>
+                <orig_name>%조사처리(NAME:ASSI,"는")%</orig_name>
                 <mkdn_name>&lt;^조수는&gt;</mkdn_name>
             </particle>
             <particle type="가">
-                <orig_name>%&lt;NAME:ASSI,"이")%</orig_name>
+                <orig_name>%조사처리(NAME:ASSI,"이")%</orig_name>
                 <mkdn_name>&lt;^조수가&gt;</mkdn_name>
             </particle>
             <particle type="를">
-                <orig_name>%&lt;NAME:ASSI,"을")%</orig_name>
+                <orig_name>%조사처리(NAME:ASSI,"을")%</orig_name>
                 <mkdn_name>&lt;^조수를&gt;</mkdn_name>
             </particle>
             <particle type="와">
-                <orig_name>%&lt;NAME:ASSI,"과")%</orig_name>
+                <orig_name>%조사처리(NAME:ASSI,"과")%</orig_name>
                 <mkdn_name>&lt;^조수와&gt;</mkdn_name>
             </particle>
             <particle type="의">
-                <orig_name>%&lt;NAME:ASSI,"의")%</orig_name>
+                <orig_name>%조사처리(NAME:ASSI,"의")%</orig_name>
                 <mkdn_name>&lt;^조수의&gt;</mkdn_name>
             </particle>
             <particle type="에게">
-                <orig_name>%&lt;NAME:ASSI,"에게")%</orig_name>
+                <orig_name>%조사처리(NAME:ASSI,"에게")%</orig_name>
                 <mkdn_name>&lt;^조수에게&gt;</mkdn_name>
             </particle>
         </name>
