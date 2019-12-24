@@ -347,10 +347,13 @@ class ERBRemodel(ERBLoad):
             self.csvfile_dict[csvname] = filename
 
     def replace_csvvars(self,mod_num=0):
+        #TODO 로그 파일 생성 방식 변경
+        log_file = '{}.log'.format(FileFilter().sep_filename(self.NameDir))
         replaced_context_list = []
         line_count = 0
         self.__make_dict(mod_num)
         for line in self.erb_context_list:
+            line_count += 1
             if line.strip().startswith(';'): pass
             else:
                 wordlist = line.split()
@@ -367,10 +370,10 @@ class ERBRemodel(ERBLoad):
                                     for symbol in ['!','(','{',')','}','NOW','GETBIT','FIRSTTIME']:
                                         may_csv = may_csv.replace(symbol,'')
                                     if may_csv != csvname:
-                                        print("{}행 {} 1에서 필터링 문제 있음".format(line_count,word))
+                                        print("{}행 {} 1에서 필터링 문제 있음".format(line_count,word),file=log_file)
                                         continue
                                 else:
-                                    print("{}행\n{} 내 {} 문제발생".format(line_count,line,word))
+                                    print("{}행\n{} 내 {} 문제발생".format(line_count,line,word),file=log_file)
                             if target.startswith('(') or target.startswith('{'):
                                 handle_target = list(target)
                                 handle_target.pop(0)
@@ -387,11 +390,10 @@ class ERBRemodel(ERBLoad):
                                 r_word = word.replace(target,
                                 self.csvtrans_infodict.dict_main[self.csvfile_dict[csvname]].get(target))
                             except TypeError:
-                                print("{}번째 행 오류발생".format(line_count))
+                                print("{}번째 행 오류발생".format(line_count),file=log_file)
                             line = line.replace(word,r_word)
                             break
             replaced_context_list.append(line)
-            line_count += 1
         return replaced_context_list
 
 
