@@ -343,17 +343,19 @@ class MenuPreset:
         yesno_sentence = "저장된 데이터 파일을 불러오시겠습니까?"
         please_choose_sent = "불러올 데이터 파일을 선택해주세요."
         if isinstance(sentence,str): yesno_sentence = sentence,yesno_sentence
-        if opt_no == 0: load_switch = MenuPreset().yesno(*yesno_sentence)
+        if opt_no == 0:
+            load_switch = MenuPreset().yesno(*yesno_sentence)
+            please_sent_lines = [please_choose_sent]
         elif opt_no == 1:
             load_switch = 0
-            please_choose_sent = sentence,please_choose_sent
+            please_sent_lines = sentence,please_choose_sent
         if load_switch == 1:
             return None
         else:
             savfile_list = FileFilter().files_ext('sav','.sav')
             menu_sav_list = Menu(savfile_list)
             while True:
-                menu_sav_list.title(*please_choose_sent)
+                menu_sav_list.title(*please_sent_lines)
                 menu_sav_list.run_menu()
                 self.selected_name = menu_sav_list.selected_menu
                 if self.selected_name == "돌아가기": break
