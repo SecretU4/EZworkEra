@@ -326,6 +326,75 @@ class ERBWrite(LoadFile):
         return self.erb_translated_list
 
 
+class ERBRemodel(ERBLoad):
+    """이미 존재하는 ERB 파일의 내용 수정을 위한 클래스"""
+    def __init__(self,NameDir,EncodeType):
+        super().__init__(NameDir,EncodeType)
+        self.make_bulk_lines()
+
+    def __make_dict(self,mod_num):
+        self.csvfile_dict = {}
+        self.csvtrans_infodict = MenuPreset().load_saved_data(0,"{}\n{}".format(
+            "CSV 변수 목록 추출 데이터를 불러오실 수 있습니다.",
+            "불러오실 경우 실행하실 때 선택하신 모드와 다르게 작동할 수 있습니다."))
+        if self.csvtrans_infodict == None:
+            if mod_num == 0: # {csv파일명:{숫자:csv변수명}}
+                self.csvtrans_infodict = CSVFunc().import_all_CSV(1)
+            elif mod_num == 1: # {csv파일명:{csv변수명:숫자}}
+                self.csvtrans_infodict = CSVFunc().import_all_CSV(2)
+        for filename in list(self.csvtrans_infodict.dict_main.keys()):
+            csvname = FileFilter().sep_filename(filename).upper()
+            self.csvfile_dict[csvname] = filename
+
+    def replace_csvvars(self,mod_num=0):
+        replaced_context_list = []
+        line_count = 0
+        self.__make_dict(mod_num)
+        for line in self.erb_context_list:
+            if line.strip().startswith(';'): pass
+            else:
+                wordlist = line.split()
+                for word in wordlist:
+                    for csvname in list(self.csvfile_dict.keys()):
+                        if csvname + ':' in word:
+                            split_colon = word.split(':')
+                            if len(split_colon) == 1: continue
+                            target = split_colon[-1]
+                            may_csv = split_colon[0]
+                            #TODO 더 나은 필터
+                            if may_csv != csvname:
+                                if may_csv.startswith(csvname) or may_csv.endswith(csvname):
+                                    for symbol in ['!','(','{',')','}','NOW','GETBIT','FIRSTTIME']:
+                                        may_csv = may_csv.replace(symbol,'')
+                                    if may_csv != csvname:
+                                        print("{}행 {} 1에서 필터링 문제 있음".format(line_count,word))
+                                        continue
+                                else:
+                                    print("{}행\n{} 내 {} 문제발생".format(line_count,line,word))
+                            if target.startswith('(') or target.startswith('{'):
+                                handle_target = list(target)
+                                handle_target.pop(0)
+                                target = ''.join(handle_target)
+                            elif target.endswith(')') or target.endswith('}'):
+                                handle_target = list(target)
+                                handle_target.pop()
+                                target = ''.join(handle_target)
+                            if mod_num == 0: # 숫자 필요
+                                if list(filter(str.isdecimal,target)) == False: continue
+                            elif mod_num == 1: # 단어 필요
+                                if list(filter(str.isdecimal,target)): continue
+                            try:
+                                r_word = word.replace(target,
+                                self.csvtrans_infodict.dict_main[self.csvfile_dict[csvname]].get(target))
+                            except TypeError:
+                                print("{}번째 행 오류발생".format(line_count))
+                            line = line.replace(word,r_word)
+                            break
+            replaced_context_list.append(line)
+            line_count += 1
+        return replaced_context_list
+
+
 class ERBFilter:
     def indent_maker(self,target_metalines): # metaline을 들여쓰기된 lines로 만듦
         self.filtered_lines = []
@@ -525,5 +594,18 @@ class ERBFunc:
            file_lines = ERBWrite(filename,encode_type,era_type,chara_num).txt_to_erblines(csvvar_dict)
            print("{}의 처리가 완료되었습니다.".format(filename))
            self.comp_lines.extend(file_lines)
+           file_count_check.how_much_done()
         erb_metainfo = ERBFilter().make_metainfo_lines(self.comp_lines,0,filename)
         return erb_metainfo
+
+    def replace_num_or_name(self,mod_num=0):
+        """0:숫자 > 변수, 1: 변수 > 숫자"""
+        result_infodict = InfoDict()
+        erb_files, encode_type = FileFilter().get_filelist('ERB')
+        file_count_check = StatusNum(erb_files,'ERB 파일')
+        file_count_check.how_much_there()
+        for filename in erb_files:
+            replaced_lines = ERBRemodel(filename,encode_type).replace_csvvars(mod_num)
+            result_infodict.add_dict(filename,replaced_lines)
+            file_count_check.how_much_done()
+        return result_infodict # {파일명:[바뀐줄]}
