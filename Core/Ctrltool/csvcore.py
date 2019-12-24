@@ -35,6 +35,10 @@ class CSVLoad(LoadFile):
 
 class CSVFunc:
     def import_all_CSV(self,mode_num=0):
+        """InfoDict 클래스를 받아 CSV 변수 자료형 생성
+        
+        {csv파일명:{csv변수명:숫자}} 또는 {csv파일명:{숫자:csv변수명}}
+        """
         print("추출을 시작합니다.")
         debug_log = MakeLog('csv_debug.log')
         debug_log.first_log()

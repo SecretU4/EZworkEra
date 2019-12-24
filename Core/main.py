@@ -23,7 +23,7 @@ while True:
         menu_dict_csv = {0: 'CSV 변수 목록 추출',1: 'CSV 변수 목록 추출(SRS 최적화)',
         2: 'CSV 변수 명칭 사전',3: '이전으로'}
         menu_csv = Menu(menu_dict_csv)
-        menu_csv.title("CSV 파일 처리 유틸리티입니다.")
+        menu_csv.title("CSV 파일 처리 유틸리티입니다.","따로 표기해놓지 않았다면 숫자:변수명 꼴입니다.")
         menu_csv.run_menu()
         if menu_csv.selected_num == 0:
             menu_dict_import_all_csv = {0: '모두',1:'CHARA 제외',

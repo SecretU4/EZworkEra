@@ -116,6 +116,7 @@ class ExportData:
         """
         # txt, erb 공용
         # erb metaline은 ERBFilter.indent_maker에서 텍스트.readlines형으로 양식화됨
+        switch_go_all = 0
         if self.target_data == None:
             print_data = MenuPreset()
             self.target_data = print_data.load_saved_data(0,"미리 실행된 자료가 없습니다.")
@@ -131,29 +132,49 @@ class ExportData:
             print("데이터가 선택되지 않았습니다.")
             return 0
         else:
-            checked_data = self.__data_type_check(self.target_data) # [{infodict},{infodict}]
-            checked_data.append({"돌아가기":"돌아가기"})
+            # [{사전명:{정보1:정보2}},{사전명:{정보1:정보2}}]
+            chk_dictlist = self.__data_type_check(self.target_data) # [{infodict},{infodict}]
+            checked_data = []
+            checked_data.extend(chk_dictlist)
+            checked_data.append({"돌아가기":1})
             chk_data_listdict = {}
+            if len(checked_data) > 2: checked_data.insert({"모두":0})
             for data in checked_data:
                 chk_data_listdict[checked_data.index(data)]=list(data.keys())[0]
             menu_chk_datalist = Menu(chk_data_listdict)
             chkdata_no = menu_chk_datalist.run_menu()
             selected_infodict = chk_data_listdict[chkdata_no]
-            if list(selected_infodict)[0] == "돌아가기": return 0
-            #TODO 복수의 InfoDict 데이터를 불러온 경우의 지원
-            unpacked_data = list(checked_data[0].values())
-            with LoadFile(self.dest_dir+result_filename,encode_type).readwrite() as txt_file:
-                if filetype == 'TXT':
-                    txt_file.write("{}에서 불러옴\n".format(self.target_name))
-                for context in unpacked_data:
+            if list(selected_infodict)[0] == "돌아가기":
+                selected_infodicts = None
+                return 0
+            elif list(selected_infodict)[0] == "모두":
+                selected_infodicts = chk_dictlist
+                switch_go_all = 1
+            else:
+                selected_infodicts = [checked_data[chkdata_no]]
+            infodict_count = 0
+            for infodict in selected_infodicts:
+                infodict_filename = list(infodict.keys())[infodict_count]
+                if switch_go_all == 1:
+                    result_filename = '{}.{}'.format(
+                        FileFilter().sep_filename(infodict_filename),filetype)
+                with LoadFile(self.dest_dir+result_filename,encode_type).readwrite() as txt_file:
+                    if filetype == 'TXT':
+                        txt_file.write("{}에서 불러옴\n".format(self.target_name))
+                    context = infodict[infodict_filename]
                     if option_num == 0:
-                        print("{}\n".format(context),file=txt_file)
+                        if type(context) == dict:
+                            for key in list(context.keys())
+                            print("{}:{}".format(key,context[key]),file=txt_file)
+                        else:
+                            print("{}\n".format(context),file=txt_file)
                     elif option_num == 1:
                         if type(context) == list: txt_file.writelines(context)
                         elif isinstance(context,ERBMetaInfo):
                             the_lines = ERBFunc().remodel_indent(target_metalines=context.linelist)
                             txt_file.writelines(the_lines)
                         else: print("텍스트화 할 수 없는 데이터입니다. 옵션을 바꿔 다시 시도해주세요.")
+                infodict_count += 1
 
     def to_SRS(self,srsname='autobuild'):
         self.cantwrite_srs_count = 0
