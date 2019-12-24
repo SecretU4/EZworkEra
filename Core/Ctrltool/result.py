@@ -164,8 +164,8 @@ class ExportData:
                     context = infodict[infodict_filename]
                     if option_num == 0:
                         if type(context) == dict:
-                            for key in list(context.keys())
-                            print("{}:{}".format(key,context[key]),file=txt_file)
+                            for key in list(context.keys()):
+                                print("{}:{}".format(key,context[key]),file=txt_file)
                         else:
                             print("{}\n".format(context),file=txt_file)
                     elif option_num == 1:
