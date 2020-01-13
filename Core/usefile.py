@@ -1,4 +1,4 @@
-"""프로그램 내에서 사용되는 파일 처리와 관련된 모듈
+"""프로그램 내에서 사용되는 범용 클래스형 모듈 중 LoadFile과 연계된 모듈
 
 Classes:
     LoadFile
@@ -6,6 +6,7 @@ Classes:
     FileFilter
     CustomInput
     MakeLog
+    LogPreset
     MenuPreset
 """
 
@@ -257,9 +258,9 @@ class MakeLog(LoadFile):
         """작업 시작 절차를 logfile에 기록함. 입력받은 인자가 없으면 시작 시간만을 입력함."""
         with self.addwrite() as log_open:
             if file_info == None:
-                log_open.write('\n{} 실행됨\n'.format(CommonSent.put_time))
+                log_open.write('\n[{}] Util Started\n'.format(CommonSent.put_time))
             else:
-                log_open.write('\n{}\n{} 불러오기 성공.\n'.format(CommonSent.put_time,file_info))
+                log_open.write('\n[{}] {} Loaded.\n'.format(CommonSent.put_time,file_info))
 
     def write_log(self,line='Defaultline'):
         """입력받은 str 타입 자료형을 logfile에 기록함.\n
@@ -280,7 +281,28 @@ class MakeLog(LoadFile):
     def write_loaded_log(self,filename):
         """작업 중 로드된 파일을 양식에 맞게 logfile에 기록함."""
         with self.addwrite() as log_open:
-            log_open.write("파일명: {}".format(filename))
+            log_open.write("{} 로드됨".format(filename))
+
+
+class LogPreset(MakeLog):
+    def __init__(self,option_num=0):
+        if option_num == 0:
+            NameDir = input("사용할 로그 파일명을 입력해주세요: ")
+        elif option_num == 1: NameDir = 'csvread.log'
+        elif option_num == 2: NameDir = 'erbread.log'
+        elif option_num == 3: NameDir = 'erbwrite.log'
+        elif option_num == 4: NameDir = 'output.log'
+        EncodeType = 'UTF-8'
+        super().__init__(NameDir,EncodeType)
+        self.first_log()
+
+    def if_decode_error(self):
+        self.write_log("""유니코드 에러가 발생했다면:
+오류코드 0xef는 UTF-8-sig, 다른 경우 cp932(일본어)나 cp949(한국어)로 시도하세요.\n
+        """)
+
+    def which_type_loaded(self,filetype):
+        self.write_log("{} 타입의 파일을 불러옴".format(filetype))
 
 
 class MenuPreset:

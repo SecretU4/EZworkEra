@@ -1,16 +1,25 @@
 # ERB 관련 모듈
 from customdb import ERBMetaInfo, InfoDict
-from usefile import FileFilter, LoadFile, MakeLog, MenuPreset
+from usefile import FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import StatusNum
 from System.xmlhandling import ERBGrammarXML, SettingXML
 from . import CSVFunc
 
 class ERBLoad(LoadFile):
+    def __init__(self,NameDir,EncodeType):
+        super().__init__(NameDir,EncodeType)
+        self.debug_log = LogPreset(2)
+
     def make_bulk_lines(self):
         with self.readonly() as erb_origin:
-            self.erb_context_list = erb_origin.readlines()
-            return self.erb_context_list
+            self.debug_log.write_loaded_log(self.NameDir)
+            try:
+                self.erb_context_list = erb_origin.readlines()
+            except UnicodeDecodeError as decode_error:
+                self.debug_log.write_error_log(decode_error,self.NameDir)
+                self.erb_context_list = []
+        return self.erb_context_list
 
     def search_line(self,*args,except_args=None):
         self.make_bulk_lines()
@@ -42,6 +51,7 @@ class ERBLoad(LoadFile):
                     self.targeted_list.append(line_word[loc_num])
         return self.targeted_list
 
+
 class ERBWrite(LoadFile):
     def __init__(self,NameDir,EncodeType,era_type,chara_num):
         super().__init__(NameDir,EncodeType)
@@ -49,6 +59,7 @@ class ERBWrite(LoadFile):
         self.chara_num = chara_num
         self.set_xml = SettingXML('EraSetting.xml')
         self.gram_xml = ERBGrammarXML('CustomMarkdown.xml')
+        self.debug_log = LogPreset(3)
         with self.readonly() as txt_origin:
             self.txt_bulklines = txt_origin.readlines()
 
@@ -350,6 +361,10 @@ class ERBRemodel(ERBLoad):
         #TODO 로그 파일 생성 방식 변경
         log_file = '{}.log'.format(FileFilter().sep_filename(self.NameDir))
         replaced_context_list = []
+        juel_symbols = ['PALAM','PARAM','UP','DOWN']
+        space_symbols = ['!','(','{',')','}','GETBIT','FIRSTTIME']
+        ex_symbols = ['NOWEX',]
+        base_symbols = ['UPBASE','DOWNBASE']
         line_count = 0
         self.__make_dict(mod_num)
         for line in self.erb_context_list:
@@ -358,19 +373,21 @@ class ERBRemodel(ERBLoad):
             else:
                 wordlist = line.split()
                 for word in wordlist:
+                    if ':' not in word: continue
+                    else:
+                        split_colon = word.split(':')
+                        target = split_colon[-1]
+                        may_csv = split_colon[0]
                     for csvname in list(self.csvfile_dict.keys()):
                         if csvname + ':' in word:
-                            split_colon = word.split(':')
-                            if len(split_colon) == 1: continue
-                            target = split_colon[-1]
-                            may_csv = split_colon[0]
                             #TODO 더 나은 필터
                             if may_csv != csvname:
                                 if may_csv.startswith(csvname) or may_csv.endswith(csvname):
-                                    for symbol in ['!','(','{',')','}','NOW','GETBIT','FIRSTTIME']:
-                                        may_csv = may_csv.replace(symbol,'')
+                                    for symbol in space_symbols: may_csv = may_csv.replace(symbol,'')
+                                    for symbol in ex_symbols: may_csv = may_csv.replace(symbol,'EX')
+                                    for symbol in base_symbols: may_csv = may_csv.replace(symbol,'BASE')
                                     if may_csv != csvname:
-                                        print("{}행 {} 1에서 필터링 문제 있음".format(line_count,word),file=log_file)
+                                        print("{}행 {} 에서 필터링 문제 있음".format(line_count,word),file=log_file)
                                         continue
                                 else:
                                     print("{}행\n{} 내 {} 문제발생".format(line_count,line,word),file=log_file)
@@ -415,7 +432,7 @@ class ERBFilter:
         self.command_count = 0
         skip_start = 0
         erb_info = ERBMetaInfo()
-        erb_log = MakeLog('erb_debug.log')
+        erb_log = LogPreset(2)
         erb_log.first_log(target_name)
         for line in bulk_lines:
             line = line.strip()
@@ -549,7 +566,7 @@ class ERBFunc:
         CommonSent.extract_finished()
         return self.result_infodict # {파일명:lines} 형태가 포함된 infodict
 
-    def search_csv_var(self,var_list=None):
+    def search_csv_var(self,var_list=None): #TODO 필터링 개선
         print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
         if var_list == None:
             var_list = CSVFunc().implement_csv_datalist('CSVfnclist.csv')
