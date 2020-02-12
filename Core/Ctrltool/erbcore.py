@@ -355,22 +355,20 @@ class ERBRemodel(ERBLoad):
                 self.csvtrans_infodict = CSVFunc().import_all_CSV(2)
 
     def replace_csvvars(self,mod_num=0):
+        self.__make_dict(mod_num)
         vfinder = ERBVFinder(self.csvtrans_infodict)
         replaced_context_list = []
-        line_count = 0
-        self.__make_dict(mod_num)
         for line in self.erb_context_list:
-            line_count += 1
-            if line.strip().startswith(';'): continue
-            find_list = vfinder.find_csvfnc_line(line)
-            if find_list == False: continue
-            rep_list = vfinder.change_var_index(find_list,mod_num)
-            orig_fncs = vfinder.print_csvfnc(rep_list)
-            comp_fncs = vfinder.print_csvfnc(rep_list,2)
-            for no in range(len(orig_fncs)):
-                orig_fnc = orig_fnc[no]
-                comp_fnc = comp_fncs[no]
-                line = line.replace(orig_fnc,comp_fnc)
+            if not line.strip().startswith(';'):
+                find_list = vfinder.find_csvfnc_line(line)
+                if find_list:
+                    rep_list = vfinder.change_var_index(find_list,mod_num)
+                    orig_fncs = vfinder.print_csvfnc(rep_list)
+                    comp_fncs = vfinder.print_csvfnc(rep_list,3)
+                    for no in range(len(orig_fncs)):
+                        orig_fnc = orig_fncs[no]
+                        comp_fnc = comp_fncs[no]
+                        line = line.replace(orig_fnc,comp_fnc)
             replaced_context_list.append(line)
         return replaced_context_list
 
@@ -566,10 +564,11 @@ class ERBVFinder:
             if result:
                 var_head, var_context, orig_head, p_noun = result
                 int_checker = list(filter(str.isdecimal,var_context))
-                if mod_num == 0 and int_checker == False: return var_context
-                elif mod_num == 1 and int_checker == list(var_context): return var_context
-                context_t = self.csv_infodict.dict_main[self.csv_fnames[var_head]].get(var_context)
-                found_result[index_count] = (var_head, context_t, orig_head, p_noun)
+                if (mod_num == 0 and int_checker) or (
+                    mod_num == 1 and int_checker != list(var_context)):
+                    context_t = self.csv_infodict.dict_main[self.csv_fnames[var_head]].get(var_context)
+                    found_result[index_count] = (var_head, (
+                        var_context, context_t), orig_head, p_noun)
             index_count += 1
         return found_result
 
@@ -578,19 +577,26 @@ class ERBVFinder:
 
         opt_no
             0: 디폴트. erb 내 원래 형태로 출력
-            1: csv에서 인식되는 형태로 출력 (대명사 제외)
-            2: csv에서 인식되는 형태로 출력 (대명사 포함)
+            1: csv에서 인식되는 형태로 출력 (대명사 포함)
+            2: csv에서 인식되는 형태로 출력 (대명사 제외)
+            3: (index 변환 사용시) erb 내 index 변환 행태로 출력
         """
         result_list = []
         if not comp_list: return None
         for fncinfo in comp_list:
             csvhead, context, orighead, pnoun = fncinfo
-            if opt_no == 1: head = csvhead
-            else:
-                if pnoun: context = pnoun + ':' + context
-                if opt_no == 0: head = orighead
-                elif opt_no == 2: head = csvhead
-            result_list.append('{}:{}'.format(head,context))
+            if isinstance(context,tuple): o_context, t_context = context
+            elif isinstance(context,str): o_context = t_context = context
+            else: raise TypeError
+            if opt_no == 0:
+                head, cont = orighead, o_context
+            elif opt_no in (1, 2):
+                head, cont = csvhead, o_context
+            elif opt_no == 3:
+                head, cont = orighead, t_context
+            if pnoun and opt_no in (0, 1, 3):
+                cont = pnoun + ':' + cont
+            result_list.append('{}:{}'.format(head,cont))
         return result_list
 
 

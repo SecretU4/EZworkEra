@@ -258,9 +258,9 @@ class MakeLog(LoadFile):
         """작업 시작 절차를 logfile에 기록함. 입력받은 인자가 없으면 시작 시간만을 입력함."""
         with self.addwrite() as log_open:
             if file_info == None:
-                log_open.write('\n[{}] Util Started\n'.format(CommonSent.put_time))
+                log_open.write('\n[{}] Util Started\n'.format(CommonSent.put_time()))
             else:
-                log_open.write('\n[{}] {} Loaded.\n'.format(CommonSent.put_time,file_info))
+                log_open.write('\n[{}] {} Loaded.\n'.format(CommonSent.put_time(),file_info))
 
     def write_log(self,line='Defaultline'):
         """입력받은 str 타입 자료형을 logfile에 기록함.\n
