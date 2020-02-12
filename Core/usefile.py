@@ -285,13 +285,15 @@ class MakeLog(LoadFile):
 
 
 class LogPreset(MakeLog):
-    def __init__(self,option_num=0):
-        if option_num == 0:
+    def __init__(self,opt_arg=0):
+        if opt_arg == 0:
             NameDir = input("사용할 로그 파일명을 입력해주세요: ")
-        elif option_num == 1: NameDir = 'csvread.log'
-        elif option_num == 2: NameDir = 'erbread.log'
-        elif option_num == 3: NameDir = 'erbwrite.log'
-        elif option_num == 4: NameDir = 'output.log'
+        elif opt_arg == 1: NameDir = 'csvread.log'
+        elif opt_arg == 2: NameDir = 'erbread.log'
+        elif opt_arg == 3: NameDir = 'erbwrite.log'
+        elif opt_arg == 4: NameDir = 'output.log'
+        elif type(opt_arg) == str: NameDir = opt_arg + '.log'
+        else: raise TypeError
         EncodeType = 'UTF-8'
         super().__init__(NameDir,EncodeType)
         self.first_log()

@@ -169,7 +169,7 @@ class ExportData:
         menu_select_name = Menu(menu_dict_select_name)
         menu_select_name.title(
             "변환된 파일을 어떤 위치에 저장할까요?",
-            "결과물 폴더에 저장시 원본 데이터가 손상될 수 있습니다."
+            "원본 폴더에 저장시 원본 데이터가 손상될 수 있습니다.",
             "결과물 데이터에 원본 위치 정보가 없다면 오류가 발생합니다.")
         name_mod = menu_select_name.run_menu()
         for infodict in selected_infodicts:

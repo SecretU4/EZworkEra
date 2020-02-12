@@ -53,7 +53,7 @@ while True:
 # [1] ERB 파일의 처리
     elif menu_main.selected_menu == 'ERB 파일 처리':
         print("ERB 파일 처리 유틸리티입니다. 현재 TW 파일 이외의 구동을 보장하지 않습니다.")
-        menu_dict_erb = {0: '사용된 CSV 변수 추출', 1: '구상추출', 2: '들여쓰기 교정',
+        menu_dict_erb = {0: 'ERB 내 CSV 변수 추출', 1: '구상추출', 2: '들여쓰기 교정',
         3: '구상 번역기', 4:'ERB 내 CSV 인덱스 변환', 5: '이전으로'}
         menu_erb = Menu(menu_dict_erb)
         menu_erb.run_menu()
