@@ -1,4 +1,5 @@
 # ERB 관련 모듈
+import re
 from customdb import ERBMetaInfo, InfoDict
 from usefile import FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
@@ -344,7 +345,6 @@ class ERBRemodel(ERBLoad):
         self.make_bulk_lines()
 
     def __make_dict(self,mod_num):
-        self.csvfile_dict = {}
         self.csvtrans_infodict = MenuPreset().load_saved_data(0,"{}\n{}".format(
             "CSV 변수 목록 추출 데이터를 불러오실 수 있습니다.",
             "불러오실 경우 실행하실 때 선택하신 모드와 다르게 작동할 수 있습니다."))
@@ -353,63 +353,24 @@ class ERBRemodel(ERBLoad):
                 self.csvtrans_infodict = CSVFunc().import_all_CSV(1)
             elif mod_num == 1: # {csv파일명:{csv변수명:숫자}}
                 self.csvtrans_infodict = CSVFunc().import_all_CSV(2)
-        for filename in list(self.csvtrans_infodict.dict_main.keys()):
-            csvname = FileFilter().sep_filename(filename).upper()
-            self.csvfile_dict[csvname] = filename
 
     def replace_csvvars(self,mod_num=0):
-        #TODO 로그 파일 생성 방식 변경
-        log_file = '{}.log'.format(FileFilter().sep_filename(self.NameDir))
+        vfinder = ERBVFinder(self.csvtrans_infodict)
         replaced_context_list = []
-        juel_symbols = ['PALAM','PARAM','UP','DOWN']
-        space_symbols = ['!','(','{',')','}','GETBIT','FIRSTTIME']
-        ex_symbols = ['NOWEX',]
-        base_symbols = ['UPBASE','DOWNBASE']
         line_count = 0
         self.__make_dict(mod_num)
         for line in self.erb_context_list:
             line_count += 1
-            if line.strip().startswith(';'): pass
-            else:
-                wordlist = line.split()
-                for word in wordlist:
-                    if ':' not in word: continue
-                    else:
-                        split_colon = word.split(':')
-                        target = split_colon[-1]
-                        may_csv = split_colon[0]
-                    for csvname in list(self.csvfile_dict.keys()):
-                        if csvname + ':' in word:
-                            #TODO 더 나은 필터
-                            if may_csv != csvname:
-                                if may_csv.startswith(csvname) or may_csv.endswith(csvname):
-                                    for symbol in space_symbols: may_csv = may_csv.replace(symbol,'')
-                                    for symbol in ex_symbols: may_csv = may_csv.replace(symbol,'EX')
-                                    for symbol in base_symbols: may_csv = may_csv.replace(symbol,'BASE')
-                                    if may_csv != csvname:
-                                        print("{}행 {} 에서 필터링 문제 있음".format(line_count,word),file=log_file)
-                                        continue
-                                else:
-                                    print("{}행\n{} 내 {} 문제발생".format(line_count,line,word),file=log_file)
-                            if target.startswith('(') or target.startswith('{'):
-                                handle_target = list(target)
-                                handle_target.pop(0)
-                                target = ''.join(handle_target)
-                            elif target.endswith(')') or target.endswith('}'):
-                                handle_target = list(target)
-                                handle_target.pop()
-                                target = ''.join(handle_target)
-                            if mod_num == 0: # 숫자 필요
-                                if list(filter(str.isdecimal,target)) == False: continue
-                            elif mod_num == 1: # 단어 필요
-                                if list(filter(str.isdecimal,target)): continue
-                            try:
-                                r_word = word.replace(target,
-                                self.csvtrans_infodict.dict_main[self.csvfile_dict[csvname]].get(target))
-                            except TypeError:
-                                print("{}번째 행 오류발생".format(line_count),file=log_file)
-                            line = line.replace(word,r_word)
-                            break
+            if line.strip().startswith(';'): continue
+            find_list = vfinder.find_csvfnc_line(line)
+            if find_list == False: continue
+            rep_list = vfinder.change_var_index(find_list,mod_num)
+            orig_fncs = vfinder.print_csvfnc(rep_list)
+            comp_fncs = vfinder.print_csvfnc(rep_list,2)
+            for no in range(len(orig_fncs)):
+                orig_fnc = orig_fnc[no]
+                comp_fnc = comp_fncs[no]
+                line = line.replace(orig_fnc,comp_fnc)
             replaced_context_list.append(line)
         return replaced_context_list
 
@@ -545,9 +506,98 @@ class ERBFilter:
         return erb_info
 
 
+class ERBVFinder:
+    """문장 대응 csv 변수 필터. csvdict은 infodict형의 csv정보를 요구함."""
+    def __init__(self,csvdict):
+        if isinstance(csvdict, InfoDict):
+            self.csv_infodict = csvdict
+            self.csv_fnames = dict()
+            for filename in list(self.csv_infodict.dict_main.keys()):
+                csvname = FileFilter().sep_filename(filename).upper()
+                self.csv_fnames[csvname] = filename
+            self.csv_head = list(self.csv_fnames.keys())
+        elif isinstance(csvdict, list): self.csv_head = csvdict
+        else: raise TypeError
+        self.juel_head = ['PALAM','PARAM','UP','DOWN']
+        self.ex_head = ['NOWEX',]
+        self.base_head = ['UPBASE','DOWNBASE']
+        self.csv_all_head = self.csv_head + self.juel_head + self.ex_head + self.base_head
+        re_varshead = '({})'.format('|'.join(self.csv_all_head))
+        self.symbol_filter = r':([^&=,;:\*\#\$\%\/\|\!\+\-\.\(\)\<\>\{\}\r\n]+)'
+        self.csvvar_re = re.compile(re_varshead+self.symbol_filter)
+        self.target_list = ['TARGET','PLAYER','MASTER','ASSI']
+
+    def find_csvfnc_line(self,line):
+        """해당하는 결과물이 있을 시 [(csv명,변수내용,ERB상 함수명,대명사)] 로 출력함.
+        이외는 None 리턴"""
+        if line.startswith(';'): return None
+        elif not line.startswith(';'): line = line.split(';')[0]
+        line_search = self.csvvar_re.findall(line) # [(var1,arg1),(var2,arg2)...]
+        find_result = []
+        for var_bulk in line_search:
+            var_head, var_context = var_bulk
+            var_head = var_head.strip()
+            var_context = var_context.strip()
+            if var_context in self.target_list:
+                csvvar_re_p = re.compile('{}:{}{}'.format(
+                    var_head,var_context,self.symbol_filter))
+                var_pnoun = var_context
+                context_t_filter = csvvar_re_p.match(line)
+                if context_t_filter == None: continue
+                var_context_t = context_t_filter.group(1).strip()
+            else:
+                var_pnoun = None
+                var_context_t = var_context
+            if var_head in self.juel_head: var_head_t = 'JUEL'
+            elif var_head in self.ex_head: var_head_t = 'EX'
+            elif var_head in self.base_head: var_head_t = 'BASE'
+            else: var_head_t = var_head
+            find_result.append((var_head_t,var_context_t,var_head,var_pnoun))
+        if find_result: return find_result
+        else: return None
+
+    def change_var_index(self,found_result,mod_num=0):
+        """find_csvfnc_line의 결과값을 받아 context을 변환한 후 다시 리스트 리턴.
+
+        mod_num 0 : 숫자 > 단어, mod_num 1 : 단어 > 숫자
+        """
+        index_count = 0
+        for result in found_result:
+            if result:
+                var_head, var_context, orig_head, p_noun = result
+                int_checker = list(filter(str.isdecimal,var_context))
+                if mod_num == 0 and int_checker == False: return var_context
+                elif mod_num == 1 and int_checker == list(var_context): return var_context
+                context_t = self.csv_infodict.dict_main[self.csv_fnames[var_head]].get(var_context)
+                found_result[index_count] = (var_head, context_t, orig_head, p_noun)
+            index_count += 1
+        return found_result
+
+    def print_csvfnc(self,comp_list,opt_no=0):
+        """line에서 추출된 erb내 변수 리스트를 다시 결합한 목록 리턴
+
+        opt_no
+            0: 디폴트. erb 내 원래 형태로 출력
+            1: csv에서 인식되는 형태로 출력 (대명사 제외)
+            2: csv에서 인식되는 형태로 출력 (대명사 포함)
+        """
+        result_list = []
+        if not comp_list: return None
+        for fncinfo in comp_list:
+            csvhead, context, orighead, pnoun = fncinfo
+            if opt_no == 1: head = csvhead
+            else:
+                if pnoun: context = pnoun + ':' + context
+                if opt_no == 0: head = orighead
+                elif opt_no == 2: head = csvhead
+            result_list.append('{}:{}'.format(head,context))
+        return result_list
+
+
 class ERBFunc:
     def __init__(self):
         self.result_infodict = InfoDict()
+        self.func_log = LogPreset('ERBwork')
 
     def extract_printfunc(self):
         print("PRINT/DATAFORM 구문의 추출을 시작합니다.")
@@ -566,23 +616,36 @@ class ERBFunc:
         CommonSent.extract_finished()
         return self.result_infodict # {파일명:lines} 형태가 포함된 infodict
 
-    def search_csv_var(self,var_list=None): #TODO 필터링 개선
+    def search_csv_var(self,csvvar_list=None):
         print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
-        if var_list == None:
-            var_list = CSVFunc().implement_csv_datalist('CSVfnclist.csv')
         erb_files, encode_type = FileFilter().get_filelist('ERB')
+        if csvvar_list == None:
+            csvvar_list = CSVFunc().implement_csv_datalist('CSVfnclist.csv')
+        vfinder = ERBVFinder(csvvar_list)
         file_count_check = StatusNum(erb_files,'파일')
         file_count_check.how_much_there()
         for filename in erb_files:
-            filtered_con_list = None
-            bulk_lines = ERBLoad(filename, encode_type)
-            var_context_list = bulk_lines.search_line(*var_list,except_args=['name'])
-            if bool(var_context_list) is True:
-                filtered_con_list = DataFilter().dup_filter(var_context_list)
-                self.result_infodict.add_dict(filename,filtered_con_list)
+            erb_bulk = ERBLoad(filename, encode_type).make_bulk_lines()
+            file_results = []
+            for line in erb_bulk:
+                vars_list = vfinder.find_csvfnc_line(line)
+                if vars_list: file_results.extend(vars_list)
+            dup_res_list = DataFilter().dup_filter(file_results)
+            var_check = dict()
+            for fnc_info in dup_res_list:
+                fnchead, fnctext, _, _ = fnc_info
+                if fnchead not in var_check.keys(): var_check[fnchead] = list()
+                var_check[fnchead].append(fnctext)
+            result_lines = ['파일명: {}에서 이하의 변수가 발견됨.\n\n'.format(filename)]
+            for varkey in var_check.keys():
+                context_list = DataFilter().dup_filter(var_check[varkey])
+                result_lines.append(varkey + '를 참조함\n')
+                result_lines.append(', '.join(context_list))
+                result_lines.append('\n\n')
+            self.result_infodict.add_dict(filename,result_lines)
             file_count_check.how_much_done()
         CommonSent.extract_finished()
-        return self.result_infodict # {파일명:lines} 형태가 포함된 infodict
+        return self.result_infodict # {파일명:} 형태가 포함된 infodict
 
     def remodel_indent(self,metainfo_option_num=None,target_metalines=None):
         if target_metalines == None:
