@@ -117,5 +117,6 @@ dump.*
 debug*.txt
 *.erb
 *.exe
+Archive/
 ResultFiles/
 sav/

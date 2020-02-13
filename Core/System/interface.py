@@ -44,7 +44,7 @@ class Menu:
         """메뉴 제목용 함수. 메뉴 내 문장 출력에도 사용 가능"""
         CommonSent.print_line()
         for title_name in title_names:
-            print(title_name.center(100," "))
+            print(title_name.center(110," "))
         CommonSent.print_line()
 
     def run_menu(self):

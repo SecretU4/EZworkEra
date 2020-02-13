@@ -38,9 +38,9 @@ class CommonSent:
         time.sleep(0.5)
 
     @staticmethod
-    def print_line():
+    def print_line(char='='):
         """구분선 생성"""
-        print("".center(100,"="))
+        print("".center(110,char))
 
     @staticmethod
     def extract_finished():
@@ -50,7 +50,7 @@ class CommonSent:
     @staticmethod
     def put_time():
         """호출시의 시간 출력"""
-        return time.strftime('%Y/%m/%d %H:%M',time.localtime(time.time()))
+        return time.strftime('%Y/%m/%d %H:%M:%S',time.localtime(time.time()))
 
 
 class DataFilter:

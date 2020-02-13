@@ -1,4 +1,4 @@
-"""프로그램 내에서 사용되는 파일 처리와 관련된 모듈
+"""프로그램 내에서 사용되는 범용 클래스형 모듈 중 LoadFile과 연계된 모듈
 
 Classes:
     LoadFile
@@ -6,6 +6,7 @@ Classes:
     FileFilter
     CustomInput
     MakeLog
+    LogPreset
     MenuPreset
 """
 
@@ -257,9 +258,9 @@ class MakeLog(LoadFile):
         """작업 시작 절차를 logfile에 기록함. 입력받은 인자가 없으면 시작 시간만을 입력함."""
         with self.addwrite() as log_open:
             if file_info == None:
-                log_open.write('\n{} 실행됨\n'.format(CommonSent.put_time))
+                log_open.write('\n[{}] Util Started\n'.format(CommonSent.put_time()))
             else:
-                log_open.write('\n{}\n{} 불러오기 성공.\n'.format(CommonSent.put_time,file_info))
+                log_open.write('\n[{}] {} Loaded.\n'.format(CommonSent.put_time(),file_info))
 
     def write_log(self,line='Defaultline'):
         """입력받은 str 타입 자료형을 logfile에 기록함.\n
@@ -280,7 +281,38 @@ class MakeLog(LoadFile):
     def write_loaded_log(self,filename):
         """작업 중 로드된 파일을 양식에 맞게 logfile에 기록함."""
         with self.addwrite() as log_open:
-            log_open.write("파일명: {}".format(filename))
+            log_open.write("{} 로드됨".format(filename))
+
+    def end_log(self,workname=''):
+        with self.addwrite() as log_open:
+            log_open.wirte(workname + "작업 성공적으로 종료됨")
+
+
+class LogPreset(MakeLog):
+    def __init__(self,opt_arg=0):
+        if type(opt_arg) == int:
+            NameDir = 'debug.log'
+            if opt_arg == 0: workclass = 'General'
+            elif opt_arg == 1: workclass = 'CSVread'
+            elif opt_arg == 2: workclass = 'ERBread'
+            elif opt_arg == 3: workclass = 'ERBwrite'
+            elif opt_arg == 4: workclass = 'Output'
+            else: workclass = None
+        elif type(opt_arg) == str:
+            NameDir = opt_arg + '.log'
+            workclass = 'Not Defined'
+        else: raise TypeError
+        EncodeType = 'UTF-8'
+        super().__init__(NameDir,EncodeType)
+        self.first_log(workclass)
+
+    def if_decode_error(self):
+        self.write_log("""유니코드 에러가 발생했다면:
+오류코드 0xef는 UTF-8-sig, 다른 경우 cp932(일본어)나 cp949(한국어)로 시도하세요.\n
+        """)
+
+    def which_type_loaded(self,filetype):
+        self.write_log("{} 타입의 파일을 불러옴".format(filetype))
 
 
 class MenuPreset:
@@ -343,17 +375,19 @@ class MenuPreset:
         yesno_sentence = "저장된 데이터 파일을 불러오시겠습니까?"
         please_choose_sent = "불러올 데이터 파일을 선택해주세요."
         if isinstance(sentence,str): yesno_sentence = sentence,yesno_sentence
-        if opt_no == 0: load_switch = MenuPreset().yesno(*yesno_sentence)
+        if opt_no == 0:
+            load_switch = MenuPreset().yesno(*yesno_sentence)
+            please_sent_lines = [please_choose_sent]
         elif opt_no == 1:
             load_switch = 0
-            please_choose_sent = sentence,please_choose_sent
+            please_sent_lines = sentence,please_choose_sent
         if load_switch == 1:
             return None
         else:
             savfile_list = FileFilter().files_ext('sav','.sav')
             menu_sav_list = Menu(savfile_list)
             while True:
-                menu_sav_list.title(*please_choose_sent)
+                menu_sav_list.title(*please_sent_lines)
                 menu_sav_list.run_menu()
                 self.selected_name = menu_sav_list.selected_menu
                 if self.selected_name == "돌아가기": break
