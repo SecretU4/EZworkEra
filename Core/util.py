@@ -38,9 +38,9 @@ class CommonSent:
         time.sleep(0.5)
 
     @staticmethod
-    def print_line():
+    def print_line(char='='):
         """구분선 생성"""
-        print("".center(100,"="))
+        print("".center(110,char))
 
     @staticmethod
     def extract_finished():
