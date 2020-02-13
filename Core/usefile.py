@@ -283,20 +283,28 @@ class MakeLog(LoadFile):
         with self.addwrite() as log_open:
             log_open.write("{} 로드됨".format(filename))
 
+    def end_log(self,workname=''):
+        with self.addwrite() as log_open:
+            log_open.wirte(workname + "작업 성공적으로 종료됨")
+
 
 class LogPreset(MakeLog):
     def __init__(self,opt_arg=0):
-        if opt_arg == 0:
-            NameDir = input("사용할 로그 파일명을 입력해주세요: ")
-        elif opt_arg == 1: NameDir = 'csvread.log'
-        elif opt_arg == 2: NameDir = 'erbread.log'
-        elif opt_arg == 3: NameDir = 'erbwrite.log'
-        elif opt_arg == 4: NameDir = 'output.log'
-        elif type(opt_arg) == str: NameDir = opt_arg + '.log'
+        if type(opt_arg) == int:
+            NameDir = 'debug.log'
+            if opt_arg == 0: workclass = 'General'
+            elif opt_arg == 1: workclass = 'CSVread'
+            elif opt_arg == 2: workclass = 'ERBread'
+            elif opt_arg == 3: workclass = 'ERBwrite'
+            elif opt_arg == 4: workclass = 'Output'
+            else: workclass = None
+        elif type(opt_arg) == str:
+            NameDir = opt_arg + '.log'
+            workclass = 'Not Defined'
         else: raise TypeError
         EncodeType = 'UTF-8'
         super().__init__(NameDir,EncodeType)
-        self.first_log()
+        self.first_log(workclass)
 
     def if_decode_error(self):
         self.write_log("""유니코드 에러가 발생했다면:
