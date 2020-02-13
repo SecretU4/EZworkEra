@@ -36,7 +36,7 @@ class LoadFile:
 
     def readwrite(self):
         """처음부터 쓰기"""
-        return open(self.NameDir, 'w', encoding=self.EncodeType, newline='')
+        return open(self.NameDir, 'w', encoding=self.EncodeType)
 
     def readonly(self):
         """읽기 전용"""
@@ -44,7 +44,7 @@ class LoadFile:
 
     def addwrite(self):
         """있던 내용 뒤에 추가해 쓰기"""
-        return open(self.NameDir, 'a', encoding=self.EncodeType, newline='')
+        return open(self.NameDir, 'a', encoding=self.EncodeType)
 
 
 class DirFilter:
