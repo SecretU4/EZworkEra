@@ -2,8 +2,10 @@
 
 Classes:
     ExportData
+    SubFilter
     ResultFunc
 """
+import re
 import os
 from customdb import ERBMetaInfo, InfoDict
 from usefile import DirFilter, FileFilter, LoadFile, LogPreset, MenuPreset
@@ -87,6 +89,7 @@ class ExportData:
 
     def __SRS_multi_write(self, orig_dict, trans_dict, keyname, opt_no = 0):
         """SRS용 교차출력 함수. 유효하지 않은 내용 판단이 동시에 이루어짐."""
+        self.worked_switch = 0
         if orig_dict == None or trans_dict == None:
             print("SRS를 작성할 수 없습니다.")
             return None
@@ -102,6 +105,7 @@ class ExportData:
                         self.log_file.write_log(
                             '{}번 숫자의 내용이 빈칸입니다.\n'.format(total_key))
                         self.cantwrite_srs_count += 1
+                        continue
                     try: # 중복변수 존재 유무 검사
                         self.for_dup_vals.index(orig_dict[total_key])
                     except ValueError:
@@ -117,6 +121,7 @@ class ExportData:
                                 continue
                         srs_file.write("{}\n{}\n\n".format(
                             orig_text, trans_text))
+                        self.worked_switch = 1
                 else:
                     if total_key not in orig_keys:
                         error_dictname = self.orig_dictname
@@ -126,6 +131,7 @@ class ExportData:
                         "{}번 숫자가 {}에 존재하지 않습니다.\n".format(total_key, error_dictname))
                     srs_file.write(";숫자 {} 확인필요\n\n".format(total_key))
                     self.cantwrite_srs_count += 1
+        if not self.worked_switch: self.log_file.write_log("전체 중복 또는 오류로 인해 자료 전체 통과됨\n")
 
     def to_TXT(self, filetype='TXT', option_num=0, encode_type='UTF-8'):
         """입력받은 데이터를 텍스트 파일 형태로 출력하는 함수.
@@ -216,6 +222,7 @@ class ExportData:
         self.log_file.sucessful_done()
 
     def to_SRS(self, srs_opt = 0, srsname='autobuild'):
+        total_worked_switch = 0
         self.log_file.workclass = 'SRSWrite'
         self.cantwrite_srs_count = 0
         while True:
@@ -246,6 +253,10 @@ class ExportData:
                 else:
                     srs_file.write("[-TRIM-][-SORT-][-WORDWRAP-]\n\n")
                 # TRIM:앞뒤공백 제거, SORT:긴 순서/알파벳 정렬, WORDWRAP:정확히 단어 단위일때만 치환
+        else:
+            with LoadFile(self.srs_filename,'UTF-8-sig').readonly() as srs_preread:
+                bulk_srs = srs_preread.read()
+                self.for_dup_vals = SubFilter().srs_check_dup(bulk_srs)
         for num in range(len(orig_dictinfo)):
             try:
                 self.orig_dictname = orig_dictnames[num]
@@ -271,11 +282,25 @@ class ExportData:
             orig_valdict = orig_dictinfo.get(self.orig_dictname)
             trans_valdict = trans_dictinfo.get(self.trans_dictname)
             self.__SRS_multi_write(orig_valdict, trans_valdict, keyname, srs_opt)
+            total_worked_switch += self.worked_switch
             # 이 단계에서 들어오는 valdict = {숫자, 데이터} 형식
-        if self.cantwrite_srs_count != 0:
-            print("{}쌍의 데이터가 정확히 작성되지 못했습니다. debug.log를 확인해주세요.".format(
-                self.cantwrite_srs_count))
+        if total_worked_switch and self.cantwrite_srs_count == 0: pass
+        else:
+            if not total_worked_switch:
+                print("입력된 정보로 이전에 만들어진 SRS 파일이거나 오류로 인해 SRS의 가필이 이루어지지 않았습니다.")
+            elif self.cantwrite_srs_count != 0:
+                print("{}쌍의 데이터가 정확히 작성되지 못했습니다.".format(self.cantwrite_srs_count))
+            print("{}를 확인해주세요.".format(self.log_file.NameDir))
         self.log_file.sucessful_done()
+
+
+class SubFilter:
+    wholeword = r'[^,;\r\n]+'
+
+    def srs_check_dup(self,textbulk):
+        srs_textfilter = re.compile('{1}({0}){1}({0}){1}'.format(self.wholeword,os.linesep))
+        found_list = list(map(lambda x: x[0] ,srs_textfilter.findall(textbulk)))
+        return DataFilter().dup_filter(found_list)
 
 
 class ResultFunc:
