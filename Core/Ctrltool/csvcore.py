@@ -34,19 +34,21 @@ class CSVLoad(LoadFile):
 
 
 class CSVFunc:
+    def __init__(self):
+        self.debug_log = LogPreset(1)
+
     def import_all_CSV(self,mode_num=0):
         """InfoDict 클래스를 받아 CSV 변수 자료형 생성
         
         {csv파일명:{csv변수명:숫자}} 또는 {csv파일명:{숫자:csv변수명}}
         """
         print("추출을 시작합니다.")
-        debug_log = LogPreset(1)
         csv_files, encode_type = FileFilter().get_filelist('CSV')
         self.dic_assemble = InfoDict()
-        count_check = StatusNum(csv_files,'파일',debug_log.NameDir)
+        count_check = StatusNum(csv_files,'파일',self.debug_log.NameDir)
         count_check.how_much_there()
         for filename in csv_files:
-            debug_log.write_loaded_log(filename)
+            self.debug_log.write_loaded_log(filename)
             open_csv = CSVLoad(filename, encode_type)
             if mode_num <= 2:
                 if mode_num  == 0: # 구별없이 전부
@@ -78,44 +80,44 @@ class CSVFunc:
                 try:
                     open_csv.core_csv(*option_tuple)
                 except UnicodeDecodeError as UniDecode:
-                    debug_log.write_error_log(UniDecode,filename)
+                    self.debug_log.write_error_log(UniDecode,filename)
                     count_check.error_num += 1
             open_csv.dict_csvdata = DataFilter(
             ).erase_quote(open_csv.dict_csvdata, ';')
             self.dic_assemble.add_dict(filename,open_csv.dict_csvdata)
             count_check.how_much_done()
-        if count_check.error_num > 0: debug_log.if_decode_error()
+        if count_check.error_num > 0: self.debug_log.if_decode_error()
         CommonSent.extract_finished()
         CommonSent.print_line()
+        self.debug_log.sucessful_done()
         return self.dic_assemble
 
     def implement_csv_datalist(self,csvname,encode_type='UTF-8'):
-        debug_log = LogPreset(1)
         error_check = 0
         csv_data = CSVLoad(csvname,encode_type)
-        debug_log.write_loaded_log(csvname)
+        self.debug_log.write_loaded_log(csvname)
         try:
             csv_data.core_csv()
         except UnicodeDecodeError as UniDecode:
-            debug_log.write_error_log(UniDecode)
+            self.debug_log.write_error_log(UniDecode)
             error_check += 1
         csv_data.list_csvdata = DataFilter().dup_filter(csv_data.list_csvdata)
-        if error_check > 0: debug_log.if_decode_error()
+        if error_check > 0: self.debug_log.if_decode_error()
+        self.debug_log.sucessful_done()
         return csv_data.list_csvdata
 
     def make_csv_var_dict(self):
         """{csv변수명:[파일명,번호]} 형태 딕셔너리 제작"""
         print("csv 변수 대응 딕셔너리를 제작합니다.")
-        debug_log = LogPreset(1)
         csv_files, encode_type = FileFilter().get_filelist('CSV')
-        count_check = StatusNum(csv_files,'파일',debug_log.NameDir)
+        count_check = StatusNum(csv_files,'파일',self.debug_log.NameDir)
         count_check.how_much_there()
         csvvar_dict = {}
         all_var_list = []
         dup_count = 0
         for csvname in csv_files:
             csv_data = CSVLoad(csvname,encode_type)
-            debug_log.write_loaded_log(csvname)
+            self.debug_log.write_loaded_log(csvname)
             try:
                 csv_data.core_csv(1) # {변수명:숫자}
                 for var in csv_data.dict_csvdata.keys():
@@ -133,12 +135,13 @@ class CSVFunc:
                             csvvar_dict[nospace_var] = [csvname,int(csv_data.dict_csvdata[core_var])]
                     except ValueError: continue
             except UnicodeDecodeError as UniDecode:
-                debug_log.write_error_log(UniDecode,csvname)
+                self.debug_log.write_error_log(UniDecode,csvname)
                 count_check.error_num += 1
             count_check.how_much_done()
         total_dup = len(all_var_list) - len(set(all_var_list))
         if dup_count != 0: print("{}건의 중복변수가 존재합니다. 추후 유의해주세요.".format(total_dup))
-        if count_check.error_num > 0: debug_log.if_decode_error()
+        if count_check.error_num > 0: self.debug_log.if_decode_error()
         CommonSent.extract_finished()
         CommonSent.print_line()
+        self.debug_log.sucessful_done()
         return csvvar_dict

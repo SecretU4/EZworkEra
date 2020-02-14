@@ -336,6 +336,7 @@ class ERBWrite(LoadFile):
         if self.__csvvar_dup_count != 0:
             print("중의적인 csv변수가 발견되었습니다. '!중복변수!'를 결과물에서 검색하세요.")
         self.erb_translated_list.insert(0,';{}에서 가져옴\n'.format(self.NameDir))
+        self.debug_log.end_log()
         return self.erb_translated_list
 
 
@@ -515,6 +516,7 @@ class ERBFilter:
                 if option_num == 1: continue
                 erb_info.add_line_list(line)
                 erb_log.write_error_log('미상정',line)
+        erb_log.sucessful_done()
         return erb_info
 
 
@@ -634,6 +636,7 @@ class ERBFunc:
             self.result_infodict.add_dict(filename,printfunc_list)
             file_count_check.how_much_done()
         CommonSent.extract_finished()
+        self.func_log.sucessful_done()
         return self.result_infodict # {파일명:lines} 형태가 포함된 infodict
 
     def search_csv_var(self,csvvar_list=None):
@@ -666,6 +669,7 @@ class ERBFunc:
             self.result_infodict.add_dict(filename,result_lines)
             file_count_check.how_much_done()
         CommonSent.extract_finished()
+        self.func_log.sucessful_done()
         return self.result_infodict # {파일명:정보 텍스트} 형태의 infodict
 
     def remodel_indent(self,metainfo_option_num=None,target_metalines=None):
@@ -685,6 +689,7 @@ class ERBFunc:
         else:
             result_dataset = ERBFilter().indent_maker(target_metalines) # [erb 텍스트 라인]
         CommonSent.extract_finished()
+        self.func_log.sucessful_done()
         return result_dataset
 
     def translate_txt_to_erb(self,era_type,csvvar_dict):
@@ -699,6 +704,7 @@ class ERBFunc:
            self.comp_lines.extend(file_lines)
            file_count_check.how_much_done()
         erb_metainfo = ERBFilter().make_metainfo_lines(self.comp_lines,0,filename)
+        self.func_log.sucessful_done()
         return erb_metainfo
 
     def replace_num_or_name(self,mod_num=0):
@@ -712,4 +718,5 @@ class ERBFunc:
             result_infodict.add_dict(filename,replaced_lines)
             file_count_check.how_much_done()
         CommonSent.extract_finished()
+        self.func_log.sucessful_done()
         return result_infodict # {파일명:[바뀐줄]}

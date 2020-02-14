@@ -92,8 +92,8 @@ while True:
                 last_work = erb_replace_csvvar_infodict
             if last_work != None:
                 MenuPreset().shall_save_data(last_work,sav_datatype)
-                make_erb_yn = MenuPreset().yesno("지금 바로 데이터를 erb화 할까요?")
-                if make_erb_yn == 0:
+                make_erb_yn = MenuPreset().yesno(1,"지금 바로 데이터를 erb화 할까요?")
+                if make_erb_yn:
                     ResultFunc().make_result(menu_erb.selected_menu,last_work,1)
         if menu_erb.selected_menu != '이전으로':
             last_work_name = menu_erb.selected_menu

@@ -170,7 +170,7 @@ class FileFilter:
         입력 인자는 파일 목록화할 확장자."""
         user_input = CustomInput(filetype)
         target_dir = user_input.input_option(1)
-        self.option_num = MenuPreset().yesno("하위폴더까지 포함해 진행하시겠습니까?")
+        self.option_num = MenuPreset().yesno(0,"하위폴더까지 포함해 진행하시겠습니까?")
         encode_type = MenuPreset().encode()
         files = self.files_ext(target_dir, '.'+filetype)
         return files,encode_type
@@ -258,9 +258,9 @@ class MakeLog(LoadFile):
         """작업 시작 절차를 logfile에 기록함. 입력받은 인자가 없으면 시작 시간만을 입력함."""
         with self.addwrite() as log_open:
             if file_info == None:
-                log_open.write('\n[{}] Util Started\n'.format(CommonSent.put_time()))
+                log_open.write('[{}] Util Started\n'.format(CommonSent.put_time()))
             else:
-                log_open.write('\n[{}] {} Loaded.\n'.format(CommonSent.put_time(),file_info))
+                log_open.write('[{}] {} Loaded\n'.format(CommonSent.put_time(),file_info))
 
     def write_log(self,line='Defaultline'):
         """입력받은 str 타입 자료형을 logfile에 기록함.\n
@@ -274,18 +274,19 @@ class MakeLog(LoadFile):
         target은 선택사항이고, 해당 경우 error_code만 입력됨.
         """
         with self.addwrite() as log_open:
-            log_open.write('{} 오류 발생!'.format(error_code))
+            log_open.write('{} 오류 발생!\n'.format(error_code))
             if target != None:
-                log_open.write('발생 위치: {}'.format(target))
+                log_open.write('발생 위치: {}\n'.format(target))
 
     def write_loaded_log(self,filename):
         """작업 중 로드된 파일을 양식에 맞게 logfile에 기록함."""
         with self.addwrite() as log_open:
-            log_open.write("{} 로드됨".format(filename))
+            log_open.write("{} loaded\n".format(filename))
 
     def end_log(self,workname=''):
         with self.addwrite() as log_open:
-            log_open.wirte(workname + "작업 성공적으로 종료됨")
+            log_open.write("[{}] {} done\n\n".format(
+                CommonSent.put_time(),workname))
 
 
 class LogPreset(MakeLog):
@@ -300,27 +301,30 @@ class LogPreset(MakeLog):
             else: workclass = None
         elif type(opt_arg) == str:
             NameDir = opt_arg + '.log'
-            workclass = 'Not Defined'
+            workclass = opt_arg
         else: raise TypeError
         EncodeType = 'UTF-8'
         super().__init__(NameDir,EncodeType)
         self.first_log(workclass)
+        self.workclass = workclass
 
     def if_decode_error(self):
         self.write_log("""유니코드 에러가 발생했다면:
-오류코드 0xef는 UTF-8-sig, 다른 경우 cp932(일본어)나 cp949(한국어)로 시도하세요.\n
+오류코드 0xef는 UTF-8-sig, 다른 경우 cp932(일본어)나 cp949(한국어)로 시도하세요.\n\n
         """)
 
     def which_type_loaded(self,filetype):
-        self.write_log("{} 타입의 파일을 불러옴".format(filetype))
+        self.write_log("{} type file loaded\n".format(filetype))
 
+    def sucessful_done(self):
+        self.end_log(self.workclass)
 
 class MenuPreset:
     """Menu 클래스를 사용한 자주 사용되는 프리셋 모음.
 
     Functions:
         encode()
-        yesno(sentence)
+        yesno(reverse,sentence)
         shall_save_data(data,datatype)
         load_saved_data(opt_no,[sentence])
     """
@@ -340,19 +344,22 @@ class MenuPreset:
             EncodeType = 'cp949'
         return EncodeType
 
-    def yesno(self,*sentences):
+    def yesno(self,reverse,*sentences):
         """예/아니오 선택창. sentence로 선택창 앞에 문자열 출력 필요."""
         yesno_dict={0:'예',1:'아니오'}
         yesno = Menu(yesno_dict)
         yesno.title(*sentences)
         yesno.run_menu()
-        return yesno.selected_num
+        if reverse:
+            if yesno.selected_num == 0: return 1
+            elif yesno.selected_num == 1: return 0
+        else: return yesno.selected_num
 
     def shall_save_data(self,data,datatype=None):
         """추출된 데이터의 저장 메뉴. data가 저장될 데이터. 필요시 datatype 입력
         * 같은 이름의 sav파일 작성 불가.
         """
-        menu_save = MenuPreset().yesno("출력된 데이터를 외부 파일에 저장하시겠습니까?")
+        menu_save = MenuPreset().yesno(0,"출력된 데이터를 외부 파일에 저장하시겠습니까?")
         DirFilter('sav').dir_exist()
         if menu_save == 0:
             while True:
@@ -376,7 +383,7 @@ class MenuPreset:
         please_choose_sent = "불러올 데이터 파일을 선택해주세요."
         if isinstance(sentence,str): yesno_sentence = sentence,yesno_sentence
         if opt_no == 0:
-            load_switch = MenuPreset().yesno(*yesno_sentence)
+            load_switch = MenuPreset().yesno(0,*yesno_sentence)
             please_sent_lines = [please_choose_sent]
         elif opt_no == 1:
             load_switch = 0
