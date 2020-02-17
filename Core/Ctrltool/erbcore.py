@@ -43,16 +43,6 @@ class ERBLoad(LoadFile):
                         self.targeted_list.append(line)
         return self.targeted_list
 
-    def search_word(self,loc_num,*args):
-        self.make_bulk_lines()
-        self.targeted_list = []
-        for line in self.erb_context_list:
-            line_word = line.split()
-            for target in args:
-                if target in line_word[loc_num]:
-                    self.targeted_list.append(line_word[loc_num])
-        return self.targeted_list
-
 
 class ERBWrite(LoadFile):
     def __init__(self,NameDir,EncodeType,era_type,chara_num):
@@ -643,7 +633,7 @@ class ERBFunc:
         print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
         erb_files, encode_type = FileFilter().get_filelist('ERB')
         if csvvar_list == None:
-            csvvar_list = CSVFunc().implement_csv_datalist('CSVfnclist.csv')
+            csvvar_list = CSVFunc().single_csv_read('CSVfnclist.csv',opt=2)
         vfinder = ERBVFinder(csvvar_list)
         file_count_check = StatusNum(erb_files,'파일')
         file_count_check.how_much_there()
@@ -709,14 +699,23 @@ class ERBFunc:
 
     def replace_num_or_name(self,mod_num=0):
         """0:숫자 > 변수, 1: 변수 > 숫자"""
-        result_infodict = InfoDict()
         erb_files, encode_type = FileFilter().get_filelist('ERB')
         file_count_check = StatusNum(erb_files,'ERB 파일')
         file_count_check.how_much_there()
         for filename in erb_files:
             replaced_lines = ERBRemodel(filename,encode_type).replace_csvvars(mod_num)
-            result_infodict.add_dict(filename,replaced_lines)
+            self.result_infodict.add_dict(filename,replaced_lines)
             file_count_check.how_much_done()
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
-        return result_infodict # {파일명:[바뀐줄]}
+        return self.result_infodict # {파일명:[바뀐줄]}
+
+    def erb_trans_helper(self,files_op=0):
+        #TODO 공사중
+        print("원본 erb의 디렉토리를 지정해주세요.")
+        o_files, o_encode_type = FileFilter(1).get_filelist('ERB')
+        print("번역본 erb의 디렉토리를 지정해주세요.")
+        t_files, t_encode_type = FileFilter(1).get_filelist('ERB')
+        if files_op != 0:
+            files_dict = CSVFunc().single_csv_read('CompareErb.csv')
+        pass

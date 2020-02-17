@@ -92,19 +92,22 @@ class CSVFunc:
         self.debug_log.sucessful_done()
         return self.dic_assemble
 
-    def implement_csv_datalist(self,csvname,encode_type='UTF-8'):
-        error_check = 0
+    def single_csv_read(self,csvname,encode_type='UTF-8',opt=0):
         csv_data = CSVLoad(csvname,encode_type)
         self.debug_log.write_loaded_log(csvname)
         try:
-            csv_data.core_csv()
+            if opt in (0,1):
+                csv_data.core_csv(opt)
+                the_result = csv_data.dict_csvdata
+            elif opt == 2:
+                csv_data.core_csv()
+                the_result = DataFilter().dup_filter(csv_data.list_csvdata)
         except UnicodeDecodeError as UniDecode:
+            self.debug_log.if_decode_error()
             self.debug_log.write_error_log(UniDecode)
-            error_check += 1
-        csv_data.list_csvdata = DataFilter().dup_filter(csv_data.list_csvdata)
-        if error_check > 0: self.debug_log.if_decode_error()
+            the_result = None
         self.debug_log.sucessful_done()
-        return csv_data.list_csvdata
+        return the_result
 
     def make_csv_var_dict(self):
         """{csv변수명:[파일명,번호]} 형태 딕셔너리 제작"""

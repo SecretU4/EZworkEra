@@ -138,18 +138,21 @@ class FileFilter:
             0: 파일명'만' 떼어냄
             1: 확장자를 떼어냄
             2: 상위 폴더명을 제외함
+            3: 상위 폴더명'만' 떼어냄
         example: origin = 'chara/char001/reimu.erb'\n
             opt0='reimu'
             opt1='chara/char001/reimu'
             opt2:'reimu.erb'
+            opt3:'chara/char001/'
         """
         if self.option_num == 0:
-            seprated_filename = os.path.basename(filename)
-            seprated_filename = os.path.splitext(seprated_filename)[0]
+            seprated_filename = os.path.splitext(os.path.basename(filename))[0]
         elif self.option_num == 1:
             seprated_filename = os.path.splitext(filename)[0]
         elif self.option_num == 2:
-            seprated_filename = os.path.split(filename)[-1]
+            seprated_filename = os.path.basename(filename)
+        elif self.option_num == 3:
+            seprated_filename = DirFilter(os.path.dirname(filename)).dir_slash()
         return seprated_filename
 
     def search_filename_wordwrap(self,filenames,keyword_list):
@@ -172,7 +175,8 @@ class FileFilter:
         target_dir = user_input.input_option(1)
         self.option_num = MenuPreset().yesno(0,"하위폴더까지 포함해 진행하시겠습니까?")
         encode_type = MenuPreset().encode()
-        files = self.files_ext(target_dir, '.'+filetype)
+        files = self.files_ext(target_dir,'.'+filetype)
+        if self.option_num == 1: files = list(map(os.path.split,files))
         return files,encode_type
 
 
@@ -318,6 +322,7 @@ class LogPreset(MakeLog):
 
     def sucessful_done(self):
         self.end_log(self.workclass)
+
 
 class MenuPreset:
     """Menu 클래스를 사용한 자주 사용되는 프리셋 모음.
