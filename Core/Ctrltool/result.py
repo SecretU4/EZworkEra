@@ -137,7 +137,7 @@ class ExportData:
         """입력받은 데이터를 텍스트 파일 형태로 출력하는 함수.
         """
         # txt, erb 공용
-        # erb metaline은 ERBFilter.indent_maker에서 텍스트.readlines형으로 양식화됨
+        # erb metaline은 ERBUtil.indent_maker에서 텍스트.readlines형으로 양식화됨
         self.log_file.workclass = 'TXTwrite'
         switch_go_all = 0
         if self.target_data == None:
