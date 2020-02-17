@@ -101,13 +101,14 @@ class StatusNum:
         self.error_num = error_num
         self.logname = logname
         if self.total_num < 10:
-            self.when_num_show = [1,2]
+            self.when_num_show = [int(self.total_num/2)]
         elif 10 <= self.total_num < 500:
             self.when_num_show = list(map(lambda x: x*int(
                 round(self.total_num)/4), list(range(1,5))))
         else:
             self.when_num_show = list(map(lambda x: x*int(
                 round(self.total_num)/10),list(range(1,11))))
+        self.when_num_show.insert(0,1)
 
     def how_much_there(self):
         """작업 시작시 작업물 개수 출력 함수."""

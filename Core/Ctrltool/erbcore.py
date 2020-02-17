@@ -494,6 +494,7 @@ class ERBUtil:
         return erb_info
 
     def csv_infodict_maker(self,mod_num=0,debug_log=None):
+        """infodict을 필요로하는 함수나 클래스에 사용함. debug_log은 LogPreset 타입을 요구함."""
         infodict_csv = MenuPreset().load_saved_data(0,"{}\n{}".format(
             "CSV 변수 목록 추출 데이터를 불러오실 수 있습니다.",
             "불러오실 경우 선택하신 모드와 다르게 작동할 수 있습니다."))
@@ -504,7 +505,7 @@ class ERBUtil:
                 infodict_csv = CSVFunc().import_all_CSV(1)
             elif mod_num == 2: # {csv파일명:{csv변수명:숫자}}
                 infodict_csv = CSVFunc().import_all_CSV(2)
-        else: raise Exception
+            else: raise Exception
         if debug_log:
             if mod_num == 0:
                 log_text = '작업을 위해 csv infodict 불러옴'
@@ -514,13 +515,15 @@ class ERBUtil:
                 else:
                     log_text = 'index 변수를 숫자로 변환'
                 log_text = 'ERB 내부 '+log_text
-            debug_log.write_log(log_Text)
+            debug_log.write_log(log_text)
         return infodict_csv
 
 
 class ERBVFinder:
-    """문장 대응 csv 변수 필터. csvdict은 infodict형의 csv정보를 요구함."""
-    def __init__(self,csvdict):
+    """문장 대응 csv 변수 필터. csvdict은 infodict형의 csv정보를 요구하며,
+    log_set은 LogPreset 을 요구함
+    """
+    def __init__(self,csvdict,log_set=None):
         if isinstance(csvdict, InfoDict):
             self.csv_infodict = csvdict
             self.csv_fnames = dict()
@@ -530,14 +533,14 @@ class ERBVFinder:
             self.csv_head = list(self.csv_fnames.keys())
         elif isinstance(csvdict, list): self.csv_head = csvdict
         else: raise TypeError
-        self.juel_head = ['PALAM','PARAM','UP','DOWN']
-        self.ex_head = ['NOWEX',]
-        self.base_head = ['UPBASE','DOWNBASE']
-        self.csv_all_head = self.csv_head + self.juel_head + self.ex_head + self.base_head
+        self.except_dict = {'UP':'JUEL','DOWN':'JUEL','PARAM':'PALAM',
+            'NOWEX':'EX','UPBASE':'BASE','DOWNBASE':'BASE'}
+        self.csv_all_head = self.csv_head + list(self.except_dict.keys())
         re_varshead = '({})'.format('|'.join(self.csv_all_head))
         self.symbol_filter = r':([^&=,;:\*\#\$\%\/\|\!\+\-\.\(\)\<\>\{\}\r\n]+)'
         self.csvvar_re = re.compile(re_varshead+self.symbol_filter)
         self.target_list = ['TARGET','PLAYER','MASTER','ASSI']
+        self.log_set = log_set
 
     def find_csvfnc_line(self,line):
         """해당하는 결과물이 있을 시 [(csv명,변수내용,ERB상 함수명,대명사)] 로 출력함.
@@ -560,9 +563,7 @@ class ERBVFinder:
             else:
                 var_pnoun = None
                 var_context_t = var_context
-            if var_head in self.juel_head: var_head_t = 'JUEL'
-            elif var_head in self.ex_head: var_head_t = 'EX'
-            elif var_head in self.base_head: var_head_t = 'BASE'
+            if self.except_dict.get(var_head): var_head_t = self.except_dict[var_head]
             else: var_head_t = var_head
             find_result.append((var_head_t,var_context_t,var_head,var_pnoun))
         if find_result: return find_result
@@ -580,9 +581,13 @@ class ERBVFinder:
                 int_checker = list(filter(str.isdecimal,var_context))
                 if (mod_num == 0 and int_checker) or (
                     mod_num == 1 and int_checker != list(var_context)):
-                    context_t = self.csv_infodict.dict_main[self.csv_fnames[var_head]].get(var_context)
-                    found_result[index_count] = (var_head, (
-                        var_context, context_t), orig_head, p_noun)
+                    try:
+                        context_t = self.csv_infodict.dict_main[self.csv_fnames[var_head]].get(var_context)
+                        found_result[index_count] = (var_head, (
+                            var_context, context_t), orig_head, p_noun)
+                    except KeyError:
+                        if self.log_set:
+                            self.log_set.write_error_log(KeyError,orig_head)
             index_count += 1
         return found_result
 
@@ -599,7 +604,12 @@ class ERBVFinder:
         if not comp_list: return None
         for fncinfo in comp_list:
             csvhead, context, orighead, pnoun = fncinfo
-            if isinstance(context,tuple): o_context, t_context = context
+            if isinstance(context,tuple):
+                o_context, t_context = context
+                if not t_context:
+                    t_context = o_context
+                    if self.log_set:
+                        self.log_set.write_log("{} index not found in {}".format(o_context,csvhead))
             elif isinstance(context,str): o_context = t_context = context
             else: raise TypeError
             if opt_no == 0:
