@@ -357,7 +357,7 @@ class ERBRemodel(ERBLoad):
                             line = line.replace(orig_fnc,comp_fnc)
                             change_check = 1
             replaced_context_list.append(line)
-            if change_check: self.debug_log.write_log(str(line_count)+'행 index 변수 변환됨')
+            if change_check: self.debug_log.write_log(str(line_count)+'행 index 변수 변환됨\n')
         self.debug_log.end_log('index 변수변환')
         return replaced_context_list
 
@@ -514,7 +514,7 @@ class ERBUtil:
                     log_text = '숫자를 index 변수로 변환'
                 else:
                     log_text = 'index 변수를 숫자로 변환'
-                log_text = 'ERB 내부 '+log_text
+                log_text = 'ERB 내부 {}\n'.format(log_text)
             debug_log.write_log(log_text)
         return infodict_csv
 
