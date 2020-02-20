@@ -44,7 +44,7 @@ class CSVFunc:
         """
         print("추출을 시작합니다.")
         csv_files, encode_type = FileFilter().get_filelist('CSV')
-        self.dic_assemble = InfoDict()
+        self.dic_assemble = InfoDict(0)
         count_check = StatusNum(csv_files,'파일',self.debug_log.NameDir)
         count_check.how_much_there()
         for filename in csv_files:

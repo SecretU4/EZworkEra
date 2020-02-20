@@ -626,7 +626,7 @@ class ERBVFinder:
 
 class ERBFunc:
     def __init__(self):
-        self.result_infodict = InfoDict()
+        self.result_infodict = InfoDict(1)
         self.func_log = LogPreset('ERBwork')
 
     def extract_printfunc(self):

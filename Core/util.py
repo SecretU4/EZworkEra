@@ -9,7 +9,6 @@ Classes:
 import os
 import pickle
 import time
-from customdb import InfoDict
 # 클래스 목록
 class CommonSent:
     """자주 사용되는 관용구 묶음 클래스. 모든 함수는 staticmethod로, 클래스의 self를 선언하지 않는다.
@@ -48,9 +47,12 @@ class CommonSent:
         time.sleep(1)
 
     @staticmethod
-    def put_time():
+    def put_time(opt=0):
         """호출시의 시간 출력"""
-        return time.strftime('%Y/%m/%d %H:%M:%S',time.localtime(time.time()))
+        if opt == 1:
+            target_time = time.strftime('%Y/%m/%d_%H:%M',time.localtime(time.time()))
+        else: target_time = time.strftime('%Y/%m/%d %H:%M:%S',time.localtime(time.time()))
+        return target_time
 
 
 class DataFilter:

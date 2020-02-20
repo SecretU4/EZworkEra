@@ -20,11 +20,18 @@ class InfoDict:
             data가 dict형인 경우 함수 호출을 통해 사용 가능한 변수.\n
             {dictname:data.values()} 형식
     """
-    def __init__(self):
+    def __init__(self,dbname=''):
         self.dict_main = {}
         self.dict_name_dictvals = {}
-
-    db_ver = '1.1'
+        if type(dbname) == int:
+            if dbname == 0:
+                dbname = 'CSVInfoDict'
+            elif dbname == 1:
+                dbname = 'ERBInfoDict'
+            elif dbname == 2:
+                dbname = 'ERBMetaInfoDict'
+        self.db_name = dbname
+        self.db_ver = 1.2
 
     def add_dict(self,dictname,dataname):
         """클래스 내 자료형에 새로운 정보 추가."""
@@ -71,8 +78,7 @@ class ERBMetaInfo:
         self.if_level = 0
         self.case_level = 0
         self.case_count = 0
-
-    db_ver = '1.1'
+        self.db_ver = 1.1
 
     def add_line_list(self,line):
         """linelist에 새로운 line 정보 추가"""
