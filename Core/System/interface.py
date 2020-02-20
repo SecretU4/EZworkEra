@@ -58,9 +58,11 @@ class Menu:
                     self.selected_menu = self.menu_dict[self.selected_num]
                     return self.selected_num
                 # EasterEgg
-                elif self.selected_num == 99 or self.selected_num == 999:
+                elif self.selected_num in (4,99,127,255,999,32767,65535,2147483647):
                     print("디버그 기능 없습니다!")
                     time.sleep(0.5)
+                elif self.selected_num == 10:
+                    input("지켜보고 있다"*500)
                 else:
                     CommonSent.not_ok()
             except ValueError:
