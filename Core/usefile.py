@@ -273,13 +273,15 @@ class MakeLog(LoadFile):
         with self.addwrite() as log_open:
             log_open.write('{}'.format(line))
 
-    def write_error_log(self,error_code,target=None):
+    def write_error_log(self,error_code,target=None,sentence=None):
         """입력받은 error 와 해당 위치(target)를 양식에 맞게 logfile에 기록함.\n
-        target은 선택사항이고, 해당 경우 error_code만 입력됨.
+        target, sentence는 선택사항이고, 해당 경우 error_code만 입력됨.
         """
         with self.addwrite() as log_open:
             log_open.write('{} 오류 발생!\n'.format(error_code))
-            if target != None:
+            if sentence:
+                log_open.write(sentence)
+            if target:
                 log_open.write('발생 위치: {}\n'.format(target))
 
     def write_loaded_log(self,filename):
