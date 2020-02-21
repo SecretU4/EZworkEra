@@ -2,7 +2,7 @@
 <root>
     <settings>
         <information>
-            <version>3.4 beta</version>
+            <version>3.5.1</version>
             <github>https://github.com/SecretU4/EZworkEra/</github>
             <caution>
             아직 완성된 프로그램이 아닙니다. 사용 시 문제가 발생하면 오류를 보고해주세요.
@@ -20,6 +20,15 @@
             <command>@M_KOJO_MESSAGE_COM_K*</command>
             <command_branch>@M_KOJO_MESSAGE_SCOM_K*</command_branch>
             <common_message>@TRAIN_MESSAGE</common_message>
+        </temp>
+        <temp eratype="AS">
+            <encounter></encounter>
+            <counter></counter>
+            <sp_event></sp_event>
+            <event></event>
+            <command></command>
+            <command_branch></command_branch>
+            <common_message></common_message>
         </temp>
     </templets>
 </root>
