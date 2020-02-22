@@ -177,10 +177,10 @@ class SettingXML(ImportXML):
                 return templet_dict
 
     def show_info(self,info_type):
-        version_num = self.info_tag.find(info_type).text
-        if version_num == None or version_num.strip() == None:
-            version_num = 'N/A'
-        return version_num
+        info_in_xml = self.info_tag.find(info_type).text
+        if info_in_xml == None or info_in_xml.strip() == None:
+            info_in_xml = 'N/A'
+        return info_in_xml
 
 
 class VFinderFilterXML(ImportXML):

@@ -43,16 +43,6 @@ class ERBLoad(LoadFile):
                         self.targeted_list.append(line)
         return self.targeted_list
 
-    def search_word(self,loc_num,*args):
-        self.make_bulk_lines()
-        self.targeted_list = []
-        for line in self.erb_context_list:
-            line_word = line.split()
-            for target in args:
-                if target in line_word[loc_num]:
-                    self.targeted_list.append(line_word[loc_num])
-        return self.targeted_list
-
 
 class ERBWrite(LoadFile):
     def __init__(self,NameDir,EncodeType,era_type,chara_num):
@@ -336,33 +326,18 @@ class ERBWrite(LoadFile):
         if self.__csvvar_dup_count != 0:
             print("중의적인 csv변수가 발견되었습니다. '!중복변수!'를 결과물에서 검색하세요.")
         self.erb_translated_list.insert(0,';{}에서 가져옴\n'.format(self.NameDir))
+        self.debug_log.end_log()
         return self.erb_translated_list
 
 
 class ERBRemodel(ERBLoad):
     """이미 존재하는 ERB 파일의 내용 수정을 위한 클래스"""
-    def __init__(self,NameDir,EncodeType):
+    def __init__(self,NameDir,EncodeType,csv_infodict):
         super().__init__(NameDir,EncodeType)
+        self.csvtrans_infodict = csv_infodict
         self.make_bulk_lines()
 
-    def __make_dict(self,mod_num):
-        self.csvtrans_infodict = MenuPreset().load_saved_data(0,"{}\n{}".format(
-            "CSV 변수 목록 추출 데이터를 불러오실 수 있습니다.",
-            "불러오실 경우 실행하실 때 선택하신 모드와 다르게 작동할 수 있습니다."))
-        if mod_num == 0: # {csv파일명:{숫자:csv변수명}}
-            log_text = '숫자를 index 변수로 변환'
-            if self.csvtrans_infodict == None:
-                self.csvtrans_infodict = CSVFunc().import_all_CSV(1)
-        elif mod_num == 1: # {csv파일명:{csv변수명:숫자}}
-            log_text = 'index 변수를 숫자로 변환'
-            if self.csvtrans_infodict == None:
-                self.csvtrans_infodict = CSVFunc().import_all_CSV(2)
-        else: raise Exception
-        if mod_num in (0, 1):
-            self.debug_log.write_log('ERB 내부 '+log_text)
-
     def replace_csvvars(self,mod_num=0):
-        self.__make_dict(mod_num)
         vfinder = ERBVFinder(self.csvtrans_infodict)
         replaced_context_list = []
         line_count = 0
@@ -382,12 +357,12 @@ class ERBRemodel(ERBLoad):
                             line = line.replace(orig_fnc,comp_fnc)
                             change_check = 1
             replaced_context_list.append(line)
-            if change_check: self.debug_log.write_log(line_count+'행 index 변수 변환됨')
+            if change_check: self.debug_log.write_log(str(line_count)+'행 index 변수 변환됨\n')
         self.debug_log.end_log('index 변수변환')
         return replaced_context_list
 
 
-class ERBFilter:
+class ERBUtil:
     def indent_maker(self,target_metalines): # metaline을 들여쓰기된 lines로 만듦
         self.filtered_lines = []
         for line in target_metalines:
@@ -515,12 +490,40 @@ class ERBFilter:
                 if option_num == 1: continue
                 erb_info.add_line_list(line)
                 erb_log.write_error_log('미상정',line)
+        erb_log.sucessful_done()
         return erb_info
+
+    def csv_infodict_maker(self,mod_num=0,debug_log=None):
+        """infodict을 필요로하는 함수나 클래스에 사용함. debug_log은 LogPreset 타입을 요구함."""
+        infodict_csv = MenuPreset().load_saved_data(0,"{}\n{}".format(
+            "CSV 변수 목록 추출 데이터를 불러오실 수 있습니다.",
+            "불러오실 경우 선택하신 모드와 다르게 작동할 수 있습니다."))
+        if not infodict_csv:
+            if mod_num == 0:
+                infodict_csv = CSVFunc().import_all_CSV(1)
+            elif mod_num == 1: # {csv파일명:{숫자:csv변수명}}
+                infodict_csv = CSVFunc().import_all_CSV(1)
+            elif mod_num == 2: # {csv파일명:{csv변수명:숫자}}
+                infodict_csv = CSVFunc().import_all_CSV(2)
+            else: raise Exception
+        if debug_log:
+            if mod_num == 0:
+                log_text = '작업을 위해 csv infodict 불러옴'
+            elif mod_num in (1, 2):
+                if mod_num == 1:
+                    log_text = '숫자를 index 변수로 변환'
+                else:
+                    log_text = 'index 변수를 숫자로 변환'
+                log_text = 'ERB 내부 {}\n'.format(log_text)
+            debug_log.write_log(log_text)
+        return infodict_csv
 
 
 class ERBVFinder:
-    """문장 대응 csv 변수 필터. csvdict은 infodict형의 csv정보를 요구함."""
-    def __init__(self,csvdict):
+    """문장 대응 csv 변수 필터. csvdict은 infodict형의 csv정보를 요구하며,
+    log_set은 LogPreset 을 요구함
+    """
+    def __init__(self,csvdict,log_set=None):
         if isinstance(csvdict, InfoDict):
             self.csv_infodict = csvdict
             self.csv_fnames = dict()
@@ -530,14 +533,14 @@ class ERBVFinder:
             self.csv_head = list(self.csv_fnames.keys())
         elif isinstance(csvdict, list): self.csv_head = csvdict
         else: raise TypeError
-        self.juel_head = ['PALAM','PARAM','UP','DOWN']
-        self.ex_head = ['NOWEX',]
-        self.base_head = ['UPBASE','DOWNBASE']
-        self.csv_all_head = self.csv_head + self.juel_head + self.ex_head + self.base_head
+        self.except_dict = {'UP':'JUEL','DOWN':'JUEL','PARAM':'PALAM',
+            'NOWEX':'EX','UPBASE':'BASE','DOWNBASE':'BASE'}
+        self.csv_all_head = self.csv_head + list(self.except_dict.keys())
         re_varshead = '({})'.format('|'.join(self.csv_all_head))
         self.symbol_filter = r':([^&=,;:\*\#\$\%\/\|\!\+\-\.\(\)\<\>\{\}\r\n]+)'
         self.csvvar_re = re.compile(re_varshead+self.symbol_filter)
         self.target_list = ['TARGET','PLAYER','MASTER','ASSI']
+        self.log_set = log_set
 
     def find_csvfnc_line(self,line):
         """해당하는 결과물이 있을 시 [(csv명,변수내용,ERB상 함수명,대명사)] 로 출력함.
@@ -560,9 +563,7 @@ class ERBVFinder:
             else:
                 var_pnoun = None
                 var_context_t = var_context
-            if var_head in self.juel_head: var_head_t = 'JUEL'
-            elif var_head in self.ex_head: var_head_t = 'EX'
-            elif var_head in self.base_head: var_head_t = 'BASE'
+            if self.except_dict.get(var_head): var_head_t = self.except_dict[var_head]
             else: var_head_t = var_head
             find_result.append((var_head_t,var_context_t,var_head,var_pnoun))
         if find_result: return find_result
@@ -580,9 +581,13 @@ class ERBVFinder:
                 int_checker = list(filter(str.isdecimal,var_context))
                 if (mod_num == 0 and int_checker) or (
                     mod_num == 1 and int_checker != list(var_context)):
-                    context_t = self.csv_infodict.dict_main[self.csv_fnames[var_head]].get(var_context)
-                    found_result[index_count] = (var_head, (
-                        var_context, context_t), orig_head, p_noun)
+                    try:
+                        context_t = self.csv_infodict.dict_main[self.csv_fnames[var_head]].get(var_context)
+                        found_result[index_count] = (var_head, (
+                            var_context, context_t), orig_head, p_noun)
+                    except KeyError:
+                        if self.log_set:
+                            self.log_set.write_error_log(KeyError,orig_head)
             index_count += 1
         return found_result
 
@@ -599,7 +604,12 @@ class ERBVFinder:
         if not comp_list: return None
         for fncinfo in comp_list:
             csvhead, context, orighead, pnoun = fncinfo
-            if isinstance(context,tuple): o_context, t_context = context
+            if isinstance(context,tuple):
+                o_context, t_context = context
+                if not t_context:
+                    t_context = o_context
+                    if self.log_set:
+                        self.log_set.write_log("{} index not found in {}".format(o_context,csvhead))
             elif isinstance(context,str): o_context = t_context = context
             else: raise TypeError
             if opt_no == 0:
@@ -616,7 +626,7 @@ class ERBVFinder:
 
 class ERBFunc:
     def __init__(self):
-        self.result_infodict = InfoDict()
+        self.result_infodict = InfoDict(1)
         self.func_log = LogPreset('ERBwork')
 
     def extract_printfunc(self):
@@ -634,13 +644,15 @@ class ERBFunc:
             self.result_infodict.add_dict(filename,printfunc_list)
             file_count_check.how_much_done()
         CommonSent.extract_finished()
+        self.func_log.sucessful_done()
         return self.result_infodict # {파일명:lines} 형태가 포함된 infodict
 
-    def search_csv_var(self,csvvar_list=None):
+    def search_csv_var(self):
         print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
         erb_files, encode_type = FileFilter().get_filelist('ERB')
+        csvvar_list = ERBUtil().csv_infodict_maker()
         if csvvar_list == None:
-            csvvar_list = CSVFunc().implement_csv_datalist('CSVfnclist.csv')
+            csvvar_list = CSVFunc().single_csv_read('CSVfnclist.csv',opt=2)
         vfinder = ERBVFinder(csvvar_list)
         file_count_check = StatusNum(erb_files,'파일')
         file_count_check.how_much_there()
@@ -666,6 +678,7 @@ class ERBFunc:
             self.result_infodict.add_dict(filename,result_lines)
             file_count_check.how_much_done()
         CommonSent.extract_finished()
+        self.func_log.sucessful_done()
         return self.result_infodict # {파일명:정보 텍스트} 형태의 infodict
 
     def remodel_indent(self,metainfo_option_num=None,target_metalines=None):
@@ -676,15 +689,16 @@ class ERBFunc:
             file_count_check.how_much_there()
             for filename in erb_files:
                 erb_bulk = ERBLoad(filename,encode_type).make_bulk_lines()
-                lines = ERBFilter.make_metainfo_lines(
+                lines = ERBUtil.make_metainfo_lines(
                     erb_bulk,metainfo_option_num,filename).linelist
                 lines.insert(0,[0,0,0,";{}에서 불러옴\n".format(filename)])
-                self.result_infodict.add_dict(filename,ERBFilter().indent_maker(lines))
+                self.result_infodict.add_dict(filename,ERBUtil().indent_maker(lines))
                 file_count_check.how_much_done()
             result_dataset = self.result_infodict #InfoDict 클래스 {파일명:[erb 텍스트 라인]}
         else:
-            result_dataset = ERBFilter().indent_maker(target_metalines) # [erb 텍스트 라인]
+            result_dataset = ERBUtil().indent_maker(target_metalines) # [erb 텍스트 라인]
         CommonSent.extract_finished()
+        self.func_log.sucessful_done()
         return result_dataset
 
     def translate_txt_to_erb(self,era_type,csvvar_dict):
@@ -698,18 +712,30 @@ class ERBFunc:
            print("{}의 처리가 완료되었습니다.".format(filename))
            self.comp_lines.extend(file_lines)
            file_count_check.how_much_done()
-        erb_metainfo = ERBFilter().make_metainfo_lines(self.comp_lines,0,filename)
+        erb_metainfo = ERBUtil().make_metainfo_lines(self.comp_lines,0,filename)
+        self.func_log.sucessful_done()
         return erb_metainfo
 
     def replace_num_or_name(self,mod_num=0):
         """0:숫자 > 변수, 1: 변수 > 숫자"""
-        result_infodict = InfoDict()
         erb_files, encode_type = FileFilter().get_filelist('ERB')
         file_count_check = StatusNum(erb_files,'ERB 파일')
         file_count_check.how_much_there()
+        csv_infodict = ERBUtil().csv_infodict_maker(mod_num+1,self.func_log)
         for filename in erb_files:
-            replaced_lines = ERBRemodel(filename,encode_type).replace_csvvars(mod_num)
-            result_infodict.add_dict(filename,replaced_lines)
+            replaced_lines = ERBRemodel(filename,encode_type,csv_infodict).replace_csvvars(mod_num)
+            self.result_infodict.add_dict(filename,replaced_lines)
             file_count_check.how_much_done()
         CommonSent.extract_finished()
-        return result_infodict # {파일명:[바뀐줄]}
+        self.func_log.sucessful_done()
+        return self.result_infodict # {파일명:[바뀐줄]}
+
+    def erb_trans_helper(self,files_op=0):
+        #TODO 공사중
+        print("원본 erb의 디렉토리를 지정해주세요.")
+        o_files, o_encode_type = FileFilter(1).get_filelist('ERB')
+        print("번역본 erb의 디렉토리를 지정해주세요.")
+        t_files, t_encode_type = FileFilter(1).get_filelist('ERB')
+        if files_op != 0:
+            files_dict = CSVFunc().single_csv_read('CompareErb.csv')
+        pass
