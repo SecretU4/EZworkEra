@@ -217,10 +217,10 @@ class ExportData:
             elif isinstance(content,ERBMetaInfo):
                 sel_data = [{tag:content.linelist}]
             elif isinstance(content,(list,dict)):
-                sel_data = [{tag:target_data}]
+                sel_data = [{tag:content}]
             else:
                 print("상정되지 않은 자료형이나 일단 진행합니다.")
-                sel_data = [target_data]
+                sel_data = [data]
             que_list.extend(sel_data) # [{tag:content}]
         numstat = StatusNum(que_list,filetype+' 파일자료')
         numstat.how_much_there()
@@ -252,6 +252,7 @@ class ExportData:
                         txt_file.writelines(the_lines)
                     else:
                         print("텍스트화 할 수 없는 데이터입니다. 옵션을 바꿔 다시 시도해주세요.")
+                        self.log_file.write_log("Can not write text by {}".format(type(context)))
             numstat.how_much_done()
         self.log_file.sucessful_done()
 
@@ -396,7 +397,7 @@ class ResultFunc:
             result_file.to_TXT(option_num=press_enter_yn)
         elif result_type == 1:
             print("지정된 데이터의 ERB 파일화를 진행합니다.")
-            result_file.to_TXT('erb', 1, 'UTF-8-sig')
+            result_file.to_TXT('ERB', 1, 'UTF-8-sig')
         elif result_type == 2:
             print("지정된 데이터의 SRS 파일화를 진행합니다.")
             print("csv 변수로 작성시 chara 폴더가 제외되어있어야 합니다.")
