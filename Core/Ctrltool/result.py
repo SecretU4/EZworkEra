@@ -20,6 +20,15 @@ class ExportData:
     Functions:
         to_TXT([filetype,option_num,encode_type])
         to_SRS([srs_opt, srsname])
+    Vairables:
+        dest_dir: 결과물 저장 폴더
+        target_name: 입력받은 데이터 이름
+        target_data: 입력받은 데이터
+        lazy_switch: 데이터 미선택시 켜짐. 작업 진행 확인용
+        log_file: 로그파일 생성용 LogPreset
+    Misc:
+        single_namedict
+            파일 확인 절차에서 infodict형을 받지 않았을 시 출력되는 데이터 이름사전
     """
 
     def __init__(self, dest_dir, target_name, target_data):
@@ -29,14 +38,15 @@ class ExportData:
         self.lazy_switch = 0  # 데이터 미선택한 경우 1
         self.log_file = LogPreset(4)
 
-    single_namedict = {'ONLYONE': None, 'ONLYDICT': dict,
-                       'ONLYLIST': list, 'ONLYMETALINES': ERBMetaInfo}
+    single_namedict = {None:'None', dict:'ONLYDICT', str:'ONLYSTRING',
+                       list:'ONLYLIST', ERBMetaInfo:'ONLYMETALINES'}
 
     def __multi_data_input(self,data_count=2):
         """입력받는 데이터가 2개인 경우 사용. sav 디랙토리의 저장 파일을 불러옴."""
         result_input = []
         if self.target_data:
             result_input.append(self.target_data)
+            print("직전에 실행한 데이터를 목록에 추가합니다.")
             data_count -= 1
         inputed_count = 1
         for _ in range(data_count):
@@ -46,7 +56,7 @@ class ExportData:
         return tuple(result_input)
 
     def __data_type_check(self, mod_no, *data_names):
-        """입력받은 데이터 체크 후 InfoDict.dict_main 형으로 출력"""
+        """입력받은 데이터 체크 후 인터페이스 선택 후 tuple 요소로 된 list 출력"""
         checked_datadict = dict()
         for data in data_names:
             if isinstance(data, InfoDict):  # InfoDict 자료형인 경우
@@ -65,19 +75,20 @@ class ExportData:
                     self.log_file.write_log(
                         "올바르지 않은 자료형({})이 InfoDict에 포함되어 있습니다.\n".format(type(data)))
                     tagging_data = {'None': None}
-            elif isinstance(data, ERBMetaInfo): tagging_data = {'ONLYMETALINES': data}
-            elif isinstance(data, dict): tagging_data = {'ONLYDICT': data}# InfoDict 결과물이 아닌 순수 dict
-            elif isinstance(data, list): tagging_data = {'ONLYLIST': data} # list 자료형
+            elif isinstance(data, (dict,list,str,ERBMetaInfo)):
+                tagging_data = {self.single_namedict[type(data)]: data}
             else:  # 자료형이 InfoDict, ERBMetaInfo, dict, list 아님
                 print("입력된 데이터가 유효한 데이터가 아닙니다.")
                 print("{} 타입 자료형입니다.".format(type(data)))
                 self.log_file.write_log("유효한 데이터 아님 - {} 타입 자료형\n".format(type(data)))
                 tagging_data = {'None': None}
             checked_datadict.update(tagging_data)
+        # 이하 분리 가능(자료 목록화 기능 담당)
+        #TODO 자료 목록이 길어진 경우의 페이징 기능
         datasearch_dicts = checked_datadict.copy() # {자료tag:data, 자료tag:data}
         for tag_key in list(checked_datadict.keys()):
             val_data = checked_datadict[tag_key]
-            if self.single_namedict.get(tag_key): continue
+            if tag_key in list(self.single_namedict.values()): continue
             elif isinstance(val_data,InfoDict):
                 datasearch_dicts.update(val_data.dict_main)
         chklist_for_menu = list(datasearch_dicts.keys())
@@ -168,6 +179,11 @@ class ExportData:
 
     def to_TXT(self, filetype='TXT', option_num=0, encode_type='UTF-8'):
         """입력받은 데이터를 텍스트 파일 형태로 출력하는 함수.
+
+        Vairables:
+            filetype: 확장자 구분
+            option_num: 1이면 출력시 줄바꿈 관련 절차 진행
+            encode_type: 저장되는 파일의 인코딩
         """
         # txt, erb 공용
         # erb metaline은 ERBUtil.indent_maker에서 텍스트.readlines형으로 양식화됨
@@ -206,12 +222,12 @@ class ExportData:
                 print("상정되지 않은 자료형이나 일단 진행합니다.")
                 sel_data = [target_data]
             que_list.extend(sel_data) # [{tag:content}]
-        numstat = StatusNum(que_list,filetype+' 프린트')
+        numstat = StatusNum(que_list,filetype+' 파일자료')
         numstat.how_much_there()
         for que in que_list:
             data_filename = list(que.keys())[0]
             if dest_mod == 1: # 결과물 디렉토리에 저장
-                if len(que_list) == 1 and self.single_namedict.get(data_filename):
+                if len(que_list) == 1 and data_filename in list(self.single_namedict.values()):
                     data_filename = '({}){}'.format(CommonSent.put_time(1),self.target_name)
                 result_filename = '{}.{}'.format(FileFilter(
                     ).sep_filename(data_filename), filetype)
@@ -223,13 +239,11 @@ class ExportData:
                 if filetype == 'TXT':
                     txt_file.write("{}에서 불러옴\n".format(self.target_name))
                 context = que[data_filename]
-                if option_num == 0:
-                    if type(context) == dict:
+                if type(context) == dict:
                         for key in list(context.keys()):
-                            print("{}:{}".format(
-                                key, context[key]), file=txt_file)
-                    else:
-                        print("{}\n".format(context), file=txt_file)
+                            print("{}:{}".format(key, context[key]), file=txt_file)
+                elif option_num == 0:
+                    print("{}\n".format(context), file=txt_file)
                 elif option_num == 1:
                     if type(context) == list:
                         txt_file.writelines(context)
@@ -242,18 +256,25 @@ class ExportData:
         self.log_file.sucessful_done()
 
     def to_SRS(self, srs_opt = 0, srsname='autobuild'):
+        """입력받은 데이터를 updateera의 simplesrs 양식으로 출력
+
+        Variables:
+            srs_opt: 1이면 짧은 단어, srs 내부 중복 문자열 필터링
+            srsname: 저장될 simplesrs 파일명
+        """
         total_worked_switch = 0
         self.log_file.workclass = 'SRSWrite'
         self.cantwrite_srs_count = 0
         while True:
             dataset = self.__multi_data_input()
-            print("처음 선택한 두 데이터만으로 진행합니다.")
-            print("SRS 자료 입력시 첫번째를 원문, 두번째를 번역문으로 인식합니다.")
+            print("처음 선택한 두 데이터만으로 진행합니다.\n")
+            print("SRS 자료 입력시 첫번째를 원문, 두번째를 번역문으로 인식합니다.\n")
             orig_dataset, trans_dataset, *_ = self.__data_type_check(1,*dataset) # ((tag,data),(tag,data))
             orig_data, trans_data = orig_dataset[1], trans_dataset[1]
             if orig_data and trans_data:
                 choose_yn = MenuPreset().yesno(0,"선택하신 두 자료가",
-                    str(orig_dataset[0]),"{} 입니까?".format(str(trans_dataset[0])))
+                    "원본:  "+str(orig_dataset[0]),
+                    "번역본: "+str(trans_dataset[0]),"입니까?")
                 if choose_yn == 0: break
             else: print("공란인 데이터가 있습니다. 다시 시도해주세요.")
         self.srs_filename = '{}.simplesrs'.format(self.dest_dir+srsname)
@@ -289,6 +310,7 @@ class ExportData:
             with LoadFile(self.srs_filename,'UTF-8-sig').readonly() as srs_preread:
                 bulk_srs = srs_preread.read()
                 self.for_dup_content = SubFilter().srs_check_dup(bulk_srs)
+        print("SRS 입력을 시작합니다...")
         for num in range(len(orig_infokeys)):
             try:
                 self.orig_key = orig_infokeys[num]
@@ -298,7 +320,7 @@ class ExportData:
                 self.log_file.write_error_log(error, self.orig_key, comment)
                 self.cantwrite_srs_count += 1
                 continue
-            if self.orig_key in list(ExportData.single_namedict):
+            if self.orig_key in list(ExportData.single_namedict.values()):
                 keyname = "단독파일"
             else: keyname = FileFilter().sep_filename(self.orig_key)
             if keyname.lower() != FileFilter().sep_filename(self.trans_key).lower():
@@ -331,9 +353,17 @@ class ExportData:
 
 
 class SubFilter:
+    """필요시 타 모듈에서 사용 가능한 필터를 제공하는 모듈
+
+    Functions:
+        srs_check_dup(textbulk)
+    Misc:
+        wholeword: re 모듈용 필터. r'[^,;\\r\\n]+'
+    """
     wholeword = r'[^,;\r\n]+'
 
     def srs_check_dup(self,textbulk):
+        """이미 존재하는 srs 내의 original 문자열 데이터 list화"""
         srs_textfilter = re.compile('{1}({0}){1}({0}){1}'.format(self.wholeword,os.linesep))
         found_list = list(map(lambda x: x[0] ,srs_textfilter.findall(textbulk)))
         return DataFilter().dup_filter(found_list)
