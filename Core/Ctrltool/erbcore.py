@@ -723,6 +723,7 @@ class ERBFunc:
         file_count_check = StatusNum(erb_files,'ERB 파일')
         file_count_check.how_much_there()
         csv_infodict = ERBUtil().csv_infodict_maker(mod_num+1,self.func_log)
+        print("ERB내 index 변환작업을 시작합니다.")
         for filename in erb_files:
             replaced_lines = ERBRemodel(filename,encode_type,csv_infodict).replace_csvvars(mod_num)
             self.result_infodict.add_dict(filename,replaced_lines)
