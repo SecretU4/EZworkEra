@@ -344,6 +344,7 @@ class ERBRemodel(ERBLoad):
         for line in self.erb_context_list:
             line_count += 1
             change_check = 0
+            line = line.replace('\r','\n').replace('\n\n','\n')
             if not line.strip().startswith(';'):
                 find_list = vfinder.find_csvfnc_line(line)
                 if find_list:
@@ -546,7 +547,7 @@ class ERBVFinder:
         """해당하는 결과물이 있을 시 [(csv명,변수내용,ERB상 함수명,대명사)] 로 출력함.
         이외는 None 리턴"""
         if line.startswith(';'): return None
-        elif not line.startswith(';'): line = line.split(';')[0]
+        line = line.split(';')[0]
         line_search = self.csvvar_re.findall(line) # [(var1,arg1),(var2,arg2)...]
         find_result = []
         for var_bulk in line_search:

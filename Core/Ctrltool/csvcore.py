@@ -15,6 +15,8 @@ class CSVLoad(LoadFile):
         self.dict_csvdata = {}
         self.list_csvdata = []
         for row_list in self.csv_reading:
+            if not row_list: continue
+            elif str(row_list[0]).strip().startswith(';'): continue
             try:
                 data_1 = str(row_list[0]).strip()
                 data_2 = str(row_list[1]).strip()
