@@ -11,7 +11,7 @@ from customdb import ERBMetaInfo, InfoDict
 from usefile import DirFilter, FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import Menu, StatusNum
-from . import ERBFunc
+from . import CSVFunc, ERBFunc
 
 
 class ExportData:

@@ -378,6 +378,7 @@ class ERBUtil:
         return self.filtered_lines
 
     def make_metainfo_lines(self,bulk_lines,option_num=0,target_name=None): # 0: 전부 1: 기능관련만
+        #TODO 코드 정리하여 customdb에 이관
         self.command_count = 0
         skip_start = 0
         erb_info = ERBMetaInfo()
@@ -732,12 +733,9 @@ class ERBFunc:
         self.func_log.sucessful_done()
         return self.result_infodict # {파일명:[바뀐줄]}
 
-    def erb_trans_helper(self,files_op=0):
-        #TODO 공사중
+    def erb_trans_helper(self): #TODO 공사중
+        """번역본의 원본 이식에 도움을 주는 함수"""
         print("원본 erb의 디렉토리를 지정해주세요.")
         o_files, o_encode_type = FileFilter(1).get_filelist('ERB')
         print("번역본 erb의 디렉토리를 지정해주세요.")
         t_files, t_encode_type = FileFilter(1).get_filelist('ERB')
-        if files_op != 0:
-            files_dict = CSVFunc().single_csv_read('CompareErb.csv')
-        pass
