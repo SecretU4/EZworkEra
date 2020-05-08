@@ -6,6 +6,7 @@ Classes:
 """
 
 import time
+import os
 import re
 from util import CommonSent, KoreanSupport
 
@@ -21,7 +22,8 @@ class Menu:
         selected_num
         selected_menu
     """
-    def __init__(self,menu_data):
+    def __init__(self,menu_data): #TODO 항목 50개 초과시 페이지 정렬 지원
+        self.window_size = os.get_terminal_size().columns
         if isinstance(menu_data,dict):
             for key in list(menu_data.keys()):
                 if re.compile('[^0-9]').match(str(key)):
@@ -30,7 +32,7 @@ class Menu:
         elif isinstance(menu_data,list):
             menu_data.append("돌아가기")
             self.menu_dict = {}
-            for keyname in menu_data:
+            for keyname in menu_data: # 리스트 목록 번호 부여
                 self.menu_dict[menu_data.index(keyname)]=keyname
         else: raise TypeError
 
@@ -44,7 +46,7 @@ class Menu:
         """메뉴 제목용 함수. 메뉴 내 문장 출력에도 사용 가능"""
         CommonSent.print_line()
         for title_name in title_names:
-            print(title_name.center(110," "))
+            print(title_name.center(self.window_size," "))
         CommonSent.print_line()
 
     def run_menu(self):

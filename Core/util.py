@@ -39,7 +39,7 @@ class CommonSent:
     @staticmethod
     def print_line(char='='):
         """구분선 생성"""
-        print("".center(110,char))
+        print("".center(os.get_terminal_size().columns,char))
 
     @staticmethod
     def extract_finished():
