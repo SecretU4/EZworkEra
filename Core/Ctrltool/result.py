@@ -83,17 +83,19 @@ class ExportData:
                 self.log_file.write_log("유효한 데이터 아님 - {} 타입 자료형\n".format(type(data)))
                 tagging_data = {'None': None}
             checked_datadict.update(tagging_data)
+
         # 이하 분리 가능(자료 목록화 기능 담당)
-        #TODO 자료 목록이 길어진 경우의 페이징 기능
         datasearch_dicts = checked_datadict.copy() # {자료tag:data, 자료tag:data}
         for tag_key in list(checked_datadict.keys()):
             val_data = checked_datadict[tag_key]
             if tag_key in list(self.single_namedict.values()): continue
             elif isinstance(val_data,InfoDict):
                 datasearch_dicts.update(val_data.dict_main)
+
         chklist_for_menu = list(datasearch_dicts.keys())
         menu_chk_datalist = Menu(chklist_for_menu)
         final_list = []
+        selected_name_list = []
         while True:
             menu_chk_datalist.title("출력할 데이터를 원하시는 만큼 선택해주세요.",
                 "ALL ~ etc 라 표기된 항목은 표기된 자료가 포함된 전체를 뜻합니다.",
@@ -103,6 +105,9 @@ class ExportData:
             if selected_menu == "돌아가기": break
             final_list.append((selected_menu, datasearch_dicts[chklist_for_menu[selected_num]]))
             if len(final_list) >= 2 and mod_no == 1: break
+            selected_name_list.append(selected_menu)
+            menu_chk_datalist.title('선택된 데이터 수 : {} 개'.format(len(final_list)),
+            '선택된 데이터 : ',*selected_name_list)
         return tuple(final_list) # ((tag,data),(tag,data))
 
     def __SRS_multi_write(self, data_orig, data_trans, keyname, opt_no = 0):
@@ -115,6 +120,7 @@ class ExportData:
             self.log_file.write_log("{} 자료를 이용한 SRS를 작성할 수 없습니다.".format(
                 '자료와 '.join(error_target)))
             return 0
+
         with LoadFile(self.srs_filename).addwrite() as srs_file:
             srs_file.write(';이하 {0}\n\n'.format(keyname))
             self.log_file.write_log(keyname + " 정보를 불러옴\n")
@@ -136,9 +142,11 @@ class ExportData:
                 trans_keys = data_trans
                 total_keys = range((len(data_orig)+len(data_trans)/2))
                 dict_switch = 0
+
             if not dict_switch and len(total_keys) != (len(data_orig) + len(data_trans)):
                 print("줄의 개수가 맞지 않아 오류가 발생할 수 있습니다.")
                 self.log_file.write_log("두 자료의 행 개수 맞지 않음\n")
+
             for total_key in total_keys:
                 if total_key in orig_keys and total_key in trans_keys:
                     if data_orig[total_key].strip() == '' and data_trans[total_key].strip() == '':
@@ -160,6 +168,7 @@ class ExportData:
                 else:
                     orig_text = orig_keys[total_key].strip()
                     trans_text = trans_keys[total_key].strip()
+
                 try: # 중복변수 존재 유무 검사
                     self.for_dup_content.index(orig_text)
                 except ValueError:
@@ -174,6 +183,7 @@ class ExportData:
                             continue
                     srs_file.write("{}\n{}\n\n".format(orig_text, trans_text))
                     self.worked_switch = 1
+
         if not self.worked_switch:
             self.log_file.write_log("전체 중복 또는 오류로 인해 자료 전체 통과됨\n")
 
@@ -208,6 +218,7 @@ class ExportData:
             "원본 폴더에 저장시 원본 데이터가 손상될 수 있습니다.",
             "결과물 데이터에 원본 위치 정보가 없다면 오류가 발생합니다.")
         dest_mod = menu_sel_dest.run_menu()
+
         que_list = []
         for data in target_data:
             tag, content = data
@@ -224,6 +235,7 @@ class ExportData:
             que_list.extend(sel_data) # [{tag:content}]
         numstat = StatusNum(que_list,filetype+' 파일자료')
         numstat.how_much_there()
+
         for que in que_list:
             data_filename = list(que.keys())[0]
             if dest_mod == 1: # 결과물 디렉토리에 저장
@@ -235,6 +247,7 @@ class ExportData:
             elif dest_mod == 0: # 원본 디렉토리에 저장
                 the_filename = data_filename
             self.log_file.which_type_loaded(filetype)
+
             with LoadFile(the_filename, encode_type).readwrite() as txt_file:
                 if filetype == 'TXT':
                     txt_file.write("{}에서 불러옴\n".format(self.target_name))
@@ -324,6 +337,7 @@ class ExportData:
             if self.orig_key in list(ExportData.single_namedict.values()):
                 keyname = "단독파일"
             else: keyname = FileFilter().sep_filename(self.orig_key)
+
             if keyname.lower() != FileFilter().sep_filename(self.trans_key).lower():
                 # orig_key와 trans_key가 일치하지 않을때
                 self.trans_key = FileFilter(
