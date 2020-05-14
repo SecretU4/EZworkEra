@@ -5,6 +5,7 @@ from usefile import FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import StatusNum
 from System.xmlhandling import ERBGrammarXML, SettingXML
+from .erbblock import CheckStack
 from . import CSVFunc
 
 class ERBLoad(LoadFile):
@@ -45,6 +46,7 @@ class ERBLoad(LoadFile):
 
 
 class ERBWrite(LoadFile):
+    """자체 문법을 통한 ERB 작성 지원 클래스"""
     def __init__(self,NameDir,EncodeType,era_type,chara_num):
         super().__init__(NameDir,EncodeType)
         self.era_type = era_type
@@ -301,10 +303,10 @@ class ERBWrite(LoadFile):
         self.__if_lv = 0
         self.__cs_lv = 0
         self.__cs_count = 0
-        self.__line_count = 0
-        for line in self.txt_bulklines:
+        for index_line in enumerate(self.txt_bulklines):
             before_if_level = self.__if_lv
             before_case_level = self.__cs_lv
+            self.__line_count, line = index_line
             line = line.strip()
             if line.startswith(';'):
                 self.erb_translated_list.append(line)
@@ -322,7 +324,7 @@ class ERBWrite(LoadFile):
                 else:
                     self.erb_translated_list.append(self.__replace_print(line))
             self.__check_addline(before_if_level,before_case_level)
-            self.__line_count += 1
+
         if self.__csvvar_dup_count != 0:
             print("중의적인 csv변수가 발견되었습니다. '!중복변수!'를 결과물에서 검색하세요.")
         self.erb_translated_list.insert(0,';{}에서 가져옴\n'.format(self.NameDir))
@@ -340,9 +342,8 @@ class ERBRemodel(ERBLoad):
     def replace_csvvars(self,mod_num=0):
         vfinder = ERBVFinder(self.csvtrans_infodict)
         replaced_context_list = []
-        line_count = 0
-        for line in self.erb_context_list:
-            line_count += 1
+        for index_line in enumerate(self.erb_context_list):
+            line_count, line = index_line
             change_check = 0
             line = line.replace('\r','\n').replace('\n\n','\n')
             if not line.strip().startswith(';'):
@@ -358,7 +359,7 @@ class ERBRemodel(ERBLoad):
                             line = line.replace(orig_fnc,comp_fnc)
                             change_check = 1
             replaced_context_list.append(line)
-            if change_check: self.debug_log.write_log(str(line_count)+'행 index 변수 변환됨\n')
+            if change_check: self.debug_log.write_log(str(line_count+1)+'행 index 변수 변환됨\n')
         self.debug_log.end_log('index 변수변환')
         return replaced_context_list
 
@@ -378,7 +379,6 @@ class ERBUtil:
         return self.filtered_lines
 
     def make_metainfo_lines(self,bulk_lines,option_num=0,target_name=None): # 0: 전부 1: 기능관련만
-        #TODO 코드 정리하여 customdb에 이관
         self.command_count = 0
         skip_start = 0
         erb_info = ERBMetaInfo()
@@ -626,6 +626,31 @@ class ERBVFinder:
         return result_list
 
 
+class ERBBlkFinder:
+    """디렉토리 대응 코드 블럭 인식 클래스"""
+    def __init__(self):
+        self.block_data = InfoDict(1) # {filename:{index:(func,(code_block))}}
+        self.files, self.encode_type = FileFilter(1).get_filelist('ERB')
+
+    def block_maker(self):
+        for filename in self.files:
+            opened_erbs = ERBLoad(filename,self.encode_type)
+            chk_stk = CheckStack(opened_erbs.make_bulk_lines()).line_divider()
+            self.block_data.add_dict(filename,chk_stk)
+        return self.block_data
+
+    def block_checker(self):
+        #TODO 파일별/ 블럭별 분리 및 공통점(구문 위치) 확인해 변경사항 체크
+        pass
+
+    def block_showdiff(self):
+        while not isinstance(self.block_data,InfoDict):
+            self.block_data = MenuPreset().load_saved_data()
+            if self.block_data is None:
+                print('특정 디렉토리의 ERB 데이터를 불러옵니다.')
+                self.block_maker()
+
+
 class ERBFunc:
     def __init__(self):
         self.result_infodict = InfoDict(1)
@@ -736,6 +761,6 @@ class ERBFunc:
     def erb_trans_helper(self): #TODO 공사중
         """번역본의 원본 이식에 도움을 주는 함수"""
         print("원본 erb의 디렉토리를 지정해주세요.")
-        o_files, o_encode_type = FileFilter(1).get_filelist('ERB')
+        o_blkdata = ERBBlkFinder()
         print("번역본 erb의 디렉토리를 지정해주세요.")
-        t_files, t_encode_type = FileFilter(1).get_filelist('ERB')
+        t_blkdata = ERBBlkFinder()
