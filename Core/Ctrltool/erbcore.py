@@ -764,3 +764,4 @@ class ERBFunc:
         o_blkdata = ERBBlkFinder()
         print("번역본 erb의 디렉토리를 지정해주세요.")
         t_blkdata = ERBBlkFinder()
+        #TODO 이름만 다른 파일 비교 가능하게 - CompareErb.csv 활용

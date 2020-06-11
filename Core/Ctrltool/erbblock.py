@@ -147,7 +147,7 @@ class sample_code:
             result_lines = self.open_gen.readlines()
         return result_lines
 
-if  __name__ == '__main__': #TODO 공개 전 특정 경로 삭제
+if  __name__ == '__main__':
     sample = sample_code()
     tester = CheckStack(sample.gen_bulk())
     print(tester.line_divider())

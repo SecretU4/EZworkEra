@@ -39,13 +39,14 @@ class CSVFunc:
     def __init__(self):
         self.debug_log = LogPreset(1)
 
-    def import_all_CSV(self,mode_num=0):
+    def import_all_CSV(self,mode_num=0,csv_files=None,encode_type=None):
         """InfoDict 클래스를 받아 CSV 변수 자료형 생성
         
         {csv파일명:{csv변수명:숫자}} 또는 {csv파일명:{숫자:csv변수명}}
         """
         print("추출을 시작합니다.")
-        csv_files, encode_type = FileFilter().get_filelist('CSV')
+        if not csv_files or not encode_type:
+            csv_files, encode_type = FileFilter().get_filelist('CSV')
         self.dic_assemble = InfoDict(0)
         count_check = StatusNum(csv_files,'파일',self.debug_log.NameDir)
         count_check.how_much_there()
@@ -111,10 +112,11 @@ class CSVFunc:
         self.debug_log.sucessful_done()
         return the_result
 
-    def make_csv_var_dict(self):
+    def make_csv_var_dict(self,csv_files=None,encode_type=None):
         """{csv변수명:[파일명,번호]} 형태 딕셔너리 제작"""
         print("csv 변수 대응 딕셔너리를 제작합니다.")
-        csv_files, encode_type = FileFilter().get_filelist('CSV')
+        if not csv_files or not encode_type:
+            csv_files, encode_type = FileFilter().get_filelist('CSV')
         count_check = StatusNum(csv_files,'파일',self.debug_log.NameDir)
         count_check.how_much_there()
         csvvar_dict = {}
