@@ -30,7 +30,8 @@ class CheckStack:
             return (1,3,0)
         # 분기문 처리
         elif line.startswith('CASE'):
-            if line.startswith('CASEELSE'): return (2,2,1)
+            if line.startswith('CASEELSE'):
+                return (2,2,1)
             return (2,2,0)
         elif line.startswith('SELECTCASE'):
             return (2,1,0)

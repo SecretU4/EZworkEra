@@ -577,6 +577,10 @@ class ERBVFinder:
         mod_num 0 : 숫자 > 단어, mod_num 1 : 단어 > 숫자
         """
         index_count = 0
+        if self.csv_infodict.db_ver > 1.2:
+            reversed_dict = self.csv_infodict.make_reverse()
+        else:
+            reversed_dict = None
         for result in found_result:
             if result:
                 var_head, var_context, orig_head, p_noun = result
@@ -584,7 +588,10 @@ class ERBVFinder:
                 if (mod_num == 0 and int_checker) or (
                     mod_num == 1 and int_checker != list(var_context)):
                     try:
-                        context_t = self.csv_infodict.dict_main[self.csv_fnames[var_head]].get(var_context)
+                        csv_filename = self.csv_fnames[var_head]
+                        context_t = self.csv_infodict.dict_main[csv_filename].get(var_context)
+                        if not context_t and reversed_dict:
+                            context_t = reversed_dict[csv_filename].get(var_context)
                         found_result[index_count] = (var_head, (
                             var_context, context_t), orig_head, p_noun)
                     except KeyError:
