@@ -72,7 +72,7 @@ class DataFilter:
                 set_filter.add(data)
         return dup_filtered
 
-    def erase_quote(self,dataname,quotechar):
+    def erase_quote(self,dataname,quotechar=';'):
         """입력받은 data(dict,list,str) 내 각 요소 중 quotechar 인자가 포함된 부분을 지움."""
         if isinstance(dataname,dict) is True:
             dict_erased = {}
@@ -95,6 +95,8 @@ class DataFilter:
                 if quotechar in splited_data[0]: return None
                 else: return dataname
             except IndexError: return None
+        else:
+            raise NotImplementedError
 
 
 class KoreanSupport:
