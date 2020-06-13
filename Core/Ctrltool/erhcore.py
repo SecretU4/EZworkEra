@@ -13,7 +13,8 @@ class HandleDIM:
         self.dim_dict = dim_dict
 
     def __del_dim_mid(self,words): #TODO 호출자 따른 변동 가능하도록
-        dim_mid = ('DYNAMIC','CONST','SAVEDATA','CHARADATA','GLOBAL','REF')
+        dim_mid = ('#DIM','#DIMS','DYNAMIC','CONST',
+            'SAVEDATA','CHARADATA','GLOBAL','REF')
         temp = words.copy()
 
         if not words[0] in dim_mid:
@@ -63,9 +64,10 @@ class HandleDIM:
 
 
 class ERHFunc:
-    def analyze_erh(self): #TODO 본격적으로 만져야함
+    def analyze_erh(self,erh_files=None,encode_type=None): #TODO 본격적으로 만져야함
         '''return (ERH_infodict, 구동중 통합 dim_dict)'''
-        erh_files, encode_type = FileFilter().get_filelist('ERH')
+        if not erh_files or not encode_type:
+            erh_files, encode_type = FileFilter().get_filelist('ERH')
         clsdim = HandleDIM()
         infodict = InfoDict('ERHInfoDict')
 
