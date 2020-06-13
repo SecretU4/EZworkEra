@@ -13,19 +13,12 @@ class ERBLoad(LoadFile):
         super().__init__(NameDir,EncodeType)
         self.debug_log = LogPreset(2)
 
-    def make_bulk_lines(self):
-        with self.readonly() as erb_origin:
-            self.debug_log.write_loaded_log(self.NameDir)
-            try:
-                self.erb_context_list = erb_origin.readlines()
-            except UnicodeDecodeError as decode_error:
-                self.debug_log.write_error_log(decode_error,self.NameDir)
-                self.erb_context_list = []
-        self.debug_log.end_log()
+    def make_bulklines(self):
+        self.erb_context_list = super().make_bulklines(self.debug_log)
         return self.erb_context_list
 
     def search_line(self,*args,except_args=None):
-        self.make_bulk_lines()
+        self.make_bulklines()
         self.targeted_list = []
         skip_switch = 0
         for line in self.erb_context_list:
@@ -54,8 +47,7 @@ class ERBWrite(LoadFile):
         self.set_xml = SettingXML('EraSetting.xml')
         self.gram_xml = ERBGrammarXML('CustomMarkdown.xml')
         self.debug_log = LogPreset(3)
-        with self.readonly() as txt_origin:
-            self.txt_bulklines = txt_origin.readlines()
+        self.txt_bulklines = super().make_bulklines(self.debug_log)
 
     def __make_dict(self):
         # 사전 데이터 준비작업. 추후 __init__이나 최초 1회 실행 구문으로 이관 필요 있음.
@@ -337,7 +329,7 @@ class ERBRemodel(ERBLoad):
     def __init__(self,NameDir,EncodeType,csv_infodict):
         super().__init__(NameDir,EncodeType)
         self.csvtrans_infodict = csv_infodict
-        self.make_bulk_lines()
+        self.make_bulklines()
 
     def replace_csvvars(self,mod_num=0):
         vfinder = ERBVFinder(self.csvtrans_infodict)
@@ -539,9 +531,9 @@ class ERBVFinder:
             'NOWEX':'EX','UPBASE':'BASE','DOWNBASE':'BASE'}
         self.csv_all_head = self.csv_head + list(self.except_dict.keys())
         re_varshead = '({})'.format('|'.join(self.csv_all_head))
-        self.symbol_filter = r':([^&=,;:\*\#\$\%\/\|\!\+\-\.\(\)\<\>\{\}\r\n]+)'
+        self.symbol_filter = r':([^&=,;\*\#\$\%\/\|\!\+\-\.\(\)\<\>\{\}\r\n]+)'
         self.csvvar_re = re.compile(re_varshead+self.symbol_filter)
-        self.target_list = ['TARGET','PLAYER','MASTER','ASSI']
+        # self.target_list = ['TARGET','PLAYER','MASTER','ASSI'] #TODO 차원지원 필요함
         self.log_set = log_set
 
     def find_csvfnc_line(self,line):
@@ -555,13 +547,10 @@ class ERBVFinder:
             var_head, var_context = var_bulk
             var_head = var_head.strip()
             var_context = var_context.strip()
-            if var_context in self.target_list:
-                csvvar_re_p = re.compile('{}:{}{}'.format(
-                    var_head,var_context,self.symbol_filter))
-                var_pnoun = var_context
-                context_t_filter = csvvar_re_p.match(line)
-                if context_t_filter == None: continue
-                var_context_t = context_t_filter.group(1).strip()
+            if ':' in var_context:
+                var_pnoun, var_context_t, *etc= var_context.split(':')
+                if etc:
+                    print(var_bulk,"개발자에게 보고바람")
             else:
                 var_pnoun = None
                 var_context_t = var_context
@@ -642,7 +631,7 @@ class ERBBlkFinder:
     def block_maker(self):
         for filename in self.files:
             opened_erbs = ERBLoad(filename,self.encode_type)
-            chk_stk = CheckStack(opened_erbs.make_bulk_lines()).line_divider()
+            chk_stk = CheckStack(opened_erbs.make_bulklines()).line_divider()
             self.block_data.add_dict(filename,chk_stk)
         return self.block_data
 
@@ -691,7 +680,7 @@ class ERBFunc:
         file_count_check = StatusNum(erb_files,'파일')
         file_count_check.how_much_there()
         for filename in erb_files:
-            erb_bulk = ERBLoad(filename, encode_type).make_bulk_lines()
+            erb_bulk = ERBLoad(filename, encode_type).make_bulklines()
             self.func_log.write_loaded_log(filename)
             file_results = []
             for line in erb_bulk:
@@ -722,7 +711,7 @@ class ERBFunc:
             file_count_check = StatusNum(erb_files,'파일')
             file_count_check.how_much_there()
             for filename in erb_files:
-                erb_bulk = ERBLoad(filename,encode_type).make_bulk_lines()
+                erb_bulk = ERBLoad(filename,encode_type).make_bulklines()
                 lines = ERBUtil.make_metainfo_lines(
                     erb_bulk,metainfo_option_num,filename).linelist
                 lines.insert(0,[0,0,0,";{}에서 불러옴\n".format(filename)])

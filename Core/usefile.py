@@ -46,6 +46,21 @@ class LoadFile:
         """있던 내용 뒤에 추가해 쓰기"""
         return open(self.NameDir, 'a', encoding=self.EncodeType)
 
+    def make_bulklines(self,log_preset=None):
+        '''log_preset은 LogPreset 클래스를 받음'''
+        with self.readonly() as opened:
+            if log_preset:
+                log_preset.write_loaded_log(self.NameDir)
+            try:
+                lines = opened.readlines()
+            except UnicodeDecodeError as decode_error:
+                if log_preset:
+                    log_preset.write_error_log(decode_error,self.NameDir)
+                lines = []
+        if log_preset:
+            log_preset.end_log()
+        return lines
+
 
 class DirFilter:
     """디렉토리명 관련 필터링 클래스.\n

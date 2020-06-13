@@ -7,5 +7,6 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from .csvcore import CSVFunc
 from .erbcore import ERBFunc
 from .result import ResultFunc
+from .erhcore import ERHFunc
 
-__all__ = ['CSVFunc', 'ERBFunc', 'ResultFunc']
+__all__ = ['CSVFunc', 'ERBFunc', 'ResultFunc','ERHFunc']
