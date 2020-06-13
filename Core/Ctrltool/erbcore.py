@@ -337,8 +337,8 @@ class ERBRemodel(ERBLoad):
         for index_line in enumerate(self.erb_context_list):
             line_count, line = index_line
             change_check = 0
-            line = line.replace('\r','\n').replace('\n\n','\n')
-            if not line.strip().startswith(';'):
+            line = line.strip()
+            if not line.startswith(';'):
                 find_list = vfinder.find_csvfnc_line(line)
                 if find_list:
                     rep_list = vfinder.change_var_index(find_list,mod_num)
@@ -352,6 +352,7 @@ class ERBRemodel(ERBLoad):
                             change_check = 1
             replaced_context_list.append(line)
             if change_check: self.debug_log.write_log(str(line_count+1)+'행 index 변수 변환됨\n')
+
         self.debug_log.end_log('index 변수변환')
         return replaced_context_list
 
@@ -493,17 +494,17 @@ class ERBUtil:
             "CSV 변수 목록 추출 데이터를 불러오실 수 있습니다.",
             "불러오실 경우 선택하신 모드와 다르게 작동할 수 있습니다."))
         if not infodict_csv:
-            if mod_num == 0:
-                infodict_csv = CSVFunc().import_all_CSV(1)
-            elif mod_num == 1: # {csv파일명:{숫자:csv변수명}}
+            if mod_num in (0,1): # {csv파일명:{숫자:csv변수명}}
                 infodict_csv = CSVFunc().import_all_CSV(1)
             elif mod_num == 2: # {csv파일명:{csv변수명:숫자}}
                 infodict_csv = CSVFunc().import_all_CSV(2)
-            else: raise Exception
+            else:
+                raise NotImplementedError(mod_num)
+
         if debug_log:
             if mod_num == 0:
                 log_text = '작업을 위해 csv infodict 불러옴'
-            elif mod_num in (1, 2):
+            elif mod_num in (1, 2): # log_text 추가작성하는 경우
                 if mod_num == 1:
                     log_text = '숫자를 index 변수로 변환'
                 else:
@@ -652,11 +653,13 @@ class ERBFunc:
         self.result_infodict = InfoDict(1)
         self.func_log = LogPreset('ERBwork')
 
-    def extract_printfunc(self):
+    def extract_printfunc(self,erb_files=None,encode_type=None):
         print("PRINT/DATAFORM 구문의 추출을 시작합니다.")
-        erb_files, encode_type = FileFilter().get_filelist('ERB')
+        if not erb_files or not encode_type:
+            erb_files, encode_type = FileFilter().get_filelist('ERB')
         file_count_check = StatusNum(erb_files,'파일')
         file_count_check.how_much_there()
+
         for filename in erb_files:
             bulk_lines = ERBLoad(filename, encode_type)
             printfunc_list = bulk_lines.search_line(
@@ -666,19 +669,22 @@ class ERBFunc:
                     printfunc_list.remove(line)
             self.result_infodict.add_dict(filename,printfunc_list)
             file_count_check.how_much_done()
+
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return self.result_infodict # {파일명:lines} 형태가 포함된 infodict
 
-    def search_csv_var(self):
+    def search_csv_var(self,erb_files=None,encode_type=None):
         print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
-        erb_files, encode_type = FileFilter().get_filelist('ERB')
+        if not erb_files or not encode_type:
+            erb_files, encode_type = FileFilter().get_filelist('ERB')
         csvvar_list = ERBUtil().csv_infodict_maker()
         if csvvar_list == None:
             csvvar_list = CSVFunc().single_csv_read('CSVfnclist.csv',opt=2)
         vfinder = ERBVFinder(csvvar_list)
         file_count_check = StatusNum(erb_files,'파일')
         file_count_check.how_much_there()
+
         for filename in erb_files:
             erb_bulk = ERBLoad(filename, encode_type).make_bulklines()
             self.func_log.write_loaded_log(filename)
@@ -700,6 +706,7 @@ class ERBFunc:
                 result_lines.append('\n\n')
             self.result_infodict.add_dict(filename,result_lines)
             file_count_check.how_much_done()
+
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return self.result_infodict # {파일명:정보 텍스트} 형태의 infodict
@@ -710,6 +717,7 @@ class ERBFunc:
             erb_files, encode_type = FileFilter().get_filelist('ERB')
             file_count_check = StatusNum(erb_files,'파일')
             file_count_check.how_much_there()
+
             for filename in erb_files:
                 erb_bulk = ERBLoad(filename,encode_type).make_bulklines()
                 lines = ERBUtil.make_metainfo_lines(
@@ -717,6 +725,7 @@ class ERBFunc:
                 lines.insert(0,[0,0,0,";{}에서 불러옴\n".format(filename)])
                 self.result_infodict.add_dict(filename,ERBUtil().indent_maker(lines))
                 file_count_check.how_much_done()
+
             result_dataset = self.result_infodict #InfoDict 클래스 {파일명:[erb 텍스트 라인]}
         else:
             result_dataset = ERBUtil().indent_maker(target_metalines) # [erb 텍스트 라인]
@@ -730,26 +739,31 @@ class ERBFunc:
         file_count_check.how_much_there()
         chara_num = input("작성하실 캐릭터의 번호를 입력해주세요. : ")
         self.comp_lines = []
+
         for filename in txt_files:
            file_lines = ERBWrite(filename,encode_type,era_type,chara_num).txt_to_erblines(csvvar_dict)
            print("{}의 처리가 완료되었습니다.".format(filename))
            self.comp_lines.extend(file_lines)
            file_count_check.how_much_done()
+
         erb_metainfo = ERBUtil().make_metainfo_lines(self.comp_lines,0,filename)
         self.func_log.sucessful_done()
         return erb_metainfo
 
-    def replace_num_or_name(self,mod_num=0):
+    def replace_num_or_name(self,mod_num=0,erb_files=None,encode_type=None):
         """0:숫자 > 변수, 1: 변수 > 숫자"""
-        erb_files, encode_type = FileFilter().get_filelist('ERB')
+        if not erb_files or not encode_type:
+            erb_files, encode_type = FileFilter().get_filelist('ERB')
         file_count_check = StatusNum(erb_files,'ERB 파일')
         file_count_check.how_much_there()
         csv_infodict = ERBUtil().csv_infodict_maker(mod_num+1,self.func_log)
         print("ERB내 index 변환작업을 시작합니다.")
+
         for filename in erb_files:
             replaced_lines = ERBRemodel(filename,encode_type,csv_infodict).replace_csvvars(mod_num)
             self.result_infodict.add_dict(filename,replaced_lines)
             file_count_check.how_much_done()
+
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return self.result_infodict # {파일명:[바뀐줄]}
