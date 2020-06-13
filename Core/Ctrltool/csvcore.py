@@ -36,8 +36,8 @@ class CSVLoad(LoadFile):
 
 
 class CSVFunc:
-    def __init__(self):
-        self.debug_log = LogPreset(1)
+
+    debug_log = LogPreset(1)
 
     def import_all_CSV(self,mode_num=0,csv_files=None,encode_type=None):
         """InfoDict 클래스를 받아 CSV 변수 자료형 생성

@@ -52,14 +52,14 @@ class LoadFile:
             if log_preset:
                 log_preset.write_loaded_log(self.NameDir)
             try:
-                lines = opened.readlines()
+                self.lines = opened.readlines()
             except UnicodeDecodeError as decode_error:
                 if log_preset:
                     log_preset.write_error_log(decode_error,self.NameDir)
-                lines = []
+                self.lines = []
         if log_preset:
             log_preset.end_log()
-        return lines
+        return self.lines
 
 
 class DirFilter:

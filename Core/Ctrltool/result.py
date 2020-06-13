@@ -31,15 +31,15 @@ class ExportData:
             파일 확인 절차에서 infodict형을 받지 않았을 시 출력되는 데이터 이름사전
     """
 
+    single_namedict = {None:'None', dict:'ONLYDICT', str:'ONLYSTRING',
+                       list:'ONLYLIST', ERBMetaInfo:'ONLYMETALINES'}
+
     def __init__(self, dest_dir, target_name, target_data):
         self.dest_dir = dest_dir  # 결과물 저장 폴더
         self.target_name = target_name
         self.target_data = target_data
         self.lazy_switch = 0  # 데이터 미선택한 경우 1
-        self.log_file = LogPreset(4)
-
-    single_namedict = {None:'None', dict:'ONLYDICT', str:'ONLYSTRING',
-                       list:'ONLYLIST', ERBMetaInfo:'ONLYMETALINES'}
+        self.log_file = LogPreset(4) # 중간에 workclass 바꾸는 경우 있어 초기화 필요
 
     def __multi_data_input(self,data_count=2):
         """입력받는 데이터가 2개인 경우 사용. sav 디랙토리의 저장 파일을 불러옴."""

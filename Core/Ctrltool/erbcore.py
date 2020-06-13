@@ -9,19 +9,20 @@ from .erbblock import CheckStack
 from . import CSVFunc
 
 class ERBLoad(LoadFile):
+
+    debug_log = LogPreset(2)
+
     def __init__(self,NameDir,EncodeType):
         super().__init__(NameDir,EncodeType)
-        self.debug_log = LogPreset(2)
 
-    def make_bulklines(self):
-        self.erb_context_list = super().make_bulklines(self.debug_log)
-        return self.erb_context_list
+    def make_erblines(self):
+        return self.make_bulklines(self.debug_log)
 
     def search_line(self,*args,except_args=None):
-        self.make_bulklines()
+        self.make_erblines()
         self.targeted_list = []
         skip_switch = 0
-        for line in self.erb_context_list:
+        for line in self.lines:
             if skip_switch == 1:
                 if '[SKIPEND]' in line: skip_switch = 0
                 continue
@@ -40,12 +41,16 @@ class ERBLoad(LoadFile):
 
 class ERBWrite(LoadFile):
     """자체 문법을 통한 ERB 작성 지원 클래스"""
+
+    set_xml = SettingXML('EraSetting.xml')
+    gram_xml = ERBGrammarXML('CustomMarkdown.xml')
+    casetype_dict = {0:{'b_start':'SELECTCASE','c_start':'CASE','b_end':'ENDSELECT','c_end':None},
+        1:{'b_start':'PRINTDATA','c_start':'DATALIST','b_end':'ENDDATA','c_end':'ENDLIST'}}
+
     def __init__(self,NameDir,EncodeType,era_type,chara_num):
         super().__init__(NameDir,EncodeType)
         self.era_type = era_type
         self.chara_num = chara_num
-        self.set_xml = SettingXML('EraSetting.xml')
-        self.gram_xml = ERBGrammarXML('CustomMarkdown.xml')
         self.debug_log = LogPreset(3)
         self.txt_bulklines = super().make_bulklines(self.debug_log)
 
@@ -70,9 +75,6 @@ class ERBWrite(LoadFile):
             if_dict.update(dic)
         self.var_dict = if_dict
         self.user_dict = self.gram_xml.user_dict()
-
-    casetype_dict = {0:{'b_start':'SELECTCASE','c_start':'CASE','b_end':'ENDSELECT','c_end':None},
-        1:{'b_start':'PRINTDATA','c_start':'DATALIST','b_end':'ENDDATA','c_end':'ENDLIST'}}
 
     def __handle_csvvar(self,word,last_word):
         dup_datalist = []
@@ -329,12 +331,12 @@ class ERBRemodel(ERBLoad):
     def __init__(self,NameDir,EncodeType,csv_infodict):
         super().__init__(NameDir,EncodeType)
         self.csvtrans_infodict = csv_infodict
-        self.make_bulklines()
+        self.make_erblines()
 
     def replace_csvvars(self,mod_num=0):
         vfinder = ERBVFinder(self.csvtrans_infodict)
         replaced_context_list = []
-        for index_line in enumerate(self.erb_context_list):
+        for index_line in enumerate(self.lines):
             line_count, line = index_line
             change_check = 0
             line = line.strip()
@@ -518,6 +520,12 @@ class ERBVFinder:
     """문장 대응 csv 변수 필터. csvdict은 infodict형의 csv정보를 요구하며,
     log_set은 LogPreset 을 요구함
     """
+
+    except_dict = {'UP':'JUEL','DOWN':'JUEL','PARAM':'PALAM',
+        'NOWEX':'EX','UPBASE':'BASE','DOWNBASE':'BASE'}
+    symbol_filter = r':([^&=,;\*\#\$\%\/\|\!\+\-\.\(\)\<\>\{\}\r\n]+)'
+    # target_list = ['TARGET','PLAYER','MASTER','ASSI'] #TODO 차원지원 필요함
+
     def __init__(self,csvdict,log_set=None):
         if isinstance(csvdict, InfoDict):
             self.csv_infodict = csvdict
@@ -528,13 +536,9 @@ class ERBVFinder:
             self.csv_head = list(self.csv_fnames.keys())
         elif isinstance(csvdict, list): self.csv_head = csvdict
         else: raise TypeError
-        self.except_dict = {'UP':'JUEL','DOWN':'JUEL','PARAM':'PALAM',
-            'NOWEX':'EX','UPBASE':'BASE','DOWNBASE':'BASE'}
-        self.csv_all_head = self.csv_head + list(self.except_dict.keys())
-        re_varshead = '({})'.format('|'.join(self.csv_all_head))
-        self.symbol_filter = r':([^&=,;\*\#\$\%\/\|\!\+\-\.\(\)\<\>\{\}\r\n]+)'
+        csv_all_head = self.csv_head + list(self.except_dict.keys())
+        re_varshead = '({})'.format('|'.join(csv_all_head))
         self.csvvar_re = re.compile(re_varshead+self.symbol_filter)
-        # self.target_list = ['TARGET','PLAYER','MASTER','ASSI'] #TODO 차원지원 필요함
         self.log_set = log_set
 
     def find_csvfnc_line(self,line):
@@ -632,7 +636,7 @@ class ERBBlkFinder:
     def block_maker(self):
         for filename in self.files:
             opened_erbs = ERBLoad(filename,self.encode_type)
-            chk_stk = CheckStack(opened_erbs.make_bulklines()).line_divider()
+            chk_stk = CheckStack(opened_erbs.make_erblines()).line_divider()
             self.block_data.add_dict(filename,chk_stk)
         return self.block_data
 
@@ -649,9 +653,11 @@ class ERBBlkFinder:
 
 
 class ERBFunc:
+
+    func_log = LogPreset('ERBwork')
+
     def __init__(self):
         self.result_infodict = InfoDict(1)
-        self.func_log = LogPreset('ERBwork')
 
     def extract_printfunc(self,erb_files=None,encode_type=None):
         print("PRINT/DATAFORM 구문의 추출을 시작합니다.")
@@ -686,7 +692,7 @@ class ERBFunc:
         file_count_check.how_much_there()
 
         for filename in erb_files:
-            erb_bulk = ERBLoad(filename, encode_type).make_bulklines()
+            erb_bulk = ERBLoad(filename, encode_type).make_erblines()
             self.func_log.write_loaded_log(filename)
             file_results = []
             for line in erb_bulk:
@@ -719,7 +725,7 @@ class ERBFunc:
             file_count_check.how_much_there()
 
             for filename in erb_files:
-                erb_bulk = ERBLoad(filename,encode_type).make_bulklines()
+                erb_bulk = ERBLoad(filename,encode_type).make_erblines()
                 lines = ERBUtil.make_metainfo_lines(
                     erb_bulk,metainfo_option_num,filename).linelist
                 lines.insert(0,[0,0,0,";{}에서 불러옴\n".format(filename)])
