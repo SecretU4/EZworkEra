@@ -9,4 +9,4 @@ from .erbcore import ERBFunc
 from .result import ResultFunc
 from .erhcore import ERHFunc
 
-__all__ = ['CSVFunc', 'ERBFunc', 'ResultFunc','ERHFunc']
+__all__ = ["CSVFunc", "ERBFunc", "ResultFunc", "ERHFunc"]

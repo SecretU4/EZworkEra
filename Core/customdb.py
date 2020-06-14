@@ -5,6 +5,7 @@ Classes:
     ERBMetaInfo
 """
 
+
 class InfoDict:
     """코드 내에서 각 자료명을 파일명으로 분류해야 하는 경우 사용하는 자료형 클래스
 
@@ -20,23 +21,24 @@ class InfoDict:
             data가 dict형인 경우 함수 호출을 통해 사용 가능한 변수.\n
             {dictname:data.values()} 형식
     """
-    def __init__(self,dbname=''):
+
+    def __init__(self, dbname=""):
         self.dict_main = {}
         self.dict_name_dictvals = {}
         self.dict_name_reverse = {}
         if type(dbname) == int:
             if dbname == 0:
-                dbname = 'CSVInfoDict'
+                dbname = "CSVInfoDict"
             elif dbname == 1:
-                dbname = 'ERBInfoDict'
+                dbname = "ERBInfoDict"
             elif dbname == 2:
-                dbname = 'ERBMetaInfoDict'
+                dbname = "ERBMetaInfoDict"
         self.db_name = dbname
         self.db_ver = 1.3
 
-    def add_dict(self,dictname,dataname):
+    def add_dict(self, dictname, dataname):
         """클래스 내 자료형에 새로운 정보 추가."""
-        self.dict_main[dictname]=dataname
+        self.dict_main[dictname] = dataname
 
     def make_dictvals_list(self):
         """클래스 내 자료형 안의 data 중 dict형에 대해
@@ -47,7 +49,7 @@ class InfoDict:
         error_count = 0
         for name in list(self.dict_main):
             try:
-                self.dict_name_dictvals[name]=list(self.dict_main[name].values())
+                self.dict_name_dictvals[name] = list(self.dict_main[name].values())
             except AttributeError:
                 error_count += 1
         if error_count != 0:
@@ -71,9 +73,9 @@ class InfoDict:
                 data_raw = list(data.items())
                 data_raw.reverse()
                 for item in data_raw:
-                    key,value = item
+                    key, value = item
                     reversed_data[value] = key
-                self.dict_name_reverse[main_key]= reversed_data
+                self.dict_name_reverse[main_key] = reversed_data
             except AttributeError:
                 error_count += 1
 
@@ -103,7 +105,8 @@ class ERBMetaInfo:
             CASE/DATAFORM문의 개수 판단 변수.
             CASE/DATAFORM 내 CASE/DATAFORM이 포함된 경우 정확하지 않을 수 있음.
     """
-    def __init__(self,mod_no=0):
+
+    def __init__(self, mod_no=0):
         self.linelist = []
         self.blocklist = []
         self.blocklines = []
@@ -114,11 +117,11 @@ class ERBMetaInfo:
         self.mod_no = mod_no
         self.db_ver = 1.2
 
-    def add_line_list(self,line):
+    def add_line_list(self, line):
         """linelist에 새로운 line 정보 추가"""
-        self.linelist.append([self.if_level,self.case_level,self.case_count,line])
+        self.linelist.append([self.if_level, self.case_level, self.case_count, line])
 
-    def add_linelist_embeded(self,line): #TODO 코드 블럭 인식 기능
+    def add_linelist_embeded(self, line):  # TODO 코드 블럭 인식 기능
         """line 데이터 처리 함수
 
         0 리턴시 정상 작동 증명
@@ -126,113 +129,125 @@ class ERBMetaInfo:
         """
         line = line.strip()
         back_count = 0
-        bef_status = self.linelist[-1] # 작업 직전의 [if_level,case_level,case_count,line]
-        while not bef_status[-1]: # line 이 공란일 때
+        bef_status = self.linelist[-1]  # 작업 직전의 [if_level,case_level,case_count,line]
+        while not bef_status[-1]:  # line 이 공란일 때
             back_count += 1
-            bef_status = self.linelist[-(back_count+1)] # line이 있었던 곳까지 돌아감
+            bef_status = self.linelist[-(back_count + 1)]  # line이 있었던 곳까지 돌아감
         while True:
-            if 'PRINT' in line:
-                if 'PRINTDATA' in line:
+            if "PRINT" in line:
+                if "PRINTDATA" in line:
                     self.add_line_list(line)
                     self.case_level += 1
                 else:
-                    if self.mod_no == 1: break
+                    if self.mod_no == 1:
+                        break
                     self.add_line_list(line)
                 break
-            elif 'IF' in line:
-                if 'ENDIF' in line:
+            elif "IF" in line:
+                if "ENDIF" in line:
                     self.if_level -= 1
                     self.add_line_list(line)
-                elif line.startswith('IF'):
+                elif line.startswith("IF"):
                     self.add_line_list(line)
                     self.if_level += 1
-                elif 'ELSEIF' in line:
+                elif "ELSEIF" in line:
                     self.if_level -= 1
                     self.add_line_list(line)
                     self.if_level += 1
-                elif 'SIF' in line: self.add_line_list(line)
-                else: return None
+                elif "SIF" in line:
+                    self.add_line_list(line)
+                else:
+                    return None
                 break
-            elif self.case_level != 0: # 케이스 내부 돌 때
-                if 'CASE' in line:
-                    if 'SELECTCASE' in line:
+            elif self.case_level != 0:  # 케이스 내부 돌 때
+                if "CASE" in line:
+                    if "SELECTCASE" in line:
                         self.add_line_list(line)
                         self.case_level += 1
-                    elif line.startswith('CASE'):
+                    elif line.startswith("CASE"):
                         self.case_count += 1
-                        if self.mod_no == 1: return 1
-                        if self.case_count != 1: self.case_level -= 1
+                        if self.mod_no == 1:
+                            return 1
+                        if self.case_count != 1:
+                            self.case_level -= 1
                         self.add_line_list(line)
                         self.case_level += 1
-                    else: return None
+                    else:
+                        return None
                     return 0
-                elif 'DATA' in line:
-                    if 'DATAFORM' in line :
-                        if self.mod_no == 1: break
+                elif "DATA" in line:
+                    if "DATAFORM" in line:
+                        if self.mod_no == 1:
+                            break
                         self.add_line_list(line)
-                    elif 'DATALIST' in line :
+                    elif "DATALIST" in line:
                         self.case_count += 1
                         if self.mod_no == 1:
                             self.case_level += 1
                             break
                         self.add_line_list(line)
                         self.case_level += 1
-                    elif 'PRINTDATA' in line:
+                    elif "PRINTDATA" in line:
                         self.case_level += 1
                         self.add_line_list(line)
                         print("분기문 안에 분기문이 있습니다.")
-                    elif 'ENDDATA' in line:
+                    elif "ENDDATA" in line:
                         self.case_level -= 1
-                        line = line + ' ;{}개의 케이스 존재'.format(self.case_count)
+                        line = line + " ;{}개의 케이스 존재".format(self.case_count)
                         self.case_count = 0
                         self.add_line_list(line)
-                    else: return None
+                    else:
+                        return None
                     break
-                elif 'END' in line:
-                    if 'ENDSELECT' in line:
+                elif "END" in line:
+                    if "ENDSELECT" in line:
                         self.case_level -= 1
-                        line = line + ' ;{}개의 케이스 존재'.format(self.case_count)
+                        line = line + " ;{}개의 케이스 존재".format(self.case_count)
                         self.case_level -= 1
                         self.case_count = 0
                         self.add_line_list(line)
-                    elif 'ENDLIST' in line :
+                    elif "ENDLIST" in line:
                         self.case_level -= 1
-                        if self.mod_no == 1: break
+                        if self.mod_no == 1:
+                            break
                         self.add_line_list(line)
-                    else: return None
+                    else:
+                        return None
                     break
-                else: pass
-            if 'SELECTCASE' in line:
+                else:
+                    pass
+            if "SELECTCASE" in line:
                 self.add_line_list(line)
                 self.case_level += 1
-            elif line.startswith('ELSE'):
+            elif line.startswith("ELSE"):
                 self.if_level -= 1
                 self.add_line_list(line)
                 self.if_level += 1
-            elif line.startswith('RETURN'):
+            elif line.startswith("RETURN"):
                 self.add_line_list(line)
-            elif line.startswith('GOTO'):
+            elif line.startswith("GOTO"):
                 self.add_line_list(line)
-            elif line.startswith('#'):
+            elif line.startswith("#"):
                 self.add_line_list(line)
-            elif line.startswith('LOCAL'):
+            elif line.startswith("LOCAL"):
                 self.add_line_list(line)
-            elif line.startswith('$'):
+            elif line.startswith("$"):
                 self.add_line_list(line)
-            elif line.startswith('@'):
+            elif line.startswith("@"):
                 self.add_line_list(line)
             else:
-                if self.mod_no == 1: break
+                if self.mod_no == 1:
+                    break
                 self.add_line_list(line)
             break
         if self.if_level != bef_status[0]:
-            if self.if_level > bef_status[0]: # if 블럭 스타트
+            if self.if_level > bef_status[0]:  # if 블럭 스타트
                 pass
-            elif self.if_level < bef_status[0]: # if 블럭 종료
+            elif self.if_level < bef_status[0]:  # if 블럭 종료
                 pass
         elif self.case_level != bef_status[1]:
-            if self.case_level > bef_status[1]: # case 블럭 스타트
+            if self.case_level > bef_status[1]:  # case 블럭 스타트
                 pass
-            elif self.case_level < bef_status[1]: # case 블럭 종료
+            elif self.case_level < bef_status[1]:  # case 블럭 종료
                 pass
         return 0
