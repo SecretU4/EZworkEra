@@ -121,3 +121,5 @@ Archive/
 ResultFiles/
 sav/
 .pylintrc
+report.txt
+*.sav
