@@ -357,8 +357,7 @@ class ERBRemodel(ERBLoad):
     def replace_csvvars(self, mod_num=0):
         vfinder = ERBVFinder(self.csvtrans_infodict)
         replaced_context_list = []
-        for index_line in enumerate(self.lines):
-            line_count, line = index_line
+        for line_count, line in enumerate(self.lines):
             change_check = 0
             line = line.strip()
             if not line.startswith(";"):
@@ -373,7 +372,7 @@ class ERBRemodel(ERBLoad):
                         if orig_fnc != comp_fnc:
                             line = line.replace(orig_fnc, comp_fnc)
                             change_check = 1
-            replaced_context_list.append(line)
+            replaced_context_list.append(line + "\n")
             if change_check:
                 self.debug_log.write_log(str(line_count + 1) + "행 index 변수 변환됨\n")
 
