@@ -120,3 +120,6 @@ debug*.txt
 Archive/
 ResultFiles/
 sav/
+.pylintrc
+report.txt
+*.sav
