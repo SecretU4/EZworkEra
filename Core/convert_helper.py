@@ -72,19 +72,24 @@ class TXTConverter:
         self.change_ext_inTXT = opt_array[0]
         self.get_backup = opt_array[1]
         self.dir_from = dir_from
-        self.bef_encode = None
 
     def encoding_check(self):
-        detect_result = chardet.detect(self.opened_file.read())["encoding"]
-        if not detect_result and self.bef_encode:
-            detect_result = self.bef_encode
-        else:
-            self.bef_encode = detect_result
-        return detect_result
+        detect_result = chardet.detect(self.opened_file.read())
+        if not detect_result["encoding"]:
+            detect_result["encoding"] = self.bef_encode
+        return detect_result["encoding"]
 
     def change_encoding(self, encode_from, encode_to):
-        with open(self.filename, "r", encoding=encode_from) as origin:
-            bulk_data = origin.read()
+        if not encode_from:
+            encode_from = "cp932utf-8-sig".replace(encode_to, "")
+        try:
+            with open(self.filename, "r", encoding=encode_from) as origin:
+                bulk_data = origin.read()
+        except UnicodeDecodeError:
+            encode_from = "cp932utf-8-sig".replace(encode_to, "")
+            with open(self.filename, "r", encoding=encode_from) as origin:
+                bulk_data = origin.read()
+        finally:
             if self.orig_imgext and self.change_ext_inTXT:
                 bulk_data = bulk_data.replace(self.orig_imgext, self.to_imgext)
 
@@ -98,6 +103,7 @@ class TXTConverter:
     def run(self):
         encode_from = self.encoding_check()
         self.change_encoding(encode_from, self.encode_to)
+        return encode_from
 
 
 class MainWidget(QWidget):
@@ -105,18 +111,20 @@ class MainWidget(QWidget):
     encode_dict = {"Shift-JIS": "cp932", "UTF-8 with BOM": "utf-8-sig"}
     format_dict = {"JPEG(jpg)": "jpeg", "WebP": "webp", "Gif": "gif", "PNG": "png"}
 
-    def __init__(self):
+    def __init__(self, parent):
         super().__init__()
-        self.selected_dir = str()
-        self.option_array = [1, 0, 0, 0]
+        self.par = parent
         self.InitUI()
 
     def InitUI(self):
+        self.selected_dir = str()
+        self.option_array = [1, 0, 0, 0]
         self.main_layout = QVBoxLayout()
         self.make_dir_groupbox()
         self.make_func_groupbox()
         self.make_sys_layout()
         self.status_bar = QStatusBar()
+        self.setEnabled(True)
 
         self.setLayout(self.main_layout)
 
@@ -218,10 +226,7 @@ class MainWidget(QWidget):
 
     def run_process(self):
         self.option_set()
-        self.run_button.setEnabled(False)
-        self.load_dir_button.setEnabled(False)
-        self.change_txt_yn.setEnabled(False)
-        self.backup_yn.setEnabled(False)
+        self.setEnabled(False)
         target_array = (
             self.encode_widget.result,
             self.format_widget_from.result,
@@ -229,8 +234,6 @@ class MainWidget(QWidget):
             self.selected_dir,
         )
         bar_array = (self.prog_bar, self.status_bar)
-        self.encode_groupbox.setEnabled(False)
-        self.fmt_groupbox.setEnabled(False)
         self.threadclass = MyThread(target_array, bar_array, self.option_array, self)
         self.work_started = 0
         self.threadclass.processed.connect(self.progbar_set)
@@ -253,8 +256,10 @@ class MainWidget(QWidget):
         if close_yn == QMessageBox.Yes:
             QCoreApplication.instance().quit()
         else:
-            self.threadclass.terminate()
-            self.IntiUI()
+            self.threadclass.wait()
+            debugpy.debug_this_thread()
+            self.close()
+            self.par.intiGUI()
 
 
 class RadioBox(QWidget):
@@ -294,7 +299,7 @@ class MainWindow(QMainWindow):
         self.intiGUI()
 
     def intiGUI(self):
-        main_widg = MainWidget()
+        main_widg = MainWidget(self)
         self.setCentralWidget(main_widg)
         self.setStatusBar(main_widg.status_bar)
         main_widg.status_bar.showMessage("READY")
@@ -342,6 +347,7 @@ class MyThread(QThread):
                 self.processed.emit(progress_stat)
 
         if self.func_array[0]:
+            bef_encode = None
             for txtfile in txtfiles:
                 progress_stat += 1
                 self.status_bar.showMessage("processing %s" % txtfile)
@@ -353,7 +359,8 @@ class MyThread(QThread):
                     self.option_array,
                     selected_dir,
                 )
-                txtconv.run()
+                txtconv.bef_encode = bef_encode
+                bef_encode = txtconv.run()
                 self.processed.emit(progress_stat)
         self.finished.emit(True)
 
