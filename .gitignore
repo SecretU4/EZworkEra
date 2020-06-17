@@ -118,7 +118,7 @@ debug*.txt
 *.erb
 *.exe
 Archive/
-ResultFiles/
+Result*/
 sav/
 .pylintrc
 report.txt
