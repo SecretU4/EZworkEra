@@ -32,11 +32,14 @@ def result_maker(filename, dir_from):
     if not os.path.isdir(result_dir):
         dir_names = result_dir.split("\\")
         for depth in range(len(dir_names)):
-            dir_make = "\\".join(dir_names[:depth+1])
+            dir_make = "\\".join(dir_names[: depth + 1])
             if os.path.isdir(dir_make):
                 continue
             os.mkdir(dir_make)
     return filename
+
+
+encode_dict = {"Shift-JIS": "cp932", "UTF-8 with BOM": "utf-8-sig", "Korean-Windows": "cp949"}
 
 
 class ImageConvert:
@@ -75,23 +78,20 @@ class TXTConverter:
 
     def encoding_check(self):
         detect_result = chardet.detect(self.opened_file.read())
-        if not detect_result["encoding"]:
-            detect_result["encoding"] = self.bef_encode
         return detect_result["encoding"]
 
-    def change_encoding(self, encode_from, encode_to):
-        if not encode_from:
-            encode_from = "cp932utf-8-sig".replace(encode_to, "")
-        try:
-            with open(self.filename, "r", encoding=encode_from) as origin:
-                bulk_data = origin.read()
-        except UnicodeDecodeError:
-            encode_from = "cp932utf-8-sig".replace(encode_to, "")
-            with open(self.filename, "r", encoding=encode_from) as origin:
-                bulk_data = origin.read()
-        finally:
-            if self.orig_imgext and self.change_ext_inTXT:
-                bulk_data = bulk_data.replace(self.orig_imgext, self.to_imgext)
+    def change_encoding(self, encode_to):
+        bulk_data = None
+        while bulk_data == None:
+            for encode in encode_dict.values():
+                bulk_data = self.try_open(encode)
+                if isinstance(bulk_data, str):
+                    break
+            if bulk_data == None:
+                encode = self.encoding_check()
+                bulk_data = self.try_open(encode)
+        if self.orig_imgext and self.change_ext_inTXT:
+            bulk_data = bulk_data.replace(self.orig_imgext, self.to_imgext)
 
         if self.get_backup and self.dir_from:
             dest_filename = result_maker(self.filename, self.dir_from)
@@ -100,15 +100,20 @@ class TXTConverter:
         with open(dest_filename, "w", encoding=encode_to) as dest:
             dest.write(bulk_data)
 
+    def try_open(self, encoding):
+        try:
+            with open(self.filename, "r", encoding=encoding) as origin:
+                bulk_data = origin.read()
+            return bulk_data
+        except UnicodeDecodeError:
+            return None
+
     def run(self):
-        encode_from = self.encoding_check()
-        self.change_encoding(encode_from, self.encode_to)
-        return encode_from
+        self.change_encoding(self.encode_to)
 
 
 class MainWidget(QWidget):
 
-    encode_dict = {"Shift-JIS": "cp932", "UTF-8 with BOM": "utf-8-sig"}
     format_dict = {"JPEG(jpg)": "jpeg", "WebP": "webp", "Gif": "gif", "PNG": "png"}
 
     def __init__(self, parent):
@@ -149,7 +154,7 @@ class MainWidget(QWidget):
     def make_func_groupbox(self):
         func_layout = QHBoxLayout()
 
-        self.encode_widget = RadioBox(self.encode_dict)
+        self.encode_widget = RadioBox(encode_dict)
         encode_layout = self.encode_widget.make_radio_box("UTF-8 with BOM")
         self.encode_groupbox = QGroupBox("Encode to: ")
         self.encode_groupbox.setLayout(encode_layout)
@@ -240,6 +245,13 @@ class MainWidget(QWidget):
         self.threadclass.finished.connect(self.donebox)
         self.threadclass.start()
 
+    def open_result(self):
+        if self.option_array[1]:
+            result_path = "Result\\"
+        else:
+            result_path = self.selected_dir
+        os.startfile(result_path)
+
     @pyqtSlot(int)
     def progbar_set(self, progress_stat):
         if not self.work_started:
@@ -250,16 +262,25 @@ class MainWidget(QWidget):
 
     @pyqtSlot(bool)
     def donebox(self):
-        close_yn = QMessageBox.question(
-            self, "Done!", "Do you want to quit?", QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes
+        msgbox = QMessageBox(
+            QMessageBox.Warning,
+            "Done!",
+            "Do you want to quit?",
+            buttons=QMessageBox.Yes | QMessageBox.No,
+            parent=self,
         )
-        if close_yn == QMessageBox.Yes:
-            QCoreApplication.instance().quit()
-        else:
+        open_result = msgbox.addButton("Open Result Folder", QMessageBox.AcceptRole)
+        msgbox.setDefaultButton(QMessageBox.Yes)
+        close_yn = msgbox.exec_()
+        if close_yn == QMessageBox.No:
             self.threadclass.wait()
             debugpy.debug_this_thread()
             self.close()
             self.par.intiGUI()
+        else:
+            if close_yn == QMessageBox.AcceptRole:
+                self.open_result()
+            QCoreApplication.instance().quit()
 
 
 class RadioBox(QWidget):
@@ -320,25 +341,32 @@ class MyThread(QThread):
         self.option_array = option_array[:2]
         self.func_array = option_array[2:]
 
+    def __del__(self):
+        print("Thread Deleted")
+
     def run(self):
         debugpy.debug_this_thread()
         target_encode, target_fmt_from, target_fmt_to, selected_dir = self.target_array
-        print('A')
+        print("Args loaded")
         imgfiles = BringFiles(selected_dir).search_filelist(target_fmt_from)
         txtfiles = BringFiles(selected_dir).search_filelist(".ERB", ".ERH", ".CSV")
         imgfiles_len = len(imgfiles)
         txtfiles_len = len(txtfiles)
-        print('B')
+        print("Filees listed")
         if self.func_array[0] and self.func_array[1]:
             total_len = imgfiles_len + txtfiles_len
         elif self.func_array[0]:
             total_len = txtfiles_len
         elif self.func_array[1]:
             total_len = imgfiles_len
+        else:
+            print("Selected_nothing")
+            total_len = 0
         self.processed.emit(total_len)
 
         progress_stat = 0
         if self.func_array[1]:
+            print("Converting img fmt")
             for imgfile in imgfiles:
                 progress_stat += 1
                 self.status_bar.showMessage("processing %s" % imgfile)
@@ -347,7 +375,7 @@ class MyThread(QThread):
                 self.processed.emit(progress_stat)
 
         if self.func_array[0]:
-            bef_encode = None
+            print("Converting txt encoding")
             for txtfile in txtfiles:
                 progress_stat += 1
                 self.status_bar.showMessage("processing %s" % txtfile)
@@ -359,9 +387,9 @@ class MyThread(QThread):
                     self.option_array,
                     selected_dir,
                 )
-                txtconv.bef_encode = bef_encode
-                bef_encode = txtconv.run()
+                txtconv.run()
                 self.processed.emit(progress_stat)
+        print("Thread Done")
         self.finished.emit(True)
 
 
