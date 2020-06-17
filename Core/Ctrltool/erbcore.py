@@ -45,8 +45,6 @@ class ERBLoad(LoadFile):
 class ERBWrite(LoadFile):
     """자체 문법을 통한 ERB 작성 지원 클래스"""
 
-    set_xml = SettingXML("EraSetting.xml")
-    gram_xml = ERBGrammarXML("CustomMarkdown.xml")
     casetype_dict = {
         0: {"b_start": "SELECTCASE", "c_start": "CASE", "b_end": "ENDSELECT", "c_end": None},
         1: {"b_start": "PRINTDATA", "c_start": "DATALIST", "b_end": "ENDDATA", "c_end": "ENDLIST"},
@@ -60,6 +58,8 @@ class ERBWrite(LoadFile):
         self.txt_bulklines = super().make_bulklines(self.debug_log)
 
     def __make_dict(self):
+        self.set_xml = SettingXML("EraSetting.xml")
+        self.gram_xml = ERBGrammarXML("CustomMarkdown.xml")
         # 사전 데이터 준비작업. 추후 __init__이나 최초 1회 실행 구문으로 이관 필요 있음.
         # csv 변수 양식에 맞게 불러줌. {csvvar:[csvname,num]}
         if self.csvvar_dict == None:
@@ -747,7 +747,11 @@ class ERBFunc:
             erb_files, encode_type = FileFilter().get_filelist("ERB")
         csvvar_list = ERBUtil().csv_infodict_maker()
         if csvvar_list == None:
-            csvvar_list = CSVFunc().single_csv_read("CSVfnclist.csv", opt=2)
+            try:
+                csvvar_list = CSVFunc().single_csv_read("CSVfnclist.csv", opt=2)
+            except:
+                print("설정 정보가 없어 실행이 불가합니다.")
+                return None
         vfinder = ERBVFinder(csvvar_list)
         file_count_check = StatusNum(erb_files, "파일")
         file_count_check.how_much_there()
