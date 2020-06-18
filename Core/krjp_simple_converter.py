@@ -167,13 +167,14 @@ def compare_csvvar(csv_dict, used_list, dim_dict=dict()):
                 not_checked.pop(not_checked.index(var))
             elif is_dim:
                 vardata[-1] = var_context
-                trans_var = csvname + ":" + ':'.join(vardata)
+                trans_var = csvname + ":" + ":".join(vardata)
                 try:
                     not_checked.pop(not_checked.index(trans_var))
                 except ValueError:
                     pass
 
     return not_checked
+
 
 def wrapping(dirname, csv_info, encode_type, diff_csvinfo):
     analyze = AnalyzeFiles(BringFiles(dirname), encode_type)
@@ -184,7 +185,7 @@ def wrapping(dirname, csv_info, encode_type, diff_csvinfo):
     report.basic_info(dirname, "외부함수 %d 개" % len(used_funcs), "미확인된 외부함수: ")
     report.listed_info(used_funcs)
     report.basic_info(
-        "사용된 변수 %d 개\n누락 CSV변수: %d 개\n누락 목록: " %(len(used_csvvars), len(index_csvvars))
+        "사용된 변수 %d 개\n누락 CSV변수: %d 개\n누락 목록: " % (len(used_csvvars), len(index_csvvars))
     )
     report.listed_info(index_csvvars)
     report.basic_info("\n" + "-" * 8)
@@ -202,14 +203,17 @@ def wrapping(dirname, csv_info, encode_type, diff_csvinfo):
 
 # 이하 구동부
 if __name__ == "__main__":
-    print("원본/번역본 간 ERB 이름에 차이가 있는 경우(번역 등 이유로),")
-    print("중복되는 파일이 있다면 수동으로 지워주셔야 합니다.")
+    print(
+        "원본/번역본 간 동일한 기능을 하는 ERB 이름이 (번역 등 이유로) 차이가 있는 경우,\n",
+        "중복되는 기능을 하는 파일을 수동으로 처리해주셔야 합니다.\n",
+        "해당 경우 누락된 함수에서 오류를 발생시킬 수 있습니다.\n\n",
+    )
     config = SaveSetting()
     orig_dir, trans_dir, orig_csv, trans_csv = config.load()
     config.save()
 
     while True:
-        print("[0] 원본구상 번역본이식\n[1] 번역본구상 원본이식")
+        print("\n[0] 원본구상 번역본이식\n[1] 번역본구상 원본이식")
         choose = input("실행할 작업을 선택해주세요. : ")
         if choose == "0":
             wrapping(orig_dir, orig_csv, "cp932", trans_csv)

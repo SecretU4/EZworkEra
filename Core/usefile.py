@@ -77,20 +77,27 @@ class DirFilter:
         self.dirname = dirname
 
     def dir_exist(self):
-        """해당 디렉토리의 존재 여부 판별"""
+        """해당 디렉토리의 존재 여부 판별 후 없으면 생성함. 하위 디렉토리 \\ 구별자 지원"""
         dir_target = self.dir_slash()
-        if os.path.isdir(dir_target) == False:
-            os.mkdir(dir_target)
+        if not os.path.isdir(dir_target):
+            dir_names = dir_target.split("\\")
+            for depth in range(len(dir_names)):
+                dir_make = "\\".join(dir_names[: depth + 1])
+                if os.path.isdir(dir_make):
+                    continue
+                os.mkdir(dir_make)
         return dir_target
 
     def dir_slash(self):
-        """디렉토리명의 맨 끝에 \\나 / 기호를 붙임."""
-        dir_slashed = list(self.dirname)
+        """디렉토리명의 구별자를 \\로 바꾸고 맨 끝에 \\ 기호를 붙임."""
         if list(self.dirname) == []:
-            pass
-        elif dir_slashed.pop() != "/" and dir_slashed.pop() != "\\":
-            self.dir_target = self.dirname + "\\"
-        return self.dir_target
+            return self.dirname
+        elif "/" in self.dirname:
+            self.dirname = self.dirname.replace("//", "\\").replace("/", "\\")
+        dir_slashed = list(self.dirname)
+        if dir_slashed.pop() not in ("/", "\\"):
+            dir_target = self.dirname + "\\"
+        return dir_target
 
 
 class FileFilter:
