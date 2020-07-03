@@ -3,6 +3,7 @@
 Classes:
     InfoDict
     ERBMetaInfo
+    FuncInfo
 """
 
 
@@ -251,3 +252,40 @@ class ERBMetaInfo:
             elif self.case_level < bef_status[1]:  # case 블럭 종료
                 pass
         return 0
+
+
+class FuncInfo:
+    """ERB의 정보를 함수별로 나누어 불러올 수 있는 자료형 클래스
+    
+    Functions
+        add_dict(funcname, data, [filename])
+    Variables
+        func_dict
+            함수별로 정리된 딕셔너리 자료형
+        file_func_dict
+            파일/함수별로 정리된 딕셔너리 자료형
+        db_ver
+            기록 양식 확인용 클래스 버전
+    """
+
+    def __init__(self):
+        self.db_ver = 1.0
+        self.file_func_dict = dict()
+        self.func_dict = dict()
+
+    def add_dict(self, funcname, data, filename=None):
+        self.func_dict[funcname] = data
+
+        if filename:
+            data_already = self.file_func_dict.get(filename)
+            if type(data_already) == type(data):
+                if isinstance(data_already, dict):
+                    data_already.update(data)
+                elif isinstance(data_already, list):
+                    data_already.extend(data)
+                else:
+                    raise NotImplementedError(type(data))
+            else:
+                data_already = data
+            self.file_func_dict[filename] = data_already
+

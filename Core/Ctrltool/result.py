@@ -7,7 +7,7 @@ Classes:
 """
 import re
 import os
-from customdb import ERBMetaInfo, InfoDict
+from customdb import ERBMetaInfo, InfoDict, FuncInfo
 from usefile import DirFilter, FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import Menu, StatusNum
@@ -87,6 +87,8 @@ class ExportData:
                         "올바르지 않은 자료형({})이 InfoDict에 포함되어 있습니다.\n".format(type(data))
                     )
                     tagging_data = {"None": None}
+            elif isinstance(data, FuncInfo):
+                tagging_data = {"ex: " + list(data.file_func_dict.keys())[0]: data}
             elif isinstance(data, (dict, list, str, ERBMetaInfo)):
                 tagging_data = {self.single_namedict[type(data)]: data}
             else:  # 자료형이 InfoDict, ERBMetaInfo, dict, list 아님
@@ -140,40 +142,57 @@ class ExportData:
             self.log_file.write_log("{} 자료를 이용한 SRS를 작성할 수 없습니다.".format("자료와 ".join(error_target)))
             return 0
 
-        with LoadFile(self.srs_filename).addwrite() as srs_file:
-            srs_file.write(";이하 {0}\n\n".format(keyname))
-            self.log_file.write_log(keyname + " 정보를 불러옴\n")
-            if self.infodict_switch:
-                if isinstance(data_orig, dict) and isinstance(data_trans, dict):
-                    # CSV 변수목록
-                    orig_keys = list(data_orig.keys())
-                    trans_keys = list(data_trans.keys())
-                    total_keys = DataFilter().dup_filter(orig_keys + trans_keys)
-                    dict_switch = 1
-                elif isinstance(data_orig, list) and isinstance(data_trans, list):
-                    # ERB lines
-                    orig_keys = data_orig
-                    trans_keys = data_trans
-                    total_keys = range((len(data_orig) + len(data_trans) / 2))
-                    dict_switch = 0
-            else:
+        if self.infodict_switch:
+            if isinstance(data_orig, dict) and isinstance(data_trans, dict):
+                # CSV 변수목록
+                orig_keys = list(data_orig.keys())
+                trans_keys = list(data_trans.keys())
+                total_keys = DataFilter().dup_filter(orig_keys + trans_keys)
+                dict_switch = 1
+            elif isinstance(data_orig, list) and isinstance(data_trans, list):
+                # ERB lines
                 orig_keys = data_orig
                 trans_keys = data_trans
                 total_keys = range((len(data_orig) + len(data_trans) / 2))
                 dict_switch = 0
+        elif isinstance(data_orig, dict) and isinstance(data_trans, dict):
+            # FuncInfo 대응용
+            orig_keys = list(data_orig.keys())
+            trans_keys = list(data_trans.keys())
+            total_keys = DataFilter().dup_filter(orig_keys + trans_keys)
+            dict_switch = 1
+        else:
+            orig_keys = data_orig
+            trans_keys = data_trans
+            total_keys = range((len(data_orig) + len(data_trans) / 2))
+            dict_switch = 0
 
-            if not dict_switch and len(total_keys) != (len(data_orig) + len(data_trans)):
-                print("줄의 개수가 맞지 않아 오류가 발생할 수 있습니다.")
-                self.log_file.write_log("두 자료의 행 개수 맞지 않음\n")
+        if not dict_switch and len(total_keys) != (len(data_orig) + len(data_trans)):
+            print("줄의 개수가 맞지 않아 오류가 발생할 수 있습니다.")
+            self.log_file.write_log("두 자료의 행 개수 맞지 않음\n")
+
+        with LoadFile(self.srs_filename).addwrite() as srs_file:
+            srs_file.write(";이하 {0}\n\n".format(keyname))
+            self.log_file.write_log(keyname + " 정보를 불러옴\n")
 
             for total_key in total_keys:
                 if total_key in orig_keys and total_key in trans_keys:
-                    if data_orig[total_key].strip() == "" and data_trans[total_key].strip() == "":
-                        self.log_file.write_log("{}번 숫자의 내용이 빈칸입니다.\n".format(total_key))
-                        self.cantwrite_srs_count += 1
-                        continue
-                    orig_text = data_orig[total_key]
-                    trans_text = data_trans[total_key]
+                    val_orig = data_orig[total_key]
+                    val_trans = data_trans[total_key]
+                    if isinstance(val_orig, str) and isinstance(val_trans, str):
+                        if val_orig.strip() == "" and val_trans.strip() == "":
+                            self.log_file.write_log("{}번 숫자의 내용이 빈칸입니다.\n".format(total_key))
+                            self.cantwrite_srs_count += 1
+                            continue
+                        orig_text = [val_orig.strip()]
+                        trans_text = [val_trans.strip()]
+                    elif isinstance(val_orig, list) and isinstance(val_trans, list):  # FuncInfo 대응용
+                        if not val_orig and not val_trans:
+                            self.log_file.write_log("%s 함수의 자료가 발견되지 않았습니다.\n" % total_key)
+                            self.cantwrite_srs_count += 1
+                            continue
+                        orig_text = val_orig
+                        trans_text = val_trans
                 elif dict_switch:
                     if total_key not in orig_keys:
                         error_dictname = self.orig_key
@@ -186,24 +205,29 @@ class ExportData:
                     self.cantwrite_srs_count += 1
                     continue
                 else:
-                    orig_text = orig_keys[total_key].strip()
-                    trans_text = trans_keys[total_key].strip()
+                    orig_text = [orig_keys[total_key]]
+                    trans_text = [trans_keys[total_key]]
 
-                try:  # 중복변수 존재 유무 검사
-                    self.for_dup_content.index(orig_text)
-                except ValueError:
-                    self.for_dup_content.append(orig_text)
-                    if opt_no == 1:
-                        if orig_text == trans_text:
-                            continue
-                        elif len(orig_text) < 2:
-                            self.log_file.write_log(
-                                "단어가 너무 짧습니다 : {}번째 항목의 {}\n".format(total_key, orig_text)
-                            )
-                            self.cantwrite_srs_count += 1
-                            continue
-                    srs_file.write("{}\n{}\n\n".format(orig_text, trans_text))
-                    self.worked_switch = 1
+                if len(orig_text) != len(trans_text):
+                    print("특정 자료의 개수가 같지 않아 올바른 동작을 보장할 수 없습니다.")
+                for orig_txt, trans_txt in zip(orig_text, trans_text):
+                    orig_txt = orig_txt.strip()
+                    trans_txt = trans_txt.strip()
+                    try:  # 중복변수 존재 유무 검사
+                        self.for_dup_content.index(orig_txt)
+                    except ValueError:
+                        self.for_dup_content.append(orig_txt)
+                        if opt_no == 1:
+                            if orig_txt == trans_txt:
+                                continue
+                            elif len(orig_txt) < 2:
+                                self.log_file.write_log(
+                                    "단어가 너무 짧습니다 : {}번째 항목의 {}\n".format(total_key, orig_txt)
+                                )
+                                self.cantwrite_srs_count += 1
+                                continue
+                        srs_file.write("{}\n{}\n\n".format(orig_txt, trans_txt))
+                        self.worked_switch = 1
 
         if not self.worked_switch:
             self.log_file.write_log("전체 중복 또는 오류로 인해 자료 전체 통과됨\n")
@@ -273,8 +297,13 @@ class ExportData:
                     txt_file.write("{}에서 불러옴\n".format(self.target_name))
                 context = que[data_filename]
                 if type(context) == dict:
-                    for key in list(context.keys()):
-                        print("{}:{}".format(key, context[key]), file=txt_file)
+                    for key, value in list(context.items()):
+                        print("{}:{}".format(key, value), file=txt_file)
+                elif type(context) == FuncInfo:
+                    for key, value in list(context.func_dict.items()):
+                        if isinstance(value, (str, int)):
+                            value = value
+                        print("{}:{}".format(key, ",\n".join(value)), file=txt_file)
                 elif option_num == 0:
                     print("{}\n".format(context), file=txt_file)
                 elif option_num == 1:
@@ -365,10 +394,15 @@ class ExportData:
                 continue
             if self.orig_key in list(ExportData.single_namedict.values()):
                 keyname = "단독파일"
+            elif self.orig_key.startswith("ex: "):  # FuncInfo 대응용 임시
+                keyname = "단독파일"
             else:
                 keyname = FileFilter().sep_filename(self.orig_key)
 
-            if keyname.lower() != FileFilter().sep_filename(self.trans_key).lower():
+            if (
+                keyname != "단독파일"
+                and keyname.lower() != FileFilter().sep_filename(self.trans_key).lower()
+            ):
                 # orig_key와 trans_key가 일치하지 않을때
                 self.trans_key = FileFilter().search_filename_wordwrap(
                     trans_infokeys, keyname.split()
@@ -381,6 +415,9 @@ class ExportData:
             if self.infodict_switch:
                 target_orig = orig_data.dict_main.get(self.orig_key)
                 target_trans = trans_data.dict_main.get(self.trans_key)
+            elif isinstance(orig_data, FuncInfo) and isinstance(trans_data, FuncInfo):
+                target_orig = orig_data.func_dict
+                target_trans = trans_data.func_dict
             else:
                 target_orig = orig_data
                 target_trans = trans_data
