@@ -23,7 +23,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QCoreApplication, QThread, pyqtSignal, pyqtSlot
 from simple_util import BringFiles
-import debugpy
+# import debugpy
 
 
 def result_maker(filename, dir_from):
@@ -274,7 +274,7 @@ class MainWidget(QWidget):
         close_yn = msgbox.exec_()
         if close_yn == QMessageBox.No:
             self.threadclass.wait()
-            debugpy.debug_this_thread()
+            # debugpy.debug_this_thread()
             self.close()
             self.par.intiGUI()
         else:
@@ -345,7 +345,7 @@ class MyThread(QThread):
         print("Thread Deleted")
 
     def run(self):
-        debugpy.debug_this_thread()
+        # debugpy.debug_this_thread()
         target_encode, target_fmt_from, target_fmt_to, selected_dir = self.target_array
         print("Args loaded")
         imgfiles = BringFiles(selected_dir).search_filelist(target_fmt_from)

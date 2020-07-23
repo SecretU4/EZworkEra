@@ -43,7 +43,7 @@ class HandleDIM:
                 is_defined = 1
             elif is_defined:
                 defined_list.append(word)
-            else:
+            elif word.isdecimal():
                 array_list.append(word)
 
         if array_list:  # 다차원 지원

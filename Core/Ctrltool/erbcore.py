@@ -793,9 +793,9 @@ class ERBFunc:
 
             for filename in erb_files:
                 erb_bulk = ERBLoad(filename, encode_type).make_erblines()
-                lines = ERBUtil.make_metainfo_lines(
-                    erb_bulk, metainfo_option_num, filename
-                ).linelist
+                lines = (
+                    ERBUtil().make_metainfo_lines(erb_bulk, metainfo_option_num, filename).linelist
+                )
                 lines.insert(0, [0, 0, 0, ";{}에서 불러옴\n".format(filename)])
                 self.result_infodict.add_dict(filename, ERBUtil().indent_maker(lines))
                 file_count_check.how_much_done()

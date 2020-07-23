@@ -14,8 +14,11 @@ class SaveSetting:
         self.set_list = []
 
     def create(self):
-        print("이식할 ERB만 넣어주시고, CSV 폴더는 통째로 넣어주세요.")
-        orig_dir = input("원본이 있는 폴더명을 입력하세요. : ")
+        print(
+            "처리할 구상을 넣을 폴더에는 ERB는 이식할 것만 넣어주시고,\n",
+            "CSV 폴더는 되도록 통째로, ERH 파일은 대상 에라 안의 것을 되도록 모두 넣어주세요.",
+        )
+        orig_dir = input("일어본이 있는 폴더명을 입력하세요. : ")
         trans_dir = input("번역본이 있는 폴더명을 입력하세요. : ")
         orig_csv = BringFiles(orig_dir).search_csvdict("cp932")
         trans_csv = BringFiles(trans_dir).search_csvdict("UTF-8-sig")
@@ -167,13 +170,14 @@ def compare_csvvar(csv_dict, used_list, dim_dict=dict()):
                 not_checked.pop(not_checked.index(var))
             elif is_dim:
                 vardata[-1] = var_context
-                trans_var = csvname + ":" + ':'.join(vardata)
+                trans_var = csvname + ":" + ":".join(vardata)
                 try:
                     not_checked.pop(not_checked.index(trans_var))
                 except ValueError:
                     pass
 
     return not_checked
+
 
 def wrapping(dirname, csv_info, encode_type, diff_csvinfo):
     analyze = AnalyzeFiles(BringFiles(dirname), encode_type)
@@ -184,7 +188,7 @@ def wrapping(dirname, csv_info, encode_type, diff_csvinfo):
     report.basic_info(dirname, "외부함수 %d 개" % len(used_funcs), "미확인된 외부함수: ")
     report.listed_info(used_funcs)
     report.basic_info(
-        "사용된 변수 %d 개\n누락 CSV변수: %d 개\n누락 목록: " %(len(used_csvvars), len(index_csvvars))
+        "사용된 변수 %d 개\n누락 CSV변수: %d 개\n누락 목록: " % (len(used_csvvars), len(index_csvvars))
     )
     report.listed_info(index_csvvars)
     report.basic_info("\n" + "-" * 8)
@@ -195,21 +199,30 @@ def wrapping(dirname, csv_info, encode_type, diff_csvinfo):
     wrap_print = PrintERB(dirname, encode_type, csv_info)
     result_infodict = wrap_print.printing()
     for filename, erblines in result_infodict.dict_main.items():
-        with open(filename, "w", encoding=encode_type) as erb:
+        with open(filename, "w", encoding="utf-8-sig") as erb:
             erb.writelines(erblines)
     print(report.txtfile, "확인바람.")
 
 
 # 이하 구동부
 if __name__ == "__main__":
-    print("원본/번역본 간 ERB 이름에 차이가 있는 경우(번역 등 이유로),")
-    print("중복되는 파일이 있다면 수동으로 지워주셔야 합니다.")
+    print(
+        "일어본/번역본 간 동일한 기능을 하는 ERB 이름이 (번역 등 이유로) 차이가 있는 경우,\n",
+        "중복되는 기능을 하는 파일을 수동으로 처리해주셔야 합니다.\n",
+        "해당 경우 누락된 함수에서 오류를 발생시킬 수 있습니다.\n\n",
+    )
     config = SaveSetting()
     orig_dir, trans_dir, orig_csv, trans_csv = config.load()
     config.save()
 
     while True:
-        print("[0] 원본구상 번역본이식\n[1] 번역본구상 원본이식")
+        print(
+            "=" * 8,
+            "\n한 번 실행한 적이 있는 경우, setting.sav 파일에 선택한 폴더, CSV 데이터 등이 저장됩니다.\n",
+            "다른 폴더를 사용하거나 CSV 파일에 변동이 있었던 경우 해당 파일을 지우고 다시 구동해주세요.\n",
+            "=" * 8,
+            "\n[0] 일어본구상 번역본이식\n[1] 번역본구상 일어본이식",
+        )
         choose = input("실행할 작업을 선택해주세요. : ")
         if choose == "0":
             wrapping(orig_dir, orig_csv, "cp932", trans_csv)

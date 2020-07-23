@@ -98,12 +98,6 @@ class CheckStack:
                     crit_stack.append(line_cnt)
                 elif (codeinfo, codeetc) == (2, 0):  # GOTO 시작점
                     pass
-                elif codeinfo == 3:  # RETURN
-                    if start_stack:
-                        pass
-                    else:
-                        com_index = crit_stack.pop()
-                        start_end_que.append((com_index, line_cnt))
             elif codetype == 1:  # IF문
                 if codeinfo == 1:
                     start_stack.append(line_cnt)

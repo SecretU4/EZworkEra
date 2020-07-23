@@ -18,7 +18,9 @@ menu_main = Menu(menu_dict_main)
 menu_main.title("EZworkEra - Develop utility for EmuEra base game")
 last_work = None
 last_work_name = None
-try:
+
+
+def run_main():
     while True:
         print("작업 후 버튼을 눌러 프로그램을 종료하셔야 작업파일이 손실되지 않습니다.")
         CommonSent.print_line()
@@ -151,6 +153,10 @@ try:
         elif menu_dict_main[menu_main.selected_num] == "프로그램 종료":
             break
     CommonSent.end_comment()
+
+
+try:
+    run_main()
 except Exception as error:
     print("{}가 발생하였습니다. 로그 파일을 보내주시면 도움이 됩니다.".format(error))
     input("아무 키나 눌러 종료...")
