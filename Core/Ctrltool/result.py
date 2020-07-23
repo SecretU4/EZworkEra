@@ -44,7 +44,7 @@ class ExportData:
         self.target_name = target_name
         self.target_data = target_data
         self.lazy_switch = 0  # 데이터 미선택한 경우 1
-        self.colon_yn = 0 # : 어두에 넣을지 여부
+        self.colon_yn = 0  # : 어두에 넣을지 여부
         self.log_file = LogPreset(4)  # 중간에 workclass 바꾸는 경우 있어 초기화 필요
 
     def __multi_data_input(self, data_count=2):
@@ -227,7 +227,7 @@ class ExportData:
                                 )
                                 self.cantwrite_srs_count += 1
                                 continue
-                        if colon_yn:
+                        if self.colon_yn:
                             orig_txt = ":" + orig_txt
                             trans_txt = ":" + trans_txt
                         srs_file.write("{}\n{}\n\n".format(orig_txt, trans_txt))
@@ -422,7 +422,7 @@ class ExportData:
                 target_orig = orig_data.dict_main.get(self.orig_key)
                 target_trans = trans_data.dict_main.get(self.trans_key)
             elif isinstance(orig_data, FuncInfo) and isinstance(trans_data, FuncInfo):
-                #TODO 함수별 또는 파일별 나눠 분류 가능하도록
+                # TODO 함수별 또는 파일별 나눠 분류 가능하도록
                 target_orig = orig_data.func_dict
                 target_trans = trans_data.func_dict
             else:
