@@ -5,7 +5,7 @@ Utility For using UpdateEra(Not Mine) - Translated Eramaker base game's update t
 
 ## readme ver 4.0 2020.06.17
 
-이 파일은 EZworkEra의 readme 파일로, 현재 존재하는 툴의 기능을 설명하고 있습니다.
+이 파일은 EZworkEra의 readme 파일로, 현재 존재하는 툴의 기능을 설명하고 있습니다.  
 작성 당시 버전명:
 
 * EZworkEra v3.6.1
