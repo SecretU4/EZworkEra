@@ -16,11 +16,10 @@ menu_dict_main = {
 }
 menu_main = Menu(menu_dict_main)
 menu_main.title("EZworkEra - Develop utility for EmuEra base game")
-last_work = None
-last_work_name = None
-
 
 def run_main():
+    last_work = None
+    last_work_name = None
     while True:
         print("작업 후 버튼을 눌러 프로그램을 종료하셔야 작업파일이 손실되지 않습니다.")
         CommonSent.print_line()
