@@ -6,6 +6,8 @@ Classes:
 """
 
 import time
+import logging
+import logging.config
 import os
 import re
 from util import CommonSent, KoreanSupport
@@ -119,10 +121,12 @@ class StatusNum:
                 map(lambda x: x * int(round(self.total_num) / 10), list(range(1, 11)))
             )
         self.when_num_show.insert(0, 1)
+        logging.config.fileConfig('Core\\logging.conf')
+        self.logger = logging.getLogger('StatusNum')
 
     def how_much_there(self):
         """작업 시작시 작업물 개수 출력 함수."""
-        print(
+        self.logger.info(
             "{} 개의 {}{} 발견되었습니다.".format(
                 self.total_num, self.target_type, KoreanSupport().what_next(self.target_type, "가")
             )
@@ -133,14 +137,16 @@ class StatusNum:
         * logname 작성시 오류 발생한 경우 해당 문자열 출력함.
         """
         self.counted_num += 1
-        if self.counted_num in self.when_num_show:
-            print("{}/{} 완료".format(self.counted_num, self.total_num))
+        if self.counted_num in self.when_num_show: # 작업 도중
+            self.logger.info("{}/{} 완료".format(self.counted_num, self.total_num))
+
         elif self.counted_num == self.total_num:
-            if self.error_num != 0:
-                print("{} 개가 정상적으로 처리되지 않았습니다.".format(self.error_num))
+            if self.error_num != 0: # 작업 완료시
+                self.logger.warning("{} 개가 정상적으로 처리되지 않았습니다.".format(self.error_num))
                 if self.logname != None:
-                    print("{}를 확인해주세요.".format(self.logname))
-            print(
+                    self.logger.info("{}를 확인해주세요.".format(self.logname))
+
+            self.logger.info(
                 "총 {} 개의 {} 중 {} 개가 처리 완료되었습니다.".format(
                     self.total_num, self.target_type, self.total_num - self.error_num
                 )
