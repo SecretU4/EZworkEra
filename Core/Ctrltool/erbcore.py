@@ -398,7 +398,6 @@ class ERBUtil:
         return self.filtered_lines
 
     def make_metainfo_lines(self, bulk_lines, option_num=0, target_name=None):  # 0: 전부 1: 기능관련만
-        self.command_count = 0
         skip_start = 0
         erb_info = ERBMetaInfo()
         erb_log = LogPreset(2)
@@ -420,111 +419,7 @@ class ERBUtil:
                 skip_start = 1
                 erb_info.add_line_list(line)
                 continue
-            elif "PRINT" in line:
-                if "PRINTDATA" in line:
-                    erb_info.add_line_list(line)
-                    erb_info.case_level += 1
-                else:
-                    if option_num == 1:
-                        continue
-                    erb_info.add_line_list(line)
-                continue
-            elif "IF" in line:
-                if "ENDIF" in line:
-                    erb_info.if_level -= 1
-                    erb_info.add_line_list(line)
-                elif line.startswith("IF") == True:
-                    erb_info.add_line_list(line)
-                    erb_info.if_level += 1
-                elif "ELSEIF" in line:
-                    erb_info.if_level -= 1
-                    erb_info.add_line_list(line)
-                    erb_info.if_level += 1
-                elif "SIF" in line:
-                    erb_info.add_line_list(line)
-                else:
-                    erb_log.write_error_log("미상정", line)
-                continue
-            elif erb_info.case_level != 0:  # 케이스 내부 돌 때
-                if "CASE" in line:
-                    if "SELECTCASE" in line:
-                        erb_info.add_line_list(line)
-                        erb_info.case_level += 1
-                    elif line.startswith("CASE") == True:
-                        erb_info.case_count += 1
-                        if option_num == 1:
-                            continue
-                        if erb_info.case_count != 1:
-                            erb_info.case_level -= 1
-                        erb_info.add_line_list(line)
-                        erb_info.case_level += 1
-                    else:
-                        erb_log.write_error_log("미상정", line)
-                    continue
-                elif "DATA" in line:
-                    if "DATAFORM" in line:
-                        if option_num == 1:
-                            continue
-                        erb_info.add_line_list(line)
-                    elif "DATALIST" in line:
-                        erb_info.case_count += 1
-                        if option_num == 1:
-                            erb_info.case_level += 1
-                            continue
-                        erb_info.add_line_list(line)
-                        erb_info.case_level += 1
-                    elif "PRINTDATA" in line:
-                        erb_info.case_level += 1
-                        erb_info.add_line_list(line)
-                        print("분기문 안에 분기문이 있습니다.")
-                    elif "ENDDATA" in line:
-                        erb_info.case_level -= 1
-                        line = line + " ;{}개의 케이스 존재".format(erb_info.case_count)
-                        erb_info.case_count = 0
-                        erb_info.add_line_list(line)
-                    else:
-                        erb_log.write_error_log("미상정", line)
-                    continue
-                elif "END" in line:
-                    if "ENDSELECT" in line:
-                        erb_info.case_level -= 1
-                        line = line + " ;{}개의 케이스 존재".format(erb_info.case_count)
-                        erb_info.case_level -= 1
-                        erb_info.case_count = 0
-                        erb_info.add_line_list(line)
-                    elif "ENDLIST" in line:
-                        erb_info.case_level -= 1
-                        if option_num == 1:
-                            continue
-                        erb_info.add_line_list(line)
-                    else:
-                        erb_log.write_error_log("미상정", line)
-                    continue
-                else:
-                    pass
-            if "SELECTCASE" in line:
-                erb_info.add_line_list(line)
-                erb_info.case_level += 1
-            elif line.startswith("ELSE") == True:
-                erb_info.if_level -= 1
-                erb_info.add_line_list(line)
-                erb_info.if_level += 1
-            elif line.startswith("RETURN") == True:
-                erb_info.add_line_list(line)
-            elif line.startswith("GOTO") == True:
-                erb_info.add_line_list(line)
-            elif line.startswith("LOCAL") == True:
-                erb_info.add_line_list(line)
-            elif line.startswith("$") == True:
-                erb_info.add_line_list(line)
-            elif line.startswith("@") == True:
-                self.command_count += 1
-                erb_info.add_line_list(line)
-            else:
-                if option_num == 1:
-                    continue
-                erb_info.add_line_list(line)
-                erb_log.write_error_log("미상정", line)
+            erb_info.add_linelist_embeded(line)
         erb_log.sucessful_done()
         return erb_info
 

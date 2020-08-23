@@ -108,19 +108,47 @@ class ERBMetaInfo:
     """
 
     def __init__(self, mod_no=0):
+        # mod_no 0: 전부 1: 기능관련만
         self.linelist = []
         self.blocklist = []
         self.blocklines = []
         self.block_check = 0
         self.if_level = 0
+        self.case_check = {}
         self.case_level = 0
-        self.case_count = 0
+        self.on_datalist = 0
         self.mod_no = mod_no
-        self.db_ver = 1.2
+        self.db_ver = 1.3
+
+    def __reset_count(self):
+        self.if_level = 0
+        self.case_level = 0
+        self.on_datalist = 0
+
+    def case_count(self, stat=0, case_level=0):
+        """분기문 개수 판별 함수
+        stat 1: count 1 추가, -1: 해당 case_level의 count 초기화
+        """
+        if not case_level:
+            case_level = self.case_level
+
+        if self.case_check.get(case_level):
+            count = self.case_check[case_level]
+        else:
+            count = 0
+        
+        if stat == -1:
+            count = self.case_check.pop(case_level)
+        elif not stat:
+            pass
+        else:
+            count = max(count + stat, 0)
+            self.case_check[case_level] = count
+        return count
 
     def add_line_list(self, line):
         """linelist에 새로운 line 정보 추가"""
-        self.linelist.append([self.if_level, self.case_level, self.case_count, line])
+        self.linelist.append([self.if_level, self.case_level, self.case_count(), line])
 
     def add_linelist_embeded(self, line):  # TODO 코드 블럭 인식 기능
         """line 데이터 처리 함수
@@ -130,10 +158,13 @@ class ERBMetaInfo:
         """
         line = line.strip()
         back_count = 0
-        bef_status = self.linelist[-1]  # 작업 직전의 [if_level,case_level,case_count,line]
-        while not bef_status[-1]:  # line 이 공란일 때
-            back_count += 1
-            bef_status = self.linelist[-(back_count + 1)]  # line이 있었던 곳까지 돌아감
+        if self.linelist:
+            bef_status = self.linelist[-1]  # 작업 직전의 [if_level,case_level,case_count,line]
+            while not bef_status[-1]:  # line 이 공란일 때
+                back_count += 1
+                bef_status = self.linelist[-(back_count + 1)]  # line이 있었던 곳까지 돌아감
+        else:
+            bef_status = 0
         while True:
             if "PRINT" in line:
                 if "PRINTDATA" in line:
@@ -166,11 +197,11 @@ class ERBMetaInfo:
                         self.add_line_list(line)
                         self.case_level += 1
                     elif line.startswith("CASE"):
-                        self.case_count += 1
+                        if self.case_count(case_level=self.case_level - 1):
+                            self.case_level -= 1
+                        self.case_count(1)
                         if self.mod_no == 1:
                             return 1
-                        if self.case_count != 1:
-                            self.case_level -= 1
                         self.add_line_list(line)
                         self.case_level += 1
                     else:
@@ -178,24 +209,27 @@ class ERBMetaInfo:
                     return 0
                 elif "DATA" in line:
                     if "DATAFORM" in line:
+                        if not self.on_datalist:
+                            self.case_count(1)
                         if self.mod_no == 1:
                             break
                         self.add_line_list(line)
                     elif "DATALIST" in line:
-                        self.case_count += 1
+                        self.case_count(1)
+                        self.on_datalist = 1
                         if self.mod_no == 1:
                             self.case_level += 1
                             break
                         self.add_line_list(line)
                         self.case_level += 1
                     elif "PRINTDATA" in line:
-                        self.case_level += 1
                         self.add_line_list(line)
+                        self.case_level += 1
                         print("분기문 안에 분기문이 있습니다.")
                     elif "ENDDATA" in line:
+                        cas_count = self.case_count(-1)
                         self.case_level -= 1
-                        line = line + " ;{}개의 케이스 존재".format(self.case_count)
-                        self.case_count = 0
+                        line = line + " ;{}개의 케이스 존재".format(cas_count)
                         self.add_line_list(line)
                     else:
                         return None
@@ -203,12 +237,13 @@ class ERBMetaInfo:
                 elif "END" in line:
                     if "ENDSELECT" in line:
                         self.case_level -= 1
-                        line = line + " ;{}개의 케이스 존재".format(self.case_count)
+                        cas_count = self.case_count(-1)
+                        line = line + " ;{}개의 케이스 존재".format(cas_count)
                         self.case_level -= 1
-                        self.case_count = 0
                         self.add_line_list(line)
                     elif "ENDLIST" in line:
                         self.case_level -= 1
+                        self.on_datalist = 0
                         if self.mod_no == 1:
                             break
                         self.add_line_list(line)
@@ -235,22 +270,24 @@ class ERBMetaInfo:
             elif line.startswith("$"):
                 self.add_line_list(line)
             elif line.startswith("@"):
+                self.__reset_count()
                 self.add_line_list(line)
             else:
                 if self.mod_no == 1:
                     break
                 self.add_line_list(line)
             break
-        if self.if_level != bef_status[0]:
-            if self.if_level > bef_status[0]:  # if 블럭 스타트
-                pass
-            elif self.if_level < bef_status[0]:  # if 블럭 종료
-                pass
-        elif self.case_level != bef_status[1]:
-            if self.case_level > bef_status[1]:  # case 블럭 스타트
-                pass
-            elif self.case_level < bef_status[1]:  # case 블럭 종료
-                pass
+        if bef_status:
+            if self.if_level != bef_status[0]:
+                if self.if_level > bef_status[0]:  # if 블럭 스타트
+                    pass
+                elif self.if_level < bef_status[0]:  # if 블럭 종료
+                    pass
+            elif self.case_level != bef_status[1]:
+                if self.case_level > bef_status[1]:  # case 블럭 스타트
+                    pass
+                elif self.case_level < bef_status[1]:  # case 블럭 종료
+                    pass
         return 0
 
 
