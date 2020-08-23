@@ -97,6 +97,8 @@ class DirFilter:
         dir_slashed = list(self.dirname)
         if dir_slashed.pop() not in ("/", "\\"):
             dir_target = self.dirname + "\\"
+        else:
+            dir_target = self.dirname
         return dir_target
 
 
