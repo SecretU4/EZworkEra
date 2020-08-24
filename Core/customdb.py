@@ -113,10 +113,8 @@ class ERBMetaInfo:
         self.blocklist = []
         self.blocklines = []
         self.block_check = 0
-        self.if_level = 0
+        self.__reset_count()
         self.case_check = {}
-        self.case_level = 0
-        self.on_datalist = 0
         self.mod_no = mod_no
         self.db_ver = 1.3
 
