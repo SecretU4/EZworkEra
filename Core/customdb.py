@@ -108,7 +108,7 @@ class ERBMetaInfo:
     """
 
     def __init__(self, mod_no=0):
-        # mod_no 0: 전부 1: 기능관련만
+        # mod_no bit 1= 0:전부 1: 기능관련만 bit 2= 0:전부 1:추가주석 제외
         self.linelist = []
         self.blocklist = []
         self.blocklines = []
@@ -169,7 +169,7 @@ class ERBMetaInfo:
                     self.add_line_list(line)
                     self.case_level += 1
                 else:
-                    if self.mod_no == 1:
+                    if self.mod_no & 0b1:
                         break
                     self.add_line_list(line)
                 break
@@ -198,7 +198,7 @@ class ERBMetaInfo:
                         if self.case_count(case_level=self.case_level - 1):
                             self.case_level -= 1
                         self.case_count(1)
-                        if self.mod_no == 1:
+                        if self.mod_no & 0b1:
                             return 1
                         self.add_line_list(line)
                         self.case_level += 1
@@ -209,13 +209,13 @@ class ERBMetaInfo:
                     if "DATAFORM" in line:
                         if not self.on_datalist:
                             self.case_count(1)
-                        if self.mod_no == 1:
+                        if self.mod_no & 0b1:
                             break
                         self.add_line_list(line)
                     elif "DATALIST" in line:
                         self.case_count(1)
                         self.on_datalist = 1
-                        if self.mod_no == 1:
+                        if self.mod_no & 0b1:
                             self.case_level += 1
                             break
                         self.add_line_list(line)
@@ -227,7 +227,8 @@ class ERBMetaInfo:
                     elif "ENDDATA" in line:
                         cas_count = self.case_count(-1)
                         self.case_level -= 1
-                        line = line + " ;{}개의 케이스 존재".format(cas_count)
+                        if not self.mod_no & 0b10:
+                            line = line + " ;{}개의 케이스 존재".format(cas_count)
                         self.add_line_list(line)
                     else:
                         return None
@@ -236,13 +237,14 @@ class ERBMetaInfo:
                     if "ENDSELECT" in line:
                         self.case_level -= 1
                         cas_count = self.case_count(-1)
-                        line = line + " ;{}개의 케이스 존재".format(cas_count)
+                        if not self.mod_no & 0b10:
+                            line = line + " ;{}개의 케이스 존재".format(cas_count)
                         self.case_level -= 1
                         self.add_line_list(line)
                     elif "ENDLIST" in line:
                         self.case_level -= 1
                         self.on_datalist = 0
-                        if self.mod_no == 1:
+                        if self.mod_no & 0b1:
                             break
                         self.add_line_list(line)
                     else:
@@ -271,7 +273,7 @@ class ERBMetaInfo:
                 self.__reset_count()
                 self.add_line_list(line)
             else:
-                if self.mod_no == 1:
+                if self.mod_no & 0b1:
                     break
                 self.add_line_list(line)
             break
