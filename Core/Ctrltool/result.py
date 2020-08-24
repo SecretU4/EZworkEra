@@ -275,7 +275,7 @@ class ExportData:
                 infodict = content.dict_main
                 sel_data = list(map(lambda x: {x: infodict[x]}, infodict.keys()))
             elif isinstance(content, ERBMetaInfo):
-                sel_data = [{tag: content.linelist}]
+                sel_data = [{tag: content}]
             elif isinstance(content, (list, dict)):
                 sel_data = [{tag: content}]
             else:
@@ -286,20 +286,20 @@ class ExportData:
         numstat.how_much_there()
 
         for que in que_list:
-            data_filename = list(que.keys())[0]
+            que_key = list(que.keys())[0]
             if dest_mod == 1:  # 결과물 디렉토리에 저장
-                if len(que_list) == 1 and data_filename in list(self.single_namedict.values()):
+                if len(que_list) == 1 and que_key in list(self.single_namedict.values()):
                     data_filename = "({}){}".format(CommonSent.put_time(1), self.target_name)
                 result_filename = "{}.{}".format(FileFilter().sep_filename(data_filename), filetype)
                 the_filename = self.dest_dir + result_filename
             elif dest_mod == 0:  # 원본 디렉토리에 저장
-                the_filename = data_filename
+                the_filename = que_key
             self.log_file.which_type_loaded(filetype)
 
             with LoadFile(the_filename, encode_type).readwrite() as txt_file:
                 if filetype == "TXT":
                     txt_file.write("{}에서 불러옴\n".format(self.target_name))
-                context = que[data_filename]
+                context = que[que_key]
                 if type(context) == dict:
                     for key, value in list(context.items()):
                         print("{}:{}".format(key, value), file=txt_file)
