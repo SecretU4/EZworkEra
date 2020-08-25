@@ -448,17 +448,21 @@ class ERBUtil:
             debug_log.write_log(log_text)
         return infodict_csv
 
-    def grammar_corretior(self, target_metalines):
+    def grammar_corretior(self, target_metalines, mod_no=0):
+        """ERBMetaInfo 기반 문법 교정기
+
+        mod_no = bit 1: 중첩 printdata문 처리 on/off
+        """
         result_lines = []
         change_dict = {}
         ch_printdata = 0
         for count, line in enumerate(target_metalines):
-            context = line[-1]
+            _, _, case_count, context = line
             if context.startswith("PRINTDATA"):
                 ch_printdata += 1
-                if ch_printdata == 1:
+                if mod_no & 0b1 and ch_printdata == 1:
                     change_dict[count] = "fix_printdata/"
-            elif ch_printdata == 1:
+            elif mod_no & 0b1 and ch_printdata == 1:
                 head_word = context.split()[0]
                 if context.startswith("ENDDATA"):
                     ch_printdata -= 1
@@ -467,7 +471,7 @@ class ERBUtil:
                     if head_word == "DATALIST":
                         change_dict[count] = "fix_datalist/"
                     elif head_word in ("DATAFORM","DATA"):
-                        if line[2]:
+                        if case_count:
                             change_dict[count] = "fix_data/fix_datalist/"
                         else:
                             change_dict[count] = "fix_data/"
@@ -478,8 +482,13 @@ class ERBUtil:
             elif context.startswith("ENDDATA"):
                 ch_printdata -= 1
             result_lines.append(line)
+
         keys = list(change_dict.keys())
+        if not keys:
+            print("확인된 문법 오류가 없습니다.")
+            return target_metalines
         keys.sort(reverse=True)
+
         case_cntdict = {}
         for key in keys:
             value = change_dict[key]
@@ -487,25 +496,25 @@ class ERBUtil:
                 result_lines.pop(key)
             elif "fix" in value:
                 target_line = result_lines[key]
-                context = target_line[-1]
+                _, case_lv, case_count, context = target_line
                 res_context = ""
-                if "data" in value:
+                if  mod_no & 0b1 and "data" in value:
                     if "fix_data/" in value:
                         res_context += context.replace(context.split()[0], "PRINTFORMW")
                         value = value.replace("fix_data/", "")
                         if "fix_datalist/" in value:
                             context = "DATALIST"
                     if "fix_datalist/" in value:
-                        no = target_line[2]
+                        no = case_count
                         if_sent = "ELSEIF A == %d" % (no - 1)
                         if no == 1:
                             if_sent = if_sent.replace("ELSEIF", "IF")
                         res_context += context.replace("DATALIST", if_sent)
                     elif value == "fix_printdata/":
-                        res_context += "A = RAND:%d" % case_cntdict.pop(target_line[1])
+                        res_context += "A = RAND:%d" % case_cntdict.pop(case_lv)
                     elif value == "fix_enddata/":
                         total_count = result_lines[key-1][2]
-                        case_cntdict[target_line[1]] = total_count
+                        case_cntdict[case_lv] = total_count
                         res_context += context.replace("ENDDATA", "ENDIF")
                     elif value == "":
                         pass
@@ -822,11 +831,13 @@ class ERBFunc:
         return self.result_infodict  # {파일명:[바뀐줄]}
 
     def remodel_equation(self, metainfo_option_num=2, target_metalines=None):
+        mod_dict = {1:"중첩 PRNTDATA 변환"}
         if target_metalines == None:
             print("불완전한 수식을 교정해주는 유틸리티입니다.")
             erb_files, encode_type = FileFilter().get_filelist("ERB")
             file_count_check = StatusNum(erb_files, "파일")
             file_count_check.how_much_there()
+            mod_no = MenuPreset().select_mod(mod_dict, 1)
 
             for filename in erb_files:
                 erb_bulk = ERBLoad(filename, encode_type).make_erblines()
@@ -834,12 +845,13 @@ class ERBFunc:
                     ERBUtil().make_metainfo_lines(erb_bulk, metainfo_option_num, filename).linelist
                 )
                 lines.insert(0, [0, 0, 0, ";{}에서 불러옴\n".format(filename)])
-                self.result_infodict.add_dict(filename, ERBUtil().grammar_corretior(lines))
+                self.result_infodict.add_dict(filename, ERBUtil().grammar_corretior(lines, mod_no))
                 file_count_check.how_much_done()
 
             result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:[erb 텍스트 라인]}
         else:
-            result_dataset = ERBUtil().grammar_corretior(target_metalines)  # [erb 텍스트 라인]
+            mod_no = MenuPreset().select_mod(mod_dict, 1)
+            result_dataset = ERBUtil().grammar_corretior(target_metalines, mod_no)  # [erb 텍스트 라인]
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return result_dataset
