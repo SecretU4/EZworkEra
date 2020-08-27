@@ -843,7 +843,7 @@ class ERBFunc:
             erb_files, encode_type = FileFilter().get_filelist("ERB")
             file_count_check = StatusNum(erb_files, "파일")
             file_count_check.how_much_there()
-            mod_no = MenuPreset().select_mod(mod_dict, 1)
+            mod_no = MenuPreset().select_mod(mod_dict, 0)
 
             for filename in erb_files:
                 erb_bulk = ERBLoad(filename, encode_type).make_erblines()
