@@ -290,6 +290,8 @@ class ExportData:
             if dest_mod == 1:  # 결과물 디렉토리에 저장
                 if len(que_list) == 1 and que_key in list(self.single_namedict.values()):
                     data_filename = "({}){}".format(CommonSent.put_time(1), self.target_name)
+                else:
+                    data_filename = que_key
                 result_filename = "{}.{}".format(FileFilter().sep_filename(data_filename), filetype)
                 the_filename = self.dest_dir + result_filename
             elif dest_mod == 0:  # 원본 디렉토리에 저장

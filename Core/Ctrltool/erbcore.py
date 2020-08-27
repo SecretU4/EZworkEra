@@ -396,8 +396,7 @@ class ERBUtil:
         if self.filtered_lines == []:
             print("결과물이 없습니다.")
             return None
-        metalineinfo.linelist = self.filtered_lines
-        return metalineinfo
+        return self.filtered_lines
 
     def make_metainfo_lines(self, bulk_lines, option_num=0, target_name=None):  # 0: 전부 1: 기능관련만
         skip_start = 0
@@ -772,7 +771,7 @@ class ERBFunc:
         self.func_log.sucessful_done()
         return self.result_infodict  # {파일명:정보 텍스트} 형태의 infodict
 
-    def remodel_indent(self, metainfo_option_num=None, metalineinfo=None):
+    def remodel_indent(self, metainfo_option_num=0, metalineinfo=None):
         if metalineinfo == None:
             print("들여쓰기를 자동 교정하는 유틸리티입니다.")
             erb_files, encode_type = FileFilter().get_filelist("ERB")
@@ -790,9 +789,9 @@ class ERBFunc:
                 self.result_infodict.add_dict(filename, ERBUtil().indent_maker(temp_metainfo))
                 file_count_check.how_much_done()
 
-            result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:ERBMetaInfo 클래스 메소드}
+            result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:[들여쓰기 처리된 lines]}
         else:
-            result_dataset = ERBUtil().indent_maker(metalineinfo)  # ERBMetaInfo 클래스 메소드
+            result_dataset = ERBUtil().indent_maker(metalineinfo)  # [들여쓰기 처리된 lines]
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return result_dataset
