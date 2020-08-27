@@ -381,8 +381,9 @@ class ERBRemodel(ERBLoad):
 
 
 class ERBUtil:
-    def indent_maker(self, target_metalines):  # metaline을 들여쓰기된 lines로 만듦
+    def indent_maker(self, metalineinfo):  # metaline을 들여쓰기된 lines로 만듦
         self.filtered_lines = []
+        target_metalines = metalineinfo.linelist
         for line in target_metalines:
             if_level, case_level, _, context = line
             if context.startswith(";"):
@@ -395,7 +396,8 @@ class ERBUtil:
         if self.filtered_lines == []:
             print("결과물이 없습니다.")
             return None
-        return self.filtered_lines
+        metalineinfo.linelist = self.filtered_lines
+        return metalineinfo
 
     def make_metainfo_lines(self, bulk_lines, option_num=0, target_name=None):  # 0: 전부 1: 기능관련만
         skip_start = 0
@@ -448,7 +450,7 @@ class ERBUtil:
             debug_log.write_log(log_text)
         return infodict_csv
 
-    def grammar_corretior(self, target_metalines, mod_no=0):
+    def grammar_corretior(self, metalineinfo, mod_no=0):
         """ERBMetaInfo 기반 문법 교정기
 
         mod_no = bit 1: 중첩 printdata문 처리 on/off
@@ -456,6 +458,7 @@ class ERBUtil:
         result_lines = []
         change_dict = {}
         ch_printdata = 0
+        target_metalines = metalineinfo.linelist
         for count, line in enumerate(target_metalines):
             _, _, case_count, context = line
             if context.startswith("PRINTDATA"):
@@ -486,7 +489,7 @@ class ERBUtil:
         keys = list(change_dict.keys())
         if not keys:
             print("확인된 문법 오류가 없습니다.")
-            return target_metalines
+            return metalineinfo
         keys.sort(reverse=True)
 
         case_cntdict = {}
@@ -536,7 +539,8 @@ class ERBUtil:
                         post_line = target_line.copy()
                         post_line[-1] = post_context
                         result_lines.insert(key, post_line)
-        return result_lines
+        metalineinfo.linelist = result_lines
+        return metalineinfo
 
 class ERBVFinder:
     """문장 대응 csv 변수 필터. csvdict은 infodict형의 csv정보를 요구하며,
@@ -768,8 +772,8 @@ class ERBFunc:
         self.func_log.sucessful_done()
         return self.result_infodict  # {파일명:정보 텍스트} 형태의 infodict
 
-    def remodel_indent(self, metainfo_option_num=None, target_metalines=None):
-        if target_metalines == None:
+    def remodel_indent(self, metainfo_option_num=None, metalineinfo=None):
+        if metalineinfo == None:
             print("들여쓰기를 자동 교정하는 유틸리티입니다.")
             erb_files, encode_type = FileFilter().get_filelist("ERB")
             file_count_check = StatusNum(erb_files, "파일")
@@ -781,12 +785,14 @@ class ERBFunc:
                     ERBUtil().make_metainfo_lines(erb_bulk, metainfo_option_num, filename).linelist
                 )
                 lines.insert(0, [0, 0, 0, ";{}에서 불러옴\n".format(filename)])
-                self.result_infodict.add_dict(filename, ERBUtil().indent_maker(lines))
+                temp_metainfo = ERBMetaInfo()
+                temp_metainfo.linelist = lines
+                self.result_infodict.add_dict(filename, ERBUtil().indent_maker(temp_metainfo))
                 file_count_check.how_much_done()
 
-            result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:[erb 텍스트 라인]}
+            result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:ERBMetaInfo 클래스 메소드}
         else:
-            result_dataset = ERBUtil().indent_maker(target_metalines)  # [erb 텍스트 라인]
+            result_dataset = ERBUtil().indent_maker(metalineinfo)  # ERBMetaInfo 클래스 메소드
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return result_dataset
@@ -830,9 +836,9 @@ class ERBFunc:
         self.func_log.sucessful_done()
         return self.result_infodict  # {파일명:[바뀐줄]}
 
-    def remodel_equation(self, metainfo_option_num=2, target_metalines=None):
+    def remodel_equation(self, metainfo_option_num=2, metalineinfo=None):
         mod_dict = {1:"중첩 PRNTDATA 변환"}
-        if target_metalines == None:
+        if metalineinfo == None:
             print("불완전한 수식을 교정해주는 유틸리티입니다.")
             erb_files, encode_type = FileFilter().get_filelist("ERB")
             file_count_check = StatusNum(erb_files, "파일")
@@ -845,13 +851,15 @@ class ERBFunc:
                     ERBUtil().make_metainfo_lines(erb_bulk, metainfo_option_num, filename).linelist
                 )
                 lines.insert(0, [0, 0, 0, ";{}에서 불러옴\n".format(filename)])
-                self.result_infodict.add_dict(filename, ERBUtil().grammar_corretior(lines, mod_no))
+                temp_metainfo = ERBMetaInfo()
+                temp_metainfo.linelist = lines
+                self.result_infodict.add_dict(filename, ERBUtil().grammar_corretior(temp_metainfo, mod_no))
                 file_count_check.how_much_done()
 
-            result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:[erb 텍스트 라인]}
+            result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:ERBMetaInfo 클래스 메소드}
         else:
             mod_no = MenuPreset().select_mod(mod_dict, 1)
-            result_dataset = ERBUtil().grammar_corretior(target_metalines, mod_no)  # [erb 텍스트 라인]
+            result_dataset = ERBUtil().grammar_corretior(metalineinfo, mod_no)  # ERBMetaInfo 클래스 메소드
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return result_dataset
