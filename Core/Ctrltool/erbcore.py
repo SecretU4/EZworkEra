@@ -449,7 +449,7 @@ class ERBUtil:
             debug_log.write_log(log_text)
         return infodict_csv
 
-    def grammar_corretior(self, metalineinfo, mod_no=0):
+    def grammar_corrector(self, metalineinfo, mod_no=0):
         """ERBMetaInfo 기반 문법 교정기
 
         mod_no = bit 1: 중첩 printdata문 처리 on/off
@@ -852,13 +852,13 @@ class ERBFunc:
                 lines.insert(0, [0, 0, 0, ";{}에서 불러옴\n".format(filename)])
                 temp_metainfo = ERBMetaInfo()
                 temp_metainfo.linelist = lines
-                self.result_infodict.add_dict(filename, ERBUtil().grammar_corretior(temp_metainfo, mod_no))
+                self.result_infodict.add_dict(filename, ERBUtil().grammar_corrector(temp_metainfo, mod_no))
                 file_count_check.how_much_done()
 
             result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:ERBMetaInfo 클래스 메소드}
         else:
             mod_no = MenuPreset().select_mod(mod_dict, 1)
-            result_dataset = ERBUtil().grammar_corretior(metalineinfo, mod_no)  # ERBMetaInfo 클래스 메소드
+            result_dataset = ERBUtil().grammar_corrector(metalineinfo, mod_no)  # ERBMetaInfo 클래스 메소드
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return result_dataset
