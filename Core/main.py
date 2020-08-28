@@ -75,7 +75,8 @@ def run_main():
                 2: "들여쓰기 교정",
                 3: "구상 번역기",
                 4: "ERB 내 CSV 인덱스 변환",
-                5: "이전으로",
+                5: "불완전 수식 정리",
+                6: "이전으로",
             }
             menu_erb = Menu(menu_dict_erb)
             menu_erb.run_menu()
@@ -85,7 +86,7 @@ def run_main():
             elif menu_erb.selected_num == 1:
                 erb_printfunc_infodict = ERBFunc().extract_printfunc()
                 last_work = erb_printfunc_infodict
-            elif menu_erb.selected_menu in ["들여쓰기 교정", "구상 번역기", "ERB 내 CSV 인덱스 변환"]:
+            elif menu_erb.selected_menu in ["들여쓰기 교정", "구상 번역기", "ERB 내 CSV 인덱스 변환", "불완전 수식 정리"]:
                 last_work = None
                 if menu_erb.selected_menu == "들여쓰기 교정":
                     remodeled_erb = ERBFunc().remodel_indent()
@@ -112,6 +113,10 @@ def run_main():
                     print("현재 변환된 데이터를 erb로 만들지 않았습니다. 이후 절차를 진행해주세요.")
                     sav_datatype = "erblines"
                     last_work = erb_replace_csvvar_infodict
+                elif menu_erb.selected_menu == "불완전 수식 정리":
+                    erb_infodict = ERBFunc().remodel_equation()
+                    sav_datatype = "metainfoline"
+                    last_work = erb_infodict
                 if last_work != None:
                     MenuPreset().shall_save_data(last_work, sav_datatype)
                     make_erb_yn = MenuPreset().yesno(1, "지금 바로 데이터를 erb화 할까요?")
