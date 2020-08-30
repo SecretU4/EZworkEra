@@ -204,9 +204,17 @@ class FileFilter:
         입력 인자는 파일 목록화할 확장자."""
         user_input = CustomInput(filetype)
         target_dir = user_input.input_option(1)
-        self.option_num = MenuPreset().yesno(0, "하위폴더까지 포함해 진행하시겠습니까?")
         encode_type = MenuPreset().encode()
-        files = self.files_ext(target_dir, "." + filetype)
+
+        if os.path.isdir(target_dir):
+            self.option_num = MenuPreset().yesno(0, "하위폴더까지 포함해 진행하시겠습니까?")
+            files = self.files_ext(target_dir, "." + filetype)
+        else: # 확인 가능한 목록 없음
+            remake_dir = "\\".join(target_dir.split("\\")[:-1])
+            if os.path.isfile(remake_dir):
+                files = [remake_dir]
+            else:
+                files = []
         return files, encode_type
 
 
@@ -475,6 +483,7 @@ class MenuPreset:
         """
 
         mod_no_menudict = {0:""}
+        mod_no_menudict.update(mod_no_dict)
         show_def_modno = bin(default_mod).split("b")[-1]
         result_no = default_mod
         default_name = "모두 꺼짐"
