@@ -290,6 +290,13 @@ class ERBMetaInfo:
                     pass
         return 0
 
+    def printable_lines(self):
+        """metainfo가 없는 순수 리스트 저장"""
+        lines = []
+        for metadata in self.linelist:
+            lines.append(metadata[-1])
+        return lines
+
 
 class FuncInfo:
     """ERB의 정보를 함수별로 나누어 불러올 수 있는 자료형 클래스

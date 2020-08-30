@@ -316,7 +316,7 @@ class ExportData:
                     if type(context) == list:
                         txt_file.writelines(context)
                     elif isinstance(context, ERBMetaInfo):
-                        the_lines = ERBFunc().remodel_indent(metalineinfo=context).linelist
+                        the_lines = ERBFunc().remodel_indent(metalineinfo=context.printable_lines())
                         txt_file.writelines(the_lines)
                     else:
                         print("텍스트화 할 수 없는 데이터입니다. 옵션을 바꿔 다시 시도해주세요.")

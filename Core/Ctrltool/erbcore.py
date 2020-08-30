@@ -791,6 +791,8 @@ class ERBFunc:
 
             result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:[들여쓰기 처리된 lines]}
         else:
+            if isinstance(metalineinfo, list): # metaline 없는 순수 lines 일 때
+                metalineinfo = ERBUtil().make_metainfo_lines(metalineinfo, metainfo_option_num)
             result_dataset = ERBUtil().indent_maker(metalineinfo)  # [들여쓰기 처리된 lines]
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
