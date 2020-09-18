@@ -486,20 +486,20 @@ class MenuPreset:
         mod_no_menudict.update(mod_no_dict)
         show_def_modno = bin(default_mod).split("b")[-1]
         result_no = default_mod
-        default_name = "모두 꺼짐"
+        default_name = ["모두 꺼짐"]
 
         if show_def_modno != "0":
-            default_name = ""
+            default_name = []
             for mod_no, switch in enumerate(show_def_modno):
                 mod_no += 1
 
                 mod_name = mod_no_dict[mod_no]
                 if switch:
-                    default_name += "%d, " % mod_no
+                    default_name.append(str(mod_no))
                     mod_name += "(선택됨)"
                 mod_no_menudict[mod_no] = mod_name
 
-        mod_no_menudict[0] = "기본값 : %s" % default_name
+        mod_no_menudict[0] = "기본값 : %s" % ",".join(default_name)
         mod_dict_keys = list(mod_no_dict.keys())
         last_no = max(mod_dict_keys) + 1
         mod_no_menudict[last_no] = "설정 종료"
