@@ -37,6 +37,44 @@ class CSVLoad(LoadFile):
                 if select_dataset in Filter_list:
                     self.dict_csvdata[select_dataset] = another_dataset
 
+    def chara_csv(self, filter_list=None):
+        self.dict_csvdata = {}
+        self.list_csvdata = []
+        try:
+            csvvar_list = CSVFunc().single_csv_read("CSVfnclist.csv", opt=2)
+        except:
+            csvvar_list = ["BASE", "TALENT", "ABL", "CFLAG", "CSTR","基礎", "素質", "能力", "フラグ", "呼び方リスト"]
+
+        for row_list in self.csv_reading:
+            # 공란이거나 한줄짜리 행 제외
+            if not row_list or len(row_list) < 2:
+                continue
+            # 주석문 제외
+            elif str(row_list[0]).strip().startswith(";"):
+                continue
+
+            try:
+                row_1 = str(row_list[0]).strip()
+                row_2 = str(row_list[1]).strip()
+                if len(row_list) > 2:
+                    if row_1 in csvvar_list:
+                        if row_1 in ("RELATION", "相性"):
+                            continue
+                        row_1 = row_2
+                        row_2 = str(row_list[2]).strip()
+                    else:
+                        print("상정 외의 chara 케이스 제외함")
+                        continue
+            except IndexError:
+                continue
+            self.list_csvdata.extend([row_1, row_2])
+
+            if filter_list == None:
+                self.dict_csvdata[row_1] = row_2
+            else:
+                if row_1 in filter_list:
+                    self.dict_csvdata[row_1] = row_2
+
 
 class CSVFunc:
 
@@ -56,6 +94,14 @@ class CSVFunc:
 
         for filename in csv_files:
             if mode_num <= 2:  # 파일 이름 따른 처리 여부 구분
+                # 만들어도 의미없는 파일 제외
+                if "gamebase" in filename.lower():
+                    continue
+                elif "_replace" in filename.lower():
+                    continue
+                elif "variablesize" in filename.lower():
+                    continue
+
                 if mode_num == 0:  # 구별없이 전부
                     option_tuple = (0,)
                 elif mode_num == 1:  # chara 제외
@@ -69,7 +115,7 @@ class CSVFunc:
             else:
                 if mode_num == 3:  # srs 최적화 - 이름
                     if "chara" in filename.lower():
-                        option_tuple = (0, ["CALLNAME", "呼び名"])
+                        option_tuple = (0, ["NAME", "名前","CALLNAME", "呼び名"])
                     elif "name" in filename.lower():
                         option_tuple = (0,)
                     else:
@@ -109,7 +155,10 @@ class CSVFunc:
         self.debug_log.write_loaded_log(csvname)
         try:
             if opt in (0, 1):
-                csv_data.core_csv(opt)
+                if "chara" in csvname.lower():
+                    csv_data.chara_csv(filter_list)
+                else:
+                    csv_data.core_csv(opt, filter_list)
                 the_result = DataFilter().erase_quote(csv_data.dict_csvdata)
             elif opt == 2:
                 csv_data.core_csv()

@@ -5,9 +5,21 @@
 基礎, BASE
 素質, TALENT
 能力, ABL
+経験, EXP
+刻印, MARK
+;相性, ;RELATION
 フラグ, CFLAG
+装着物, EQUIP
 呼び方リスト, CSTR
 ;CSV이름부분
+abl, ABL
+base, BASE
+cdflag1, CDFLAG1
+cdflag2, CDFLAG2
+global, GLOBAL
+globals, GLOBALS
+cflag, CFLAG
+cstr, CSTR
 DAY, DAY
 Equip, EQUIP
 ex, EX
@@ -19,6 +31,7 @@ Juel, JUEL
 Mark, MARK
 Palam, PALAM
 ;Param, ;PARAM
+savestr, SAVESTR
 source, SOURCE
 Stain, STAIN
 Str, STR
@@ -26,6 +39,7 @@ tcvar, TCVAR
 Tequip, TEQUIP
 tflag, TFLAG
 Train, TRAIN
+tstr, TSTR
 VariableSize, VARIABLESIZE
 _Rename, _RENAME
 _Replace, _REPLACE
