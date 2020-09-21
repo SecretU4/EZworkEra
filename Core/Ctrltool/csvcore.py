@@ -56,13 +56,13 @@ class CSVLoad(LoadFile):
             try:
                 row_1 = str(row_list[0]).strip()
                 row_2 = str(row_list[1]).strip()
-                if len(row_list) > 2:
+                if len(row_list) > 2 and row_list[2]:
                     if row_1 in csvvar_list:
-                        if row_1 in ("RELATION", "相性"):
-                            continue
                         row_1 = row_2
                         row_2 = str(row_list[2]).strip()
                     else:
+                        if row_1 in ("RELATION", "相性"):
+                            continue
                         print("상정 외의 chara 케이스 제외함")
                         continue
             except IndexError:
@@ -107,6 +107,8 @@ class CSVFunc:
                 elif mode_num == 1:  # chara 제외
                     if "chara" in filename.lower():
                         continue
+                    elif "rename" in filename.lower():
+                        continue
                     option_tuple = (0,)
                 elif mode_num == 2:  # 문자/숫자 변환 - {변수:숫자} 형태(chara 제외)
                     if "chara" in filename.lower():
@@ -116,8 +118,6 @@ class CSVFunc:
                 if mode_num == 3:  # srs 최적화 - 이름
                     if "chara" in filename.lower():
                         option_tuple = (0, ["NAME", "名前","CALLNAME", "呼び名"])
-                    elif "name" in filename.lower():
-                        option_tuple = (0,)
                     else:
                         continue
                 elif mode_num == 4:  # srs 최적화 - 변수
