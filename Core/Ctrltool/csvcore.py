@@ -84,55 +84,57 @@ class CSVFunc:
         """InfoDict 클래스를 받아 CSV 변수 자료형 생성
 
         {csv파일명:{csv변수명:숫자}} 또는 {csv파일명:{숫자:csv변수명}}
+        mode_num:
+            bit 기반 모드 필터링
+            0 = 필터링 없음
+            0b1 = 숫자/변수명 반전
+            0b10 = chara 등 미포함
+            0b100 = srs용 chara 처리
         """
         print("추출을 시작합니다.")
+
         if not csv_files or not encode_type:
             csv_files, encode_type = FileFilter().get_filelist("CSV")
         self.dic_assemble = InfoDict(0)
         count_check = StatusNum(csv_files, "파일", self.debug_log.NameDir)
         count_check.how_much_there()
 
+        arg_list = [0, None] # 구별없이 전부
+        name_filter = [] # 리스트에 포함된 파일명 제외(소문자만 지원)
+
+        #TODO mode_num 개편시 아래 단락 삭제
+        if mode_num == (1, 4):  # chara 제외 또는 srs 최적화 - 변수
+            mode_num = 0b010
+        elif mode_num == 2: # 문자/숫자 변환 - {변수:숫자} 형태 (chara 제외)
+            mode_num = 0b011
+        elif mode_num == 3:  # srs 최적화 - 이름
+            mode_num = 0b100
+
+        if mode_num:
+            # 만들어도 의미없는 파일 제외
+            name_filter.extend( ("gamebase", "_replace", "variablesize") )
+
+            if mode_num & 0b1: # 숫자/변수명 반전 있음
+                name_filter.append("chara")
+                arg_list[0] = 1
+            if mode_num & 0b10: # chara 미포함
+                name_filter.extend( ("chara", "_rename") )
+            if mode_num & 0b100: # SRS용 인명 처리
+                arg_list[1] = ["NAME", "名前", "CALLNAME", "呼び名"]
+
+        # 중복 필터 제거
+        name_filter = DataFilter().dup_filter(name_filter)
+
         for filename in csv_files:
-            if mode_num <= 2:  # 파일 이름 따른 처리 여부 구분
-                # 만들어도 의미없는 파일 제외
-                if "gamebase" in filename.lower():
+            if mode_num:
+                if mode_num & 0b100 and "chara" not in filename.lower():
                     continue
-                elif "_replace" in filename.lower():
-                    continue
-                elif "variablesize" in filename.lower():
-                    continue
+                else:
+                    for name in name_filter:
+                        if name in filename.lower():
+                            continue
 
-                if mode_num == 0:  # 구별없이 전부
-                    option_tuple = (0,)
-                elif mode_num == 1:  # chara 제외
-                    if "chara" in filename.lower():
-                        continue
-                    elif "rename" in filename.lower():
-                        continue
-                    option_tuple = (0,)
-                elif mode_num == 2:  # 문자/숫자 변환 - {변수:숫자} 형태(chara 제외)
-                    if "chara" in filename.lower():
-                        continue
-                    option_tuple = (1,)
-            else:
-                if mode_num == 3:  # srs 최적화 - 이름
-                    if "chara" in filename.lower():
-                        option_tuple = (0, ["NAME", "名前","CALLNAME", "呼び名"])
-                    else:
-                        continue
-                elif mode_num == 4:  # srs 최적화 - 변수
-                    if "chara" in filename.lower():
-                        continue
-                    elif "variable" in filename.lower():
-                        continue
-                    elif "name" in filename.lower():
-                        continue
-                    elif "replace" in filename.lower():
-                        continue
-                    else:
-                        option_tuple = (0,)
-
-            csvdata_dict = self.single_csv_read(filename, encode_type, *option_tuple)
+            csvdata_dict = self.single_csv_read(filename, encode_type, *arg_list)
             if csvdata_dict == None:  # 인식되지 않은 경우 infodict에 추가되지 않음
                 count_check.error_num += 1
                 continue
