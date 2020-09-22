@@ -431,9 +431,9 @@ class ERBUtil:
         )
         if not infodict_csv:
             if mod_num in (0, 1):  # {csv파일명:{숫자:csv변수명}}
-                infodict_csv = CSVFunc().import_all_CSV(1)
+                infodict_csv = CSVFunc().import_all_CSV(0b010)
             elif mod_num == 2:  # {csv파일명:{csv변수명:숫자}}
-                infodict_csv = CSVFunc().import_all_CSV(2)
+                infodict_csv = CSVFunc().import_all_CSV(0b011)
             else:
                 raise NotImplementedError(mod_num)
 

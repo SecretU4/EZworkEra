@@ -102,14 +102,6 @@ class CSVFunc:
         arg_list = [0, None] # 구별없이 전부
         name_filter = [] # 리스트에 포함된 파일명 제외(소문자만 지원)
 
-        #TODO mode_num 개편시 아래 단락 삭제
-        if mode_num == (1, 4):  # chara 제외 또는 srs 최적화 - 변수
-            mode_num = 0b010
-        elif mode_num == 2: # 문자/숫자 변환 - {변수:숫자} 형태 (chara 제외)
-            mode_num = 0b011
-        elif mode_num == 3:  # srs 최적화 - 이름
-            mode_num = 0b100
-
         if mode_num:
             # 만들어도 의미없는 파일 제외
             name_filter.extend( ("gamebase", "_replace", "variablesize") )
