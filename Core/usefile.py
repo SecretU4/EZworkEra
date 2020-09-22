@@ -476,8 +476,10 @@ class MenuPreset:
                     target_data = pickle.load(opened_sav)
                     return target_data
 
-    def select_mod(self, mod_no_dict, default_mod=0):
-        """모드 선택 메뉴 0번 모드는 기본값 초기화 버튼이므로 따로 설정하면 날아간다
+    def select_mod(self, mod_no_dict, default_mod=0, title_txt="활성화할 기능을 선택해주세요."):
+        """작동 모드 선택 메뉴
+        0번 모드는 기본값 초기화 버튼이므로 따로 설정하면 날아감.
+        default_mod는 기본값 설정, title_txt는 메뉴 출력시 제목 설정
 
         mod_no_dict = {mod_no: mod_name}
         """
@@ -506,7 +508,7 @@ class MenuPreset:
 
         while True:
             sel_menu = Menu(mod_no_menudict)
-            sel_menu.title("활성화할 기능을 선택해주세요")
+            sel_menu.title(title_txt)
             sel_menu_num = sel_menu.run_menu()
     
             if sel_menu_num == last_no:
