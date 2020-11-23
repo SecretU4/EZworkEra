@@ -349,13 +349,12 @@ class ERBWrite(LoadFile):
 class ERBRemodel(ERBLoad):
     """이미 존재하는 ERB 파일의 내용 수정을 위한 클래스"""
 
-    def __init__(self, NameDir, EncodeType, csv_infodict):
+    def __init__(self, NameDir, EncodeType):
         super().__init__(NameDir, EncodeType)
-        self.csvtrans_infodict = csv_infodict
         self.make_erblines()
 
-    def replace_csvvars(self, mod_num=0):
-        vfinder = ERBVFinder(self.csvtrans_infodict)
+    def replace_csvvars(self, csv_infodict, mod_num=0):
+        vfinder = ERBVFinder(csv_infodict)
         replaced_context_list = []
         for line_count, line in enumerate(self.lines):
             change_check = 0
@@ -827,8 +826,8 @@ class ERBFunc:
         print("ERB내 index 변환작업을 시작합니다.")
 
         for filename in erb_files:
-            replaced_lines = ERBRemodel(filename, encode_type, csv_infodict).replace_csvvars(
-                mod_num
+            replaced_lines = ERBRemodel(filename, encode_type).replace_csvvars(
+                csv_infodict, mod_num
             )
             self.result_infodict.add_dict(filename, replaced_lines)
             file_count_check.how_much_done()
