@@ -357,6 +357,7 @@ class ERBRemodel(ERBLoad):
         "W":"\\t",
         "L":"\\n"
     }
+    save_str_var = "LOCALS:85"
 
     def replace_csvvars(self, csv_infodict, mod_num=0):
         vfinder = ERBVFinder(csv_infodict)
@@ -405,28 +406,52 @@ class ERBRemodel(ERBLoad):
                 return '@"%s%s" + \n' % (context, endword)
         return 0
 
+    def __after_printcheck(self, target_lines, count):
+        target_lines[-1] = target_lines[-1].replace(" + \n", "\n")
+        if count == 1: # PRINT 출력문이 1줄짜리일 때
+            for counting in range(1, count + 1):
+                print_tail = ""
+                temp_line = target_lines[-1 * counting]
+                for item in self.express_dict.items():
+                    if '%s"\n' % item[-1] in temp_line: # <endword>"\n
+                        print_tail = item[0]
+                        temp_line = temp_line.replace('%s"\n' % item[-1], "\n")
+                    elif '%s" + \n' % item[-1] in temp_line: # <endword>" + \n
+                        print_tail = item[0]
+                        temp_line = temp_line.replace('%s" + \n' % item[-1], "\n")
+                        
+                temp_line = temp_line.replace('@"', "PRINTFORM%s " % print_tail)
+                target_lines[-1 * counting] = temp_line
+            target_lines.pop(-(count + 1)) # "%s '=\n" % self.save_str_var
+            target_lines.pop(-(count + 1)) # "{\n"
+        else:
+            target_lines.append("}\n")
+            target_lines.append("CALL PRINTER, %s\n" % self.save_str_var)
+        return target_lines
+
     def memory_optimize(self):
         print_list = ["PRINT", "PRINTL", "PRINTW", "PRINTFORM", "PRINTFORML", "PRINTFORMW"]
         sp_print_list = ["PRINTS", "PRINTSL", "PRINTSW", "PRINTV", "PRINTVL", "PRINTVS"]
-        saved_str_var = "LOCALS:10"
         replaced_context_lines = []
-        printing_switch = 0
+        count_print = 0
         for line in self.lines:
             result_line = self.__check_print_line(line, print_list, sp_print_list)
             if result_line:
-                if not printing_switch:
+                if not count_print:
                     replaced_context_lines.append("{\n")
-                    replaced_context_lines.append("%s '=\n" % saved_str_var)
-                printing_switch = 1
+                    replaced_context_lines.append("%s '=\n" % self.save_str_var)
+                count_print += 1
             else:
                 result_line = line
-                if printing_switch:
-                    replaced_context_lines[-1] = replaced_context_lines[-1].replace(" + \n", "\n")
-                    replaced_context_lines.append("}\n")
-                    replaced_context_lines.append("CALL PRINTER, %s\n" % saved_str_var)
-                    printing_switch = 0
+                if count_print:
+                    replaced_context_lines = self.__after_printcheck(replaced_context_lines, count_print)
+
+                count_print = 0
             result_line = result_line.replace("\r\n", "\n")
             replaced_context_lines.append(result_line)
+
+        if '" + \n' in replaced_context_lines[-1]: # PRINT 출력문으로 파일이 끝날 때 처리
+            replaced_context_lines = self.__after_printcheck(replaced_context_lines, count_print)
 
         return replaced_context_lines
                 
@@ -591,6 +616,7 @@ class ERBUtil:
                         result_lines.insert(key, post_line)
         metalineinfo.linelist = result_lines
         return metalineinfo
+
 
 class ERBVFinder:
     """문장 대응 csv 변수 필터. csvdict은 infodict형의 csv정보를 요구하며,
@@ -917,6 +943,7 @@ class ERBFunc:
         return result_dataset
 
     def memory_optimizer(self, erb_files=None, encode_type=None):
+        print("현재 기능이 완성되지 않았습니다. 되도록 백업 후 이용해주시고, 구상 파일에만 사용해주세요.")
         if not erb_files or not encode_type:
             erb_files, encode_type = FileFilter().get_filelist("ERB")
         file_count_check = StatusNum(erb_files, "파일")
