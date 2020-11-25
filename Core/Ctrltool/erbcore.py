@@ -413,12 +413,12 @@ class ERBRemodel(ERBLoad):
                 print_tail = ""
                 temp_line = target_lines[-1 * counting]
                 for item in self.express_dict.items():
-                    if '%s"\n' % item[-1] in temp_line: # <endword>"\n
-                        print_tail = item[0]
-                        temp_line = temp_line.replace('%s"\n' % item[-1], "\n")
-                    elif '%s" + \n' % item[-1] in temp_line: # <endword>" + \n
+                    if '%s" + \n' % item[-1] in temp_line: # <endword>" + \n
                         print_tail = item[0]
                         temp_line = temp_line.replace('%s" + \n' % item[-1], "\n")
+                    elif '%s"\n' % item[-1] in temp_line: # <endword>"\n
+                        print_tail = item[0]
+                        temp_line = temp_line.replace('%s"\n' % item[-1], "\n")
                         
                 temp_line = temp_line.replace('@"', "PRINTFORM%s " % print_tail)
                 temp_line = temp_line.replace("\\PRINTFORM%s " % print_tail, '\\@"')
