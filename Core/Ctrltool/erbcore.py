@@ -421,6 +421,7 @@ class ERBRemodel(ERBLoad):
                         temp_line = temp_line.replace('%s" + \n' % item[-1], "\n")
                         
                 temp_line = temp_line.replace('@"', "PRINTFORM%s " % print_tail)
+                temp_line = temp_line.replace("\\PRINTFORM%s " % print_tail, '\\@"')
                 target_lines[-1 * counting] = temp_line
             target_lines.pop(-(count + 1)) # "%s '=\n" % self.save_str_var
             target_lines.pop(-(count + 1)) # "{\n"
