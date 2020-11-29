@@ -358,6 +358,7 @@ class ERBRemodel(ERBLoad):
         "L":"\\n"
     }
     save_str_var = "LOCALS:85"
+    re_single_sent = re.compile('@"(.+)"\n$')
 
     def replace_csvvars(self, csv_infodict, mod_num=0):
         vfinder = ERBVFinder(csv_infodict)
@@ -415,13 +416,12 @@ class ERBRemodel(ERBLoad):
                 for item in self.express_dict.items():
                     if '%s" + \n' % item[-1] in temp_line: # <endword>" + \n
                         print_tail = item[0]
-                        temp_line = temp_line.replace('%s" + \n' % item[-1], "\n")
+                        temp_line = temp_line.replace('%s" + \n' % item[-1], '"\n')
                     elif '%s"\n' % item[-1] in temp_line: # <endword>"\n
                         print_tail = item[0]
-                        temp_line = temp_line.replace('%s"\n' % item[-1], "\n")
-                        
-                temp_line = temp_line.replace('@"', "PRINTFORM%s " % print_tail)
-                temp_line = temp_line.replace("\\PRINTFORM%s " % print_tail, '\\@"')
+                        temp_line = temp_line.replace('%s"\n' % item[-1], '"\n')
+                context = self.re_single_sent.match(temp_line).group(1)
+                temp_line = "PRINTFORM%s %s\n" % (print_tail, context)
                 target_lines[-1 * counting] = temp_line
             target_lines.pop(-(count + 1)) # "%s '=\n" % self.save_str_var
             target_lines.pop(-(count + 1)) # "{\n"
