@@ -119,8 +119,8 @@ class PrintERB:
         result_infodict = InfoDict(1)
         for filename in self.erb_files:
             replaced_lines = ERBRemodel(
-                filename, self.encode_type, self.csv_infodict
-            ).replace_csvvars(1)
+                filename, self.encode_type
+                ).replace_csvvars(self.csv_infodict, 1)
             result_infodict.add_dict(filename, replaced_lines)
         return result_infodict
 

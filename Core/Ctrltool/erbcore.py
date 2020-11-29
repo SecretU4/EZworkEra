@@ -349,14 +349,20 @@ class ERBWrite(LoadFile):
 class ERBRemodel(ERBLoad):
     """이미 존재하는 ERB 파일의 내용 수정을 위한 클래스"""
 
-    def __init__(self, NameDir, EncodeType, csv_infodict):
+    def __init__(self, NameDir, EncodeType):
         super().__init__(NameDir, EncodeType)
-        self.csvtrans_infodict = csv_infodict
         self.make_erblines()
 
-    def replace_csvvars(self, mod_num=0):
-        vfinder = ERBVFinder(self.csvtrans_infodict)
-        replaced_context_list = []
+    express_dict = {
+        "W":"\\t",
+        "L":"\\n"
+    }
+    save_str_var = "LOCALS:85"
+    re_single_sent = re.compile('@"(.+)"\n$')
+
+    def replace_csvvars(self, csv_infodict, mod_num=0):
+        vfinder = ERBVFinder(csv_infodict)
+        replaced_context_lines = []
         for line_count, line in enumerate(self.lines):
             change_check = 0
             line = line.strip()
@@ -372,13 +378,84 @@ class ERBRemodel(ERBLoad):
                         if orig_fnc != comp_fnc:
                             line = line.replace(orig_fnc, comp_fnc)
                             change_check = 1
-            replaced_context_list.append(line + "\n")
+            replaced_context_lines.append(line + "\n")
             if change_check:
                 self.debug_log.write_log(str(line_count + 1) + "행 index 변수 변환됨\n")
 
         self.debug_log.end_log("index 변수변환")
-        return replaced_context_list
+        return replaced_context_lines
 
+    def __check_print_line(self, line, def_list, sp_list):
+        if "PRINT" in line:
+            temp_split = line.strip().split()
+            header = temp_split.pop(0)
+            context = " ".join(temp_split)
+            endword = ""
+            if header in def_list or header in sp_list:
+                for key in self.express_dict:
+                    if key in header:
+                        endword = self.express_dict[key]
+                        break
+                if header in sp_list:
+                    if "PRINTS" in header:
+                        context = "%{0}%".format(context)
+                    elif "PRINTV" in header:
+                        context = "\{%s\}" % context
+                    else:
+                        raise NotImplementedError(header)
+                
+                return '@"%s%s" + \n' % (context, endword)
+        return 0
+
+    def __after_printcheck(self, target_lines, count):
+        target_lines[-1] = target_lines[-1].replace(" + \n", "\n")
+        if count == 1: # PRINT 출력문이 1줄짜리일 때
+            for counting in range(1, count + 1):
+                print_tail = ""
+                temp_line = target_lines[-1 * counting]
+                for item in self.express_dict.items():
+                    if '%s" + \n' % item[-1] in temp_line: # <endword>" + \n
+                        print_tail = item[0]
+                        temp_line = temp_line.replace('%s" + \n' % item[-1], '"\n')
+                    elif '%s"\n' % item[-1] in temp_line: # <endword>"\n
+                        print_tail = item[0]
+                        temp_line = temp_line.replace('%s"\n' % item[-1], '"\n')
+                context = self.re_single_sent.match(temp_line).group(1)
+                temp_line = "PRINTFORM%s %s\n" % (print_tail, context)
+                target_lines[-1 * counting] = temp_line
+            target_lines.pop(-(count + 1)) # "%s '=\n" % self.save_str_var
+            target_lines.pop(-(count + 1)) # "{\n"
+        else:
+            target_lines.append("}\n")
+            target_lines.append("CALL PRINTER, %s\n" % self.save_str_var)
+        return target_lines
+
+    def memory_optimize(self):
+        print_list = ["PRINT", "PRINTL", "PRINTW", "PRINTFORM", "PRINTFORML", "PRINTFORMW"]
+        sp_print_list = ["PRINTS", "PRINTSL", "PRINTSW", "PRINTV", "PRINTVL", "PRINTVS"]
+        replaced_context_lines = []
+        count_print = 0
+        for line in self.lines:
+            result_line = self.__check_print_line(line, print_list, sp_print_list)
+            if result_line:
+                if not count_print:
+                    replaced_context_lines.append("{\n")
+                    replaced_context_lines.append("%s '=\n" % self.save_str_var)
+                count_print += 1
+            else:
+                result_line = line
+                if count_print:
+                    replaced_context_lines = self.__after_printcheck(replaced_context_lines, count_print)
+
+                count_print = 0
+            result_line = result_line.replace("\r\n", "\n")
+            replaced_context_lines.append(result_line)
+
+        if '" + \n' in replaced_context_lines[-1]: # PRINT 출력문으로 파일이 끝날 때 처리
+            replaced_context_lines = self.__after_printcheck(replaced_context_lines, count_print)
+
+        return replaced_context_lines
+                
 
 class ERBUtil:
     def indent_maker(self, metalineinfo):  # metaline을 들여쓰기된 lines로 만듦
@@ -540,6 +617,7 @@ class ERBUtil:
                         result_lines.insert(key, post_line)
         metalineinfo.linelist = result_lines
         return metalineinfo
+
 
 class ERBVFinder:
     """문장 대응 csv 변수 필터. csvdict은 infodict형의 csv정보를 요구하며,
@@ -827,8 +905,8 @@ class ERBFunc:
         print("ERB내 index 변환작업을 시작합니다.")
 
         for filename in erb_files:
-            replaced_lines = ERBRemodel(filename, encode_type, csv_infodict).replace_csvvars(
-                mod_num
+            replaced_lines = ERBRemodel(filename, encode_type).replace_csvvars(
+                csv_infodict, mod_num
             )
             self.result_infodict.add_dict(filename, replaced_lines)
             file_count_check.how_much_done()
@@ -864,6 +942,23 @@ class ERBFunc:
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return result_dataset
+
+    def memory_optimizer(self, erb_files=None, encode_type=None):
+        print("현재 기능이 완성되지 않았습니다. 되도록 백업 후 이용해주시고, 구상 파일에만 사용해주세요.")
+        if not erb_files or not encode_type:
+            erb_files, encode_type = FileFilter().get_filelist("ERB")
+        file_count_check = StatusNum(erb_files, "파일")
+        file_count_check.how_much_there()
+
+        for filename in erb_files:
+            optmized_lines = ERBRemodel(filename, encode_type).memory_optimize()
+            self.result_infodict.add_dict(filename, optmized_lines)
+            file_count_check.how_much_done()
+
+        CommonSent.extract_finished()
+        self.func_log.sucessful_done()
+        return self.result_infodict  # {파일명:lines} 형태가 포함된 infodict
+
 
     def erb_trans_helper(self):  # TODO 공사중
         """번역본의 원본 이식에 도움을 주는 함수"""

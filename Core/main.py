@@ -78,7 +78,8 @@ def run_main():
                 3: "구상 번역기",
                 4: "ERB 내 CSV 인덱스 변환",
                 5: "불완전 수식 정리",
-                6: "이전으로",
+                6: "구상 메모리 최적화",
+                7: "이전으로",
             }
             menu_erb = Menu(menu_dict_erb)
             menu_erb.run_menu()
@@ -88,7 +89,9 @@ def run_main():
             elif menu_erb.selected_num == 1:
                 erb_printfunc_infodict = ERBFunc().extract_printfunc()
                 last_work = erb_printfunc_infodict
-            elif menu_erb.selected_menu in ["들여쓰기 교정", "구상 번역기", "ERB 내 CSV 인덱스 변환", "불완전 수식 정리"]:
+            elif menu_erb.selected_menu in [
+                "들여쓰기 교정", "구상 번역기", "ERB 내 CSV 인덱스 변환", "불완전 수식 정리", "구상 메모리 최적화"
+                ]:
                 last_work = None
                 if menu_erb.selected_menu == "들여쓰기 교정":
                     remodeled_erb = ERBFunc().remodel_indent()
@@ -118,6 +121,10 @@ def run_main():
                 elif menu_erb.selected_menu == "불완전 수식 정리":
                     erb_infodict = ERBFunc().remodel_equation()
                     sav_datatype = "metainfoline"
+                    last_work = erb_infodict
+                elif menu_erb.selected_menu == "구상 메모리 최적화":
+                    erb_infodict = ERBFunc().memory_optimizer()
+                    sav_datatype = "erblines"
                     last_work = erb_infodict
                 if last_work != None:
                     MenuPreset().shall_save_data(last_work, sav_datatype)
