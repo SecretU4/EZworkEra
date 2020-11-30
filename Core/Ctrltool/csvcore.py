@@ -37,6 +37,44 @@ class CSVLoad(LoadFile):
                 if select_dataset in Filter_list:
                     self.dict_csvdata[select_dataset] = another_dataset
 
+    def chara_csv(self, filter_list=None):
+        self.dict_csvdata = {}
+        self.list_csvdata = []
+        try:
+            csvvar_list = CSVFunc().single_csv_read("CSVfnclist.csv", opt=2)
+        except:
+            csvvar_list = ["BASE", "TALENT", "ABL", "CFLAG", "CSTR","基礎", "素質", "能力", "フラグ", "呼び方リスト"]
+
+        for row_list in self.csv_reading:
+            # 공란이거나 한줄짜리 행 제외
+            if not row_list or len(row_list) < 2:
+                continue
+            # 주석문 제외
+            elif str(row_list[0]).strip().startswith(";"):
+                continue
+
+            try:
+                row_1 = str(row_list[0]).strip()
+                row_2 = str(row_list[1]).strip()
+                if len(row_list) > 2 and row_list[2]:
+                    if row_1 in csvvar_list:
+                        row_1 = row_2
+                        row_2 = str(row_list[2]).strip()
+                    else:
+                        if row_1 in ("RELATION", "相性"):
+                            continue
+                        print("상정 외의 chara 케이스 제외함")
+                        continue
+            except IndexError:
+                continue
+            self.list_csvdata.extend([row_1, row_2])
+
+            if filter_list == None:
+                self.dict_csvdata[row_1] = row_2
+            else:
+                if row_1 in filter_list:
+                    self.dict_csvdata[row_1] = row_2
+
 
 class CSVFunc:
 
@@ -46,47 +84,49 @@ class CSVFunc:
         """InfoDict 클래스를 받아 CSV 변수 자료형 생성
 
         {csv파일명:{csv변수명:숫자}} 또는 {csv파일명:{숫자:csv변수명}}
+        mode_num:
+            bit 기반 모드 필터링
+            0 = 필터링 없음
+            0b1 = 숫자/변수명 반전
+            0b10 = chara 등 미포함
+            0b100 = srs용 chara 처리
         """
         print("추출을 시작합니다.")
+
         if not csv_files or not encode_type:
             csv_files, encode_type = FileFilter().get_filelist("CSV")
         self.dic_assemble = InfoDict(0)
         count_check = StatusNum(csv_files, "파일", self.debug_log.NameDir)
         count_check.how_much_there()
 
-        for filename in csv_files:
-            if mode_num <= 2:  # 파일 이름 따른 처리 여부 구분
-                if mode_num == 0:  # 구별없이 전부
-                    option_tuple = (0,)
-                elif mode_num == 1:  # chara 제외
-                    if "chara" in filename.lower():
-                        continue
-                    option_tuple = (0,)
-                elif mode_num == 2:  # 문자/숫자 변환 - {변수:숫자} 형태(chara 제외)
-                    if "chara" in filename.lower():
-                        continue
-                    option_tuple = (1,)
-            else:
-                if mode_num == 3:  # srs 최적화 - 이름
-                    if "chara" in filename.lower():
-                        option_tuple = (0, ["CALLNAME", "呼び名"])
-                    elif "name" in filename.lower():
-                        option_tuple = (0,)
-                    else:
-                        continue
-                elif mode_num == 4:  # srs 최적화 - 변수
-                    if "chara" in filename.lower():
-                        continue
-                    elif "variable" in filename.lower():
-                        continue
-                    elif "name" in filename.lower():
-                        continue
-                    elif "replace" in filename.lower():
-                        continue
-                    else:
-                        option_tuple = (0,)
+        arg_list = [0, None] # 구별없이 전부
+        name_filter = [] # 리스트에 포함된 파일명 제외(소문자만 지원)
 
-            csvdata_dict = self.single_csv_read(filename, encode_type, *option_tuple)
+        if mode_num:
+            # 만들어도 의미없는 파일 제외
+            name_filter.extend( ("gamebase", "_replace", "variablesize") )
+
+            if mode_num & 0b1: # 숫자/변수명 반전 있음
+                name_filter.append("chara")
+                arg_list[0] = 1
+            if mode_num & 0b10: # chara 미포함
+                name_filter.extend( ("chara", "_rename") )
+            if mode_num & 0b100: # SRS용 인명 처리
+                arg_list[1] = ["NAME", "名前", "CALLNAME", "呼び名"]
+
+        # 중복 필터 제거
+        name_filter = DataFilter().dup_filter(name_filter)
+
+        for filename in csv_files:
+            if mode_num:
+                if mode_num & 0b100 and "chara" not in filename.lower():
+                    continue
+                else:
+                    for name in name_filter:
+                        if name in filename.lower():
+                            continue
+
+            csvdata_dict = self.single_csv_read(filename, encode_type, *arg_list)
             if csvdata_dict == None:  # 인식되지 않은 경우 infodict에 추가되지 않음
                 count_check.error_num += 1
                 continue
@@ -109,7 +149,10 @@ class CSVFunc:
         self.debug_log.write_loaded_log(csvname)
         try:
             if opt in (0, 1):
-                csv_data.core_csv(opt)
+                if "chara" in csvname.lower():
+                    csv_data.chara_csv(filter_list)
+                else:
+                    csv_data.core_csv(opt, filter_list)
                 the_result = DataFilter().erase_quote(csv_data.dict_csvdata)
             elif opt == 2:
                 csv_data.core_csv()

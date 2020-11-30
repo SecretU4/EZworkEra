@@ -97,6 +97,8 @@ class DirFilter:
         dir_slashed = list(self.dirname)
         if dir_slashed.pop() not in ("/", "\\"):
             dir_target = self.dirname + "\\"
+        else:
+            dir_target = self.dirname
         return dir_target
 
 
@@ -202,9 +204,17 @@ class FileFilter:
         입력 인자는 파일 목록화할 확장자."""
         user_input = CustomInput(filetype)
         target_dir = user_input.input_option(1)
-        self.option_num = MenuPreset().yesno(0, "하위폴더까지 포함해 진행하시겠습니까?")
         encode_type = MenuPreset().encode()
-        files = self.files_ext(target_dir, "." + filetype)
+
+        if os.path.isdir(target_dir):
+            self.option_num = MenuPreset().yesno(0, "하위폴더까지 포함해 진행하시겠습니까?")
+            files = self.files_ext(target_dir, "." + filetype)
+        else: # 확인 가능한 목록 없음
+            remake_dir = "\\".join(target_dir.split("\\")[:-1])
+            if os.path.isfile(remake_dir):
+                files = [remake_dir]
+            else:
+                files = []
         return files, encode_type
 
 
@@ -378,6 +388,7 @@ class MenuPreset:
         yesno(reverse,sentence)
         shall_save_data(data,datatype)
         load_saved_data(opt_no,[sentence])
+        select_mod(mod_no_dict{no:mod_name})
     """
 
     def encode(self):
@@ -464,3 +475,56 @@ class MenuPreset:
                 with open(self.selected_name, "rb") as opened_sav:
                     target_data = pickle.load(opened_sav)
                     return target_data
+
+    def select_mod(self, mod_no_dict, default_mod=0, title_txt="활성화할 기능을 선택해주세요."):
+        """작동 모드 선택 메뉴
+        0번 모드는 기본값 초기화 버튼이므로 따로 설정하면 날아감.
+        default_mod는 기본값 설정, title_txt는 메뉴 출력시 제목 설정
+
+        mod_no_dict = {mod_no: mod_name}
+        """
+
+        mod_no_menudict = {0:""}
+        mod_no_menudict.update(mod_no_dict)
+        show_def_modno = bin(default_mod).split("b")[-1]
+        result_no = default_mod
+        default_name = ["모두 꺼짐"]
+
+        if show_def_modno != "0":
+            default_name = []
+            for mod_no, switch in enumerate(show_def_modno):
+                mod_no += 1
+
+                mod_name = mod_no_dict[mod_no]
+                if switch:
+                    default_name.append(str(mod_no))
+                    mod_name += "(선택됨)"
+                mod_no_menudict[mod_no] = mod_name
+
+        mod_no_menudict[0] = "기본값 : %s" % ",".join(default_name)
+        mod_dict_keys = list(mod_no_dict.keys())
+        last_no = max(mod_dict_keys) + 1
+        mod_no_menudict[last_no] = "설정 종료"
+
+        while True:
+            sel_menu = Menu(mod_no_menudict)
+            sel_menu.title(title_txt)
+            sel_menu_num = sel_menu.run_menu()
+    
+            if sel_menu_num == last_no:
+                break
+            elif sel_menu_num:
+                mod_name = mod_no_menudict[sel_menu_num]
+                real_no = 2 ** (sel_menu_num - 1)
+                result_no = result_no ^ real_no
+                if "(선택됨)" in mod_name:
+                    mod_no_menudict[sel_menu_num] = mod_name.replace("(선택됨)", "")
+                else:
+                    result_no
+                    mod_no_menudict[sel_menu_num] = mod_name + "(선택됨)"
+            else:
+                result_no = default_mod
+                break
+
+        return result_no
+

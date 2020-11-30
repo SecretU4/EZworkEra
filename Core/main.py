@@ -32,35 +32,37 @@ def run_main():
             CommonSent.print_line()
             menu_dict_csv = {
                 0: "CSV 변수 목록 추출",
-                1: "CSV 변수 목록 추출(SRS 최적화)",
-                2: "CSV 변수 명칭 사전",
-                3: "이전으로",
+                1: "CSV 변수 명칭 사전",
+                2: "이전으로",
             }
             menu_csv = Menu(menu_dict_csv)
             menu_csv.title("CSV 파일 처리 유틸리티입니다.", "따로 표기해놓지 않았다면 숫자:변수명 꼴입니다.")
             menu_csv.run_menu()
             if menu_csv.selected_num == 0:
-                menu_dict_import_all_csv = {0: "모두", 1: "CHARA 제외", 2: "문자/숫자 변환", 3: "처음으로"}
+                menu_dict_import_all_csv = {
+                    0: "구별없이 모두",
+                    1: "필터 설정",
+                    2: "인명 SRS 작성용",
+                    3: "처음으로"}
                 menu_import_all_csv = Menu(menu_dict_import_all_csv)
-                menu_import_all_csv.title("추출할 CSV의 종류를 선택하세요.")
-                menu_import_all_csv.run_menu()
-                if menu_import_all_csv.selected_num != 3:  # csv 변수추출 중 처음으로가 아님
-                    import_all_csv_infodict = CSVFunc().import_all_CSV(
-                        menu_import_all_csv.selected_num
-                    )
-                    MenuPreset().shall_save_data(import_all_csv_infodict, "infodict")
-                    last_work = import_all_csv_infodict  # 마지막 작업 저장
+                menu_import_all_csv.title("CSV를 추출할 내용/파일명 조건을 선택해주세요.")
+                menu_no = menu_import_all_csv.run_menu()
+                if menu_no == 3: # csv 변수추출 중 처음으로 이동
+                    continue
+                elif menu_no == 0:
+                    mod_no = 0
+                elif menu_no == 1:
+                    mod_dict = {1:"1열/2열 반전", 2:"특수형식 csv 미포함"}
+                    mod_no = MenuPreset().select_mod(
+                        mod_dict, title_txt="1열/2열 반전시 특수형식 csv는 포함하지 않는 것을 권장합니다."
+                        )
+                elif menu_no == 2:
+                    mod_no = 0b100
+
+                import_all_csv_infodict = CSVFunc().import_all_CSV(mod_no)
+                MenuPreset().shall_save_data(import_all_csv_infodict, "infodict")
+                last_work = import_all_csv_infodict  # 마지막 작업 저장
             elif menu_csv.selected_num == 1:
-                menu_dict_csv_srs_friendly = {0: "csv 내 이름만", 1: "csv 내 변수만 (CHARA 제외)", 2: "처음으로"}
-                menu_csv_srs_friendly = Menu(menu_dict_csv_srs_friendly)
-                menu_csv_srs_friendly.run_menu()
-                if menu_csv_srs_friendly.selected_num != 2:
-                    csv_srs_friendly_infodict = CSVFunc().import_all_CSV(
-                        menu_csv_srs_friendly.selected_num + 3
-                    )
-                    MenuPreset().shall_save_data(csv_srs_friendly_infodict, "infodict")
-                    last_work = csv_srs_friendly_infodict
-            elif menu_csv.selected_num == 2:
                 csvvar_dict = CSVFunc().make_csv_var_dict()
                 MenuPreset().shall_save_data(csvvar_dict, "dict")
                 last_work = csvvar_dict
@@ -75,7 +77,9 @@ def run_main():
                 2: "들여쓰기 교정",
                 3: "구상 번역기",
                 4: "ERB 내 CSV 인덱스 변환",
-                5: "이전으로",
+                5: "불완전 수식 정리",
+                6: "구상 메모리 최적화",
+                7: "이전으로",
             }
             menu_erb = Menu(menu_dict_erb)
             menu_erb.run_menu()
@@ -85,7 +89,9 @@ def run_main():
             elif menu_erb.selected_num == 1:
                 erb_printfunc_infodict = ERBFunc().extract_printfunc()
                 last_work = erb_printfunc_infodict
-            elif menu_erb.selected_menu in ["들여쓰기 교정", "구상 번역기", "ERB 내 CSV 인덱스 변환"]:
+            elif menu_erb.selected_menu in [
+                "들여쓰기 교정", "구상 번역기", "ERB 내 CSV 인덱스 변환", "불완전 수식 정리", "구상 메모리 최적화"
+                ]:
                 last_work = None
                 if menu_erb.selected_menu == "들여쓰기 교정":
                     remodeled_erb = ERBFunc().remodel_indent()
@@ -112,6 +118,14 @@ def run_main():
                     print("현재 변환된 데이터를 erb로 만들지 않았습니다. 이후 절차를 진행해주세요.")
                     sav_datatype = "erblines"
                     last_work = erb_replace_csvvar_infodict
+                elif menu_erb.selected_menu == "불완전 수식 정리":
+                    erb_infodict = ERBFunc().remodel_equation()
+                    sav_datatype = "metainfoline"
+                    last_work = erb_infodict
+                elif menu_erb.selected_menu == "구상 메모리 최적화":
+                    erb_infodict = ERBFunc().memory_optimizer()
+                    sav_datatype = "erblines"
+                    last_work = erb_infodict
                 if last_work != None:
                     MenuPreset().shall_save_data(last_work, sav_datatype)
                     make_erb_yn = MenuPreset().yesno(1, "지금 바로 데이터를 erb화 할까요?")

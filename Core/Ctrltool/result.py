@@ -44,7 +44,6 @@ class ExportData:
         self.target_name = target_name
         self.target_data = target_data
         self.lazy_switch = 0  # 데이터 미선택한 경우 1
-        self.colon_yn = 0  # : 어두에 넣을지 여부
         self.log_file = LogPreset(4)  # 중간에 workclass 바꾸는 경우 있어 초기화 필요
 
     def __multi_data_input(self, data_count=2):
@@ -218,18 +217,18 @@ class ExportData:
                         self.for_dup_content.index(orig_txt)
                     except ValueError:
                         self.for_dup_content.append(orig_txt)
-                        if opt_no == 1:
-                            if orig_txt == trans_txt:
+                        if opt_no: # 모드 설정이 하나 이상 있을때
+                            if opt_no & 0b1 and orig_txt == trans_txt: # 미번역 단어 제외
                                 continue
-                            elif len(orig_txt) < 2:
+                            if opt_no & 0b10 and len(orig_txt) < 2: # 짧은 단어 필터링
                                 self.log_file.write_log(
                                     "단어가 너무 짧습니다 : {}번째 항목의 {}\n".format(total_key, orig_txt)
                                 )
                                 self.cantwrite_srs_count += 1
                                 continue
-                        if self.colon_yn:
-                            orig_txt = ":" + orig_txt
-                            trans_txt = ":" + trans_txt
+                            if opt_no & 0b100: # CSV 표적화
+                                orig_txt = ":" + orig_txt
+                                trans_txt = ":" + trans_txt
                         srs_file.write("{}\n{}\n\n".format(orig_txt, trans_txt))
                         self.worked_switch = 1
 
@@ -275,7 +274,7 @@ class ExportData:
                 infodict = content.dict_main
                 sel_data = list(map(lambda x: {x: infodict[x]}, infodict.keys()))
             elif isinstance(content, ERBMetaInfo):
-                sel_data = [{tag: content.linelist}]
+                sel_data = [{tag: content}]
             elif isinstance(content, (list, dict)):
                 sel_data = [{tag: content}]
             else:
@@ -286,20 +285,22 @@ class ExportData:
         numstat.how_much_there()
 
         for que in que_list:
-            data_filename = list(que.keys())[0]
+            que_key = list(que.keys())[0]
             if dest_mod == 1:  # 결과물 디렉토리에 저장
-                if len(que_list) == 1 and data_filename in list(self.single_namedict.values()):
+                if len(que_list) == 1 and que_key in list(self.single_namedict.values()):
                     data_filename = "({}){}".format(CommonSent.put_time(1), self.target_name)
+                else:
+                    data_filename = que_key
                 result_filename = "{}.{}".format(FileFilter().sep_filename(data_filename), filetype)
                 the_filename = self.dest_dir + result_filename
             elif dest_mod == 0:  # 원본 디렉토리에 저장
-                the_filename = data_filename
+                the_filename = que_key
             self.log_file.which_type_loaded(filetype)
 
             with LoadFile(the_filename, encode_type).readwrite() as txt_file:
                 if filetype == "TXT":
                     txt_file.write("{}에서 불러옴\n".format(self.target_name))
-                context = que[data_filename]
+                context = que[que_key]
                 if type(context) == dict:
                     for key, value in list(context.items()):
                         print("{}:{}".format(key, value), file=txt_file)
@@ -314,7 +315,7 @@ class ExportData:
                     if type(context) == list:
                         txt_file.writelines(context)
                     elif isinstance(context, ERBMetaInfo):
-                        the_lines = ERBFunc().remodel_indent(target_metalines=context.linelist)
+                        the_lines = ERBFunc().remodel_indent(metalineinfo=context.printable_lines())
                         txt_file.writelines(the_lines)
                     else:
                         print("텍스트화 할 수 없는 데이터입니다. 옵션을 바꿔 다시 시도해주세요.")
@@ -326,7 +327,7 @@ class ExportData:
         """입력받은 데이터를 updateera의 simplesrs 양식으로 출력
 
         Variables:
-            srs_opt: 1이면 짧은 단어, srs 내부 중복 문자열 필터링
+            srs_opt: bit 기반 모드 설정 - 짧은 단어, srs 내부 중복 문자열 필터링 등 체크.
             srsname: 저장될 simplesrs 파일명
         """
         total_worked_switch = 0
@@ -387,7 +388,6 @@ class ExportData:
                 bulk_srs = srs_preread.read()
                 self.for_dup_content = SubFilter().srs_check_dup(bulk_srs)
 
-        self.colon_yn = MenuPreset().yesno(0, "CSV 표적화 기능(CSV 변수만 변경하도록)을 사용할까요?")
         print("SRS 입력을 시작합니다...")
         for num in range(len(orig_infokeys)):
             try:
@@ -492,7 +492,12 @@ class ResultFunc:
             print("ERB 데이터로 시도시 두 자료의 행 위치가 일치해야 합니다.")
             print("작성 또는 수정할 srs 파일명을 입력해주세요.")
             srs_name = input("공란일 시 autobuild.simplesrs로 진행합니다. :")
-            optimize_srs_yn = MenuPreset().yesno(1, "미번역 단어 제외, 짧은 단어 제외 등의 기능을 사용하시겠습니까?")
+            optimize_mod_dict = {
+                1: "미번역(영어 포함) 단어 제외",
+                2: "짧은 단어(1글자) 제외",
+                3 : "CSV 표적화 기능(CSV 변수만 변환할 수 있음)"
+                }
+            optimize_srs_yn = MenuPreset().select_mod(optimize_mod_dict, 0b1)
             if srs_name:
                 result_file.to_SRS(optimize_srs_yn, srs_name)
             else:

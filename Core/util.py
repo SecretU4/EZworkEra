@@ -52,7 +52,7 @@ class CommonSent:
     def put_time(opt=0):
         """호출시의 시간 출력"""
         if opt == 1:
-            target_time = time.strftime("%Y/%m/%d_%H:%M", time.localtime(time.time()))
+            target_time = time.strftime("%Y-%m-%d_%H:%M", time.localtime(time.time()))
         else:
             target_time = time.strftime("%Y/%m/%d %H:%M:%S", time.localtime(time.time()))
         return target_time

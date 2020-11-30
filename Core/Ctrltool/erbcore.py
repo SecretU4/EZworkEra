@@ -349,14 +349,20 @@ class ERBWrite(LoadFile):
 class ERBRemodel(ERBLoad):
     """이미 존재하는 ERB 파일의 내용 수정을 위한 클래스"""
 
-    def __init__(self, NameDir, EncodeType, csv_infodict):
+    def __init__(self, NameDir, EncodeType):
         super().__init__(NameDir, EncodeType)
-        self.csvtrans_infodict = csv_infodict
         self.make_erblines()
 
-    def replace_csvvars(self, mod_num=0):
-        vfinder = ERBVFinder(self.csvtrans_infodict)
-        replaced_context_list = []
+    express_dict = {
+        "W":"\\t",
+        "L":"\\n"
+    }
+    save_str_var = "LOCALS:85"
+    re_single_sent = re.compile('@"(.+)"\n$')
+
+    def replace_csvvars(self, csv_infodict, mod_num=0):
+        vfinder = ERBVFinder(csv_infodict)
+        replaced_context_lines = []
         for line_count, line in enumerate(self.lines):
             change_check = 0
             line = line.strip()
@@ -372,17 +378,89 @@ class ERBRemodel(ERBLoad):
                         if orig_fnc != comp_fnc:
                             line = line.replace(orig_fnc, comp_fnc)
                             change_check = 1
-            replaced_context_list.append(line + "\n")
+            replaced_context_lines.append(line + "\n")
             if change_check:
                 self.debug_log.write_log(str(line_count + 1) + "행 index 변수 변환됨\n")
 
         self.debug_log.end_log("index 변수변환")
-        return replaced_context_list
+        return replaced_context_lines
 
+    def __check_print_line(self, line, def_list, sp_list):
+        if "PRINT" in line:
+            temp_split = line.strip().split()
+            header = temp_split.pop(0)
+            context = " ".join(temp_split)
+            endword = ""
+            if header in def_list or header in sp_list:
+                for key in self.express_dict:
+                    if key in header:
+                        endword = self.express_dict[key]
+                        break
+                if header in sp_list:
+                    if "PRINTS" in header:
+                        context = "%{0}%".format(context)
+                    elif "PRINTV" in header:
+                        context = "\{%s\}" % context
+                    else:
+                        raise NotImplementedError(header)
+                
+                return '@"%s%s" + \n' % (context, endword)
+        return 0
+
+    def __after_printcheck(self, target_lines, count):
+        target_lines[-1] = target_lines[-1].replace(" + \n", "\n")
+        if count == 1: # PRINT 출력문이 1줄짜리일 때
+            for counting in range(1, count + 1):
+                print_tail = ""
+                temp_line = target_lines[-1 * counting]
+                for item in self.express_dict.items():
+                    if '%s" + \n' % item[-1] in temp_line: # <endword>" + \n
+                        print_tail = item[0]
+                        temp_line = temp_line.replace('%s" + \n' % item[-1], '"\n')
+                    elif '%s"\n' % item[-1] in temp_line: # <endword>"\n
+                        print_tail = item[0]
+                        temp_line = temp_line.replace('%s"\n' % item[-1], '"\n')
+                context = self.re_single_sent.match(temp_line).group(1)
+                temp_line = "PRINTFORM%s %s\n" % (print_tail, context)
+                target_lines[-1 * counting] = temp_line
+            target_lines.pop(-(count + 1)) # "%s '=\n" % self.save_str_var
+            target_lines.pop(-(count + 1)) # "{\n"
+        else:
+            target_lines.append("}\n")
+            target_lines.append("CALL PRINTER, %s\n" % self.save_str_var)
+        return target_lines
+
+    def memory_optimize(self):
+        print_list = ["PRINT", "PRINTL", "PRINTW", "PRINTFORM", "PRINTFORML", "PRINTFORMW"]
+        sp_print_list = ["PRINTS", "PRINTSL", "PRINTSW", "PRINTV", "PRINTVL", "PRINTVS"]
+        replaced_context_lines = []
+        count_print = 0
+        for line in self.lines:
+            result_line = self.__check_print_line(line, print_list, sp_print_list)
+            if result_line:
+                if not count_print:
+                    replaced_context_lines.append("{\n")
+                    replaced_context_lines.append("%s '=\n" % self.save_str_var)
+                count_print += 1
+            else:
+                result_line = line
+                if count_print:
+                    replaced_context_lines = self.__after_printcheck(replaced_context_lines, count_print)
+
+                count_print = 0
+            result_line = result_line.replace("\r\n", "\n")
+            replaced_context_lines.append(result_line)
+
+        if '" + \n' in replaced_context_lines[-1]: # PRINT 출력문으로 파일이 끝날 때 처리
+            replaced_context_lines = self.__after_printcheck(replaced_context_lines, count_print)
+
+        return replaced_context_lines
+                
 
 class ERBUtil:
-    def indent_maker(self, target_metalines):  # metaline을 들여쓰기된 lines로 만듦
+    def indent_maker(self, metalineinfo):  # metaline을 들여쓰기된 lines로 만듦
         self.filtered_lines = []
+        target_metalines = metalineinfo.linelist
         for line in target_metalines:
             if_level, case_level, _, context = line
             if context.startswith(";"):
@@ -398,9 +476,8 @@ class ERBUtil:
         return self.filtered_lines
 
     def make_metainfo_lines(self, bulk_lines, option_num=0, target_name=None):  # 0: 전부 1: 기능관련만
-        self.command_count = 0
         skip_start = 0
-        erb_info = ERBMetaInfo()
+        erb_info = ERBMetaInfo(option_num)
         erb_log = LogPreset(2)
         erb_log.first_log(target_name)
         for line in bulk_lines:
@@ -420,111 +497,7 @@ class ERBUtil:
                 skip_start = 1
                 erb_info.add_line_list(line)
                 continue
-            elif "PRINT" in line:
-                if "PRINTDATA" in line:
-                    erb_info.add_line_list(line)
-                    erb_info.case_level += 1
-                else:
-                    if option_num == 1:
-                        continue
-                    erb_info.add_line_list(line)
-                continue
-            elif "IF" in line:
-                if "ENDIF" in line:
-                    erb_info.if_level -= 1
-                    erb_info.add_line_list(line)
-                elif line.startswith("IF") == True:
-                    erb_info.add_line_list(line)
-                    erb_info.if_level += 1
-                elif "ELSEIF" in line:
-                    erb_info.if_level -= 1
-                    erb_info.add_line_list(line)
-                    erb_info.if_level += 1
-                elif "SIF" in line:
-                    erb_info.add_line_list(line)
-                else:
-                    erb_log.write_error_log("미상정", line)
-                continue
-            elif erb_info.case_level != 0:  # 케이스 내부 돌 때
-                if "CASE" in line:
-                    if "SELECTCASE" in line:
-                        erb_info.add_line_list(line)
-                        erb_info.case_level += 1
-                    elif line.startswith("CASE") == True:
-                        erb_info.case_count += 1
-                        if option_num == 1:
-                            continue
-                        if erb_info.case_count != 1:
-                            erb_info.case_level -= 1
-                        erb_info.add_line_list(line)
-                        erb_info.case_level += 1
-                    else:
-                        erb_log.write_error_log("미상정", line)
-                    continue
-                elif "DATA" in line:
-                    if "DATAFORM" in line:
-                        if option_num == 1:
-                            continue
-                        erb_info.add_line_list(line)
-                    elif "DATALIST" in line:
-                        erb_info.case_count += 1
-                        if option_num == 1:
-                            erb_info.case_level += 1
-                            continue
-                        erb_info.add_line_list(line)
-                        erb_info.case_level += 1
-                    elif "PRINTDATA" in line:
-                        erb_info.case_level += 1
-                        erb_info.add_line_list(line)
-                        print("분기문 안에 분기문이 있습니다.")
-                    elif "ENDDATA" in line:
-                        erb_info.case_level -= 1
-                        line = line + " ;{}개의 케이스 존재".format(erb_info.case_count)
-                        erb_info.case_count = 0
-                        erb_info.add_line_list(line)
-                    else:
-                        erb_log.write_error_log("미상정", line)
-                    continue
-                elif "END" in line:
-                    if "ENDSELECT" in line:
-                        erb_info.case_level -= 1
-                        line = line + " ;{}개의 케이스 존재".format(erb_info.case_count)
-                        erb_info.case_level -= 1
-                        erb_info.case_count = 0
-                        erb_info.add_line_list(line)
-                    elif "ENDLIST" in line:
-                        erb_info.case_level -= 1
-                        if option_num == 1:
-                            continue
-                        erb_info.add_line_list(line)
-                    else:
-                        erb_log.write_error_log("미상정", line)
-                    continue
-                else:
-                    pass
-            if "SELECTCASE" in line:
-                erb_info.add_line_list(line)
-                erb_info.case_level += 1
-            elif line.startswith("ELSE") == True:
-                erb_info.if_level -= 1
-                erb_info.add_line_list(line)
-                erb_info.if_level += 1
-            elif line.startswith("RETURN") == True:
-                erb_info.add_line_list(line)
-            elif line.startswith("GOTO") == True:
-                erb_info.add_line_list(line)
-            elif line.startswith("LOCAL") == True:
-                erb_info.add_line_list(line)
-            elif line.startswith("$") == True:
-                erb_info.add_line_list(line)
-            elif line.startswith("@") == True:
-                self.command_count += 1
-                erb_info.add_line_list(line)
-            else:
-                if option_num == 1:
-                    continue
-                erb_info.add_line_list(line)
-                erb_log.write_error_log("미상정", line)
+            erb_info.add_linelist_embeded(line)
         erb_log.sucessful_done()
         return erb_info
 
@@ -535,9 +508,9 @@ class ERBUtil:
         )
         if not infodict_csv:
             if mod_num in (0, 1):  # {csv파일명:{숫자:csv변수명}}
-                infodict_csv = CSVFunc().import_all_CSV(1)
+                infodict_csv = CSVFunc().import_all_CSV(0b010)
             elif mod_num == 2:  # {csv파일명:{csv변수명:숫자}}
-                infodict_csv = CSVFunc().import_all_CSV(2)
+                infodict_csv = CSVFunc().import_all_CSV(0b011)
             else:
                 raise NotImplementedError(mod_num)
 
@@ -552,6 +525,98 @@ class ERBUtil:
                 log_text = "ERB 내부 {}\n".format(log_text)
             debug_log.write_log(log_text)
         return infodict_csv
+
+    def grammar_corrector(self, metalineinfo, mod_no=0):
+        """ERBMetaInfo 기반 문법 교정기
+
+        mod_no = bit 1: 중첩 printdata문 처리 on/off
+        """
+        result_lines = []
+        change_dict = {}
+        ch_printdata = 0
+        target_metalines = metalineinfo.linelist
+        for count, line in enumerate(target_metalines):
+            _, _, case_count, context = line
+            if context.startswith("PRINTDATA"):
+                ch_printdata += 1
+                if mod_no & 0b1 and ch_printdata == 1:
+                    change_dict[count] = "fix_printdata/"
+            elif mod_no & 0b1 and ch_printdata == 1:
+                head_word = context.split()[0]
+                if context.startswith("ENDDATA"):
+                    ch_printdata -= 1
+                    change_dict[count] = "fix_enddata/"
+                elif context.startswith("DATA"):
+                    if head_word == "DATALIST":
+                        change_dict[count] = "fix_datalist/"
+                    elif head_word in ("DATAFORM","DATA"):
+                        if case_count:
+                            change_dict[count] = "fix_data/fix_datalist/"
+                        else:
+                            change_dict[count] = "fix_data/"
+                    else:
+                        print("상정하지 않은 케이스 :" + context)
+                elif context.startswith("ENDLIST"):
+                    change_dict[count] = "delete"
+            elif context.startswith("ENDDATA"):
+                ch_printdata -= 1
+            result_lines.append(line)
+
+        keys = list(change_dict.keys())
+        if not keys:
+            print("확인된 문법 오류가 없습니다.")
+            return metalineinfo
+        keys.sort(reverse=True)
+
+        case_cntdict = {}
+        for key in keys:
+            value = change_dict[key]
+            if value == "delete":
+                result_lines.pop(key)
+            elif "fix" in value:
+                target_line = result_lines[key]
+                _, case_lv, case_count, context = target_line
+                res_context = ""
+                if  mod_no & 0b1 and "data" in value:
+                    if "fix_data/" in value:
+                        res_context += context.replace(context.split()[0], "PRINTFORMW")
+                        value = value.replace("fix_data/", "")
+                        if "fix_datalist/" in value:
+                            context = "DATALIST"
+                    if "fix_datalist/" in value:
+                        no = case_count
+                        if_sent = "ELSEIF A == %d" % (no - 1)
+                        if no == 1:
+                            if_sent = if_sent.replace("ELSEIF", "IF")
+                        res_context += context.replace("DATALIST", if_sent)
+                    elif value == "fix_printdata/":
+                        res_context += "A = RAND:%d" % case_cntdict.pop(case_lv)
+                    elif value == "fix_enddata/":
+                        total_count = result_lines[key-1][2]
+                        case_cntdict[case_lv] = total_count
+                        res_context += context.replace("ENDDATA", "ENDIF")
+                    elif value == "":
+                        pass
+                    else:
+                        print("상정외 value :" + value)
+                        res_context = context
+                    
+                    post_context = ""
+                    if "IF" in res_context and "PRINTFORMW" in res_context:
+                        res_context, post_context = res_context.split("IF")
+                        if "ELSE" in res_context:
+                            res_context = res_context.replace("ELSE", "")
+                            post_context = "ELSEIF" + post_context
+                        else:
+                            post_context = "IF" + post_context
+                    target_line[-1] = res_context
+                    result_lines[key] = target_line
+                    if post_context:
+                        post_line = target_line.copy()
+                        post_line[-1] = post_context
+                        result_lines.insert(key, post_line)
+        metalineinfo.linelist = result_lines
+        return metalineinfo
 
 
 class ERBVFinder:
@@ -784,8 +849,8 @@ class ERBFunc:
         self.func_log.sucessful_done()
         return self.result_infodict  # {파일명:정보 텍스트} 형태의 infodict
 
-    def remodel_indent(self, metainfo_option_num=None, target_metalines=None):
-        if target_metalines == None:
+    def remodel_indent(self, metainfo_option_num=0, metalineinfo=None):
+        if metalineinfo == None:
             print("들여쓰기를 자동 교정하는 유틸리티입니다.")
             erb_files, encode_type = FileFilter().get_filelist("ERB")
             file_count_check = StatusNum(erb_files, "파일")
@@ -797,12 +862,16 @@ class ERBFunc:
                     ERBUtil().make_metainfo_lines(erb_bulk, metainfo_option_num, filename).linelist
                 )
                 lines.insert(0, [0, 0, 0, ";{}에서 불러옴\n".format(filename)])
-                self.result_infodict.add_dict(filename, ERBUtil().indent_maker(lines))
+                temp_metainfo = ERBMetaInfo()
+                temp_metainfo.linelist = lines
+                self.result_infodict.add_dict(filename, ERBUtil().indent_maker(temp_metainfo))
                 file_count_check.how_much_done()
 
-            result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:[erb 텍스트 라인]}
+            result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:[들여쓰기 처리된 lines]}
         else:
-            result_dataset = ERBUtil().indent_maker(target_metalines)  # [erb 텍스트 라인]
+            if isinstance(metalineinfo, list): # metaline 없는 순수 lines 일 때
+                metalineinfo = ERBUtil().make_metainfo_lines(metalineinfo, metainfo_option_num)
+            result_dataset = ERBUtil().indent_maker(metalineinfo)  # [들여쓰기 처리된 lines]
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return result_dataset
@@ -836,8 +905,8 @@ class ERBFunc:
         print("ERB내 index 변환작업을 시작합니다.")
 
         for filename in erb_files:
-            replaced_lines = ERBRemodel(filename, encode_type, csv_infodict).replace_csvvars(
-                mod_num
+            replaced_lines = ERBRemodel(filename, encode_type).replace_csvvars(
+                csv_infodict, mod_num
             )
             self.result_infodict.add_dict(filename, replaced_lines)
             file_count_check.how_much_done()
@@ -845,6 +914,51 @@ class ERBFunc:
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return self.result_infodict  # {파일명:[바뀐줄]}
+
+    def remodel_equation(self, metainfo_option_num=2, metalineinfo=None):
+        mod_dict = {1:"중첩 PRNTDATA 변환"}
+        if metalineinfo == None:
+            print("불완전한 수식을 교정해주는 유틸리티입니다.")
+            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            file_count_check = StatusNum(erb_files, "파일")
+            file_count_check.how_much_there()
+            mod_no = MenuPreset().select_mod(mod_dict, 0)
+
+            for filename in erb_files:
+                erb_bulk = ERBLoad(filename, encode_type).make_erblines()
+                lines = (
+                    ERBUtil().make_metainfo_lines(erb_bulk, metainfo_option_num, filename).linelist
+                )
+                lines.insert(0, [0, 0, 0, ";{}에서 불러옴\n".format(filename)])
+                temp_metainfo = ERBMetaInfo()
+                temp_metainfo.linelist = lines
+                self.result_infodict.add_dict(filename, ERBUtil().grammar_corrector(temp_metainfo, mod_no))
+                file_count_check.how_much_done()
+
+            result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:ERBMetaInfo 클래스 메소드}
+        else:
+            mod_no = MenuPreset().select_mod(mod_dict, 1)
+            result_dataset = ERBUtil().grammar_corrector(metalineinfo, mod_no)  # ERBMetaInfo 클래스 메소드
+        CommonSent.extract_finished()
+        self.func_log.sucessful_done()
+        return result_dataset
+
+    def memory_optimizer(self, erb_files=None, encode_type=None):
+        print("현재 기능이 완성되지 않았습니다. 되도록 백업 후 이용해주시고, 구상 파일에만 사용해주세요.")
+        if not erb_files or not encode_type:
+            erb_files, encode_type = FileFilter().get_filelist("ERB")
+        file_count_check = StatusNum(erb_files, "파일")
+        file_count_check.how_much_there()
+
+        for filename in erb_files:
+            optmized_lines = ERBRemodel(filename, encode_type).memory_optimize()
+            self.result_infodict.add_dict(filename, optmized_lines)
+            file_count_check.how_much_done()
+
+        CommonSent.extract_finished()
+        self.func_log.sucessful_done()
+        return self.result_infodict  # {파일명:lines} 형태가 포함된 infodict
+
 
     def erb_trans_helper(self):  # TODO 공사중
         """번역본의 원본 이식에 도움을 주는 함수"""
