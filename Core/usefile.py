@@ -393,7 +393,7 @@ class MenuPreset:
 
     def encode(self):
         """인코딩 선택시 해당 인코딩 str을 반환."""
-        encode_dict = {
+        menu_encode_dict = {
             0: "UTF-8",
             1: "UTF-8 with BOM",
             2: "SHIFT-JIS",
@@ -401,31 +401,28 @@ class MenuPreset:
             4: "EUC-KR",
             5: "한국어 확장(cp949)",
         }
-        encode = Menu(encode_dict)
+        namedict_encode = {
+            "UTF-8 with BOM":"UTF-8-sig",
+            "일본어 확장(cp932)":"cp932",
+            "한국어 확장(cp949)":"cp949"
+        }
+        encode = Menu(menu_encode_dict)
         encode.title("대상 파일의 인코딩을 선택하세요.")
         encode.run_menu()
-        EncodeType = encode_dict[encode.selected_num]
-        if EncodeType == "UTF-8 with BOM":
-            EncodeType = "UTF-8-sig"
-        elif EncodeType == "일본어 확장(cp932)":
-            EncodeType = "cp932"
-        elif EncodeType == "한국어 확장(cp949)":
-            EncodeType = "cp949"
-        return EncodeType
+        sel_encode = encode.selected_menu
+        if namedict_encode.get(sel_encode):
+            sel_encode = namedict_encode[sel_encode]
+        return sel_encode
 
     def yesno(self, reverse, *sentences):
         """예/아니오 선택창. sentence로 선택창 앞에 문자열 출력 필요."""
         yesno_dict = {0: "예", 1: "아니오"}
         yesno = Menu(yesno_dict)
         yesno.title(*sentences)
-        yesno.run_menu()
+        no_yn = yesno.run_menu()
         if reverse:
-            if yesno.selected_num == 0:
-                return 1
-            elif yesno.selected_num == 1:
-                return 0
-        else:
-            return yesno.selected_num
+            no_yn = ~no_yn
+        return no_yn
 
     def shall_save_data(self, data, datatype=None):
         """추출된 데이터의 저장 메뉴. data가 저장될 데이터. 필요시 datatype 입력
