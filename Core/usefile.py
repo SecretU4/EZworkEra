@@ -431,11 +431,11 @@ class MenuPreset:
         """추출된 데이터의 저장 메뉴. data가 저장될 데이터. 필요시 datatype 입력
         * 같은 이름의 sav파일 작성 불가.
         """
-        menu_save = MenuPreset().yesno(0, "출력된 데이터를 외부 파일에 저장하시겠습니까?")
+        menu_save = MenuPreset().yesno(0, "처리된 데이터를 sav 파일로 저장하시겠습니까?")
         DirFilter("sav").dir_exist()
         if menu_save == 0:
             while True:
-                save_name = input("저장할 외부 파일의 이름을 입력해주세요.")
+                save_name = input("sav 파일의 이름을 정해주세요.")
                 try:
                     with open("sav\\{}_{}.sav".format(save_name, datatype), "xb") as sav_file:
                         pickle.dump(data, sav_file, pickle.HIGHEST_PROTOCOL)
