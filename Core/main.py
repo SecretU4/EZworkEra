@@ -19,10 +19,12 @@ menu_main.title("EZworkEra - Develop utility for EmuEra base game")
 
 last_work = None
 last_work_name = None
+version_no = "v3.7.0"
 
 def run_main():
     global last_work
     global last_work_name
+    global version_no
     while True:
         print("작업 후 버튼을 눌러 프로그램을 종료하셔야 작업파일이 손실되지 않습니다.")
         CommonSent.print_line()
@@ -164,7 +166,7 @@ def run_main():
             menu_prginfo.title("EZworkEra 정보")
             no_proginfo = menu_prginfo.run_menu()
             if no_proginfo == 1:
-                print("버전명: " + xml_settings.show_info("version"))
+                print("버전명: " + version_no)
             elif no_proginfo == 2:
                 print("{}/issues 으로 연락주세요.".format(xml_settings.show_info("github")))
             elif no_proginfo == 3:
@@ -175,7 +177,6 @@ def run_main():
             break
 
     CommonSent.end_comment()
-
 
 try:
     run_main()
