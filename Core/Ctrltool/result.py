@@ -374,7 +374,7 @@ class ExportData:
                         if "chara" in dictname or "name" in dictname:
                             print("이름 관련 파일명이 감지되었습니다.")
                             wordwrap_yn = MenuPreset().yesno(
-                                0, "입력받은 데이터 전체를 정확한 단어 단위로만 변환하도록 조정할까요?"
+                                1, "입력받은 데이터 전체를 정확한 단어 단위로만 변환하도록 조정할까요?"
                             )
                             break
                 # TRIM:앞뒤공백 제거, SORT:긴 순서/알파벳 정렬, WORDWRAP:정확히 단어 단위일때만 치환
