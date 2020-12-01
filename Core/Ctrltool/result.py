@@ -100,8 +100,7 @@ class ExportData:
 
         # 이하 분리 가능(자료 목록화 기능 담당)
         datasearch_dicts = checked_datadict.copy()  # {자료tag:data, 자료tag:data}
-        for tag_key in list(checked_datadict.keys()):
-            val_data = checked_datadict[tag_key]
+        for tag_key, val_data in checked_datadict.items():
             if tag_key in list(self.single_namedict.values()):
                 continue
             elif isinstance(val_data, InfoDict):
