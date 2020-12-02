@@ -624,7 +624,7 @@ class ERBVFinder:
     log_set은 LogPreset 을 요구함
     """
 
-    except_dict = {
+    extra_dict = {
         "UP": "JUEL",
         "DOWN": "JUEL",
         "PARAM": "PALAM",
@@ -647,7 +647,7 @@ class ERBVFinder:
             self.csv_head = csvdict
         else:
             raise TypeError
-        csv_all_head = self.csv_head + list(self.except_dict.keys())
+        csv_all_head = self.csv_head + list(self.extra_dict.keys())
         re_varshead = "({})".format("|".join(csv_all_head))
         self.csvvar_re = re.compile(re_varshead + self.symbol_filter)
         self.log_set = log_set
@@ -671,8 +671,8 @@ class ERBVFinder:
             else:
                 var_pnoun = None
                 var_context_t = var_context
-            if self.except_dict.get(var_head):
-                var_head_t = self.except_dict[var_head]
+            if self.extra_dict.get(var_head):
+                var_head_t = self.extra_dict[var_head]
             else:
                 var_head_t = var_head
             find_result.append((var_head_t, var_context_t, var_head, var_pnoun))

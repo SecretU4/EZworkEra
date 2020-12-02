@@ -165,7 +165,7 @@ def compare_csvvar(csv_dict, used_list, dim_dict=dict()):
     not_checked = used_list.copy()
     vfinder = ERBVFinder(csv_dict)
     csvname_dict = vfinder.csv_fnames
-    extra_csvs = vfinder.except_dict
+    extra_csvs = vfinder.extra_dict
 
     for var in used_list:
         is_dim = 0
