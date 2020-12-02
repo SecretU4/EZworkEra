@@ -70,7 +70,7 @@ class Menu:
                 target_menulist = prior_menulist.copy()
             else:
                 to_work = ("이전 페이지", "다음 페이지")
-                target_menulist = list(copy_menudict.values()).copy()
+                target_menulist = others_menulist.copy()
     
             target_menulist.append(to_work[0])
             try:
