@@ -106,8 +106,7 @@ class ExportData:
             elif isinstance(val_data, InfoDict):
                 datasearch_dicts.update(val_data.dict_main)
 
-        chklist_for_menu = list(datasearch_dicts.keys())
-        menu_chk_datalist = Menu(chklist_for_menu)
+        menu_chk_datalist = Menu(list(datasearch_dicts.keys()))
         final_list = []
         selected_name_list = []
         while True:
@@ -116,11 +115,11 @@ class ExportData:
                 "ALL ~ etc 라 표기된 항목은 표기된 자료가 포함된 전체를 뜻합니다.",
                 "모두 고르셨다면 돌아가기를 눌러주세요.",
             )
-            selected_num = menu_chk_datalist.run_menu()
+            menu_chk_datalist.run_paged_menu()
             selected_menu = menu_chk_datalist.selected_menu
             if selected_menu == "돌아가기":
                 break
-            final_list.append((selected_menu, datasearch_dicts[chklist_for_menu[selected_num]]))
+            final_list.append((selected_menu, datasearch_dicts[selected_menu]))
             if len(final_list) >= 2 and mod_no == 1:
                 break
             selected_name_list.append(selected_menu)
