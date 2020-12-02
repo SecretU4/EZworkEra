@@ -55,7 +55,7 @@ class Menu:
         is_prior_now = True
 
         for key, value in self.menu_dict.items():
-            if "ALL" in value:
+            if "All" in value:
                 value = copy_menudict.pop(key)
                 prior_menulist.append(value)
             else:
