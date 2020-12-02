@@ -10,7 +10,7 @@ class BringFiles:
 
     def search_csvdict(self, encode_type):
         csv_filelist = FileFilter(0).files_ext(self.dirname, ".CSV")
-        CSVinfodict = CSVFunc().import_all_CSV(0, csv_filelist, encode_type)
+        CSVinfodict = CSVFunc().import_all_CSV(0b10, csv_filelist, encode_type)
         return CSVinfodict
 
     def search_filelist(self, *ext):
