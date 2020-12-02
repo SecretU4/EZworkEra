@@ -421,7 +421,7 @@ class MenuPreset:
         yesno.title(*sentences)
         no_yn = yesno.run_menu()
         if reverse:
-            no_yn = ~no_yn
+            no_yn = -no_yn
         return no_yn
 
     def shall_save_data(self, data, datatype=None):
