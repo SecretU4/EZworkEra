@@ -50,15 +50,29 @@ class AnalyzeFiles:
         self.encode_type = encode_type
         self.dim_dict = dict()
 
-    def anal_erbs(self, mod=0, csv_infodict=None):
-        # mod : 0 = 전체, 1 : 함수만, 2 : CSV변수만, 3: DIM변수만
+    def anal_erbs(self, double_csv_infodict=None, mod=None):
+        """ERB 파일 분석 함수. double_csv_infodict은 (원본, 번역본) 형태의 튜플이어야 함.
+        mod 설정정보
+            bit 0 : 함수, bit 1 : CSV변수, bit 2: DIM변수
+        """
         erb_files = self.birngfiles.search_filelist(".ERB")
         used_func_list = set(("LOCAL", "LOCALS"))
         def_func_list = set(("LOCAL", "LOCALS"))
-        if mod in (0, 2):
-            vfinder = ERBVFinder(csv_infodict)
+        if mod == None: # mod 미설정시 전부 처리
+            mod = 0b111
+
+        if mod & 0b10:
+            if not double_csv_infodict:
+                raise NotImplementedError("필요한 csvinfo 데이터가 입력되지 않았습니다.")
+            try:
+                from_csvinfo, to_csvinfo = double_csv_infodict
+            except ValueError:
+                print("올바르지 않은 자료형이 double_csv_infodict 인자로 들어왔습니다.")
+                return False
+
+            vfinder = ERBVFinder(from_csvinfo)
             csv_varlist = []
-        if mod in (0, 3):
+        if mod & 0b100:
             handle_dim = HandleDIM()
 
         for erbname in erb_files:
@@ -71,28 +85,28 @@ class AnalyzeFiles:
                     words = line.split()
                     if not words:
                         continue
-                    if mod in (0, 2):
+                    if mod & 0b10:
                         result = vfinder.find_csvfnc_line(line)
                         if result:
                             csv_varlist.extend(result)
-                    if mod in (0, 1) and words[0] in ("TRYCALLFORM", "RETURNF", "CALL"):
+                    if mod & 0b1 and words[0] in ("TRYCALLFORM", "RETURNF", "CALL"):
                         words.pop(0)
                         funcname = " ".join(words).split("(")[0]
                         try:
                             int(funcname)
                         except ValueError:
                             used_func_list.add(funcname)
-                    elif mod in (0, 1) and words[0].startswith("@"):
+                    elif mod & 0b1 and words[0].startswith("@") and not words[0].startswith("\\@"):
                         funcname = words[0].split("(")[0].replace("@", "")
                         def_func_list.add(funcname)
-                    elif mod in (0, 3) and words[0].startswith("#DIM"):
+                    elif mod & 0b100 and words[0].startswith("#DIM"):
                         self.dim_dict.update(handle_dim.dim_search(line))  # TODO DIM 분석필요
 
         for used_func in list(used_func_list):
             if used_func in def_func_list:
                 used_func_list.remove(used_func)
 
-        if mod in (0, 2):
+        if mod & 0b10:
             changed_csvvar = list(set(vfinder.change_var_index(csv_varlist, 1)))
             used_csvvar = vfinder.print_csvfnc(changed_csvvar, 2)
             index_csvvar = vfinder.print_csvfnc(changed_csvvar, 3)
@@ -182,7 +196,7 @@ def compare_csvvar(csv_dict, used_list, dim_dict=dict()):
 def wrapping(dirname, csv_info, encode_type, diff_csvinfo):
     analyze = AnalyzeFiles(BringFiles(dirname), encode_type)
     analyze.anal_erhs()
-    used_funcs, used_csvvars, *compare_set = analyze.anal_erbs(0, csv_info)
+    used_funcs, used_csvvars, *compare_set = analyze.anal_erbs(csv_info)
     index_csvvars = compare_csvvar(diff_csvinfo, *compare_set)
     report = PrintReport()
     report.basic_info(dirname, "외부함수 %d 개" % len(used_funcs), "미확인된 외부함수: ")
