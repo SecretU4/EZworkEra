@@ -92,19 +92,23 @@ def run_main():
             }
             menu_erb = Menu(menu_dict_erb)
             no_erbmenu = menu_erb.run_menu()
+            direct_erb = False
             if not no_erbmenu: # 이전으로
                 continue
-            # ERB 내 CSV 변수 추출 기능과 구상추출 기능은 sav 저장 안함 (단순 분석기능임)
+            # 작업완료시 바로 erb 처리로 넘어갈지 선택하지 않는 경우 (단순 분석기능임)
             elif no_erbmenu == 1:
                 last_work = ERBFunc().search_csv_var()
+                sav_datatype = "textline"
             elif no_erbmenu == 2:
                 last_work = ERBFunc().extract_printfunc()
+                sav_datatype = "textline"
             else: # 작업완료시 바로 erb 처리로 넘어갈지 여부 선택하는 경우
                 last_work = None
+                direct_erb = True
 
                 if menu_erb.selected_menu == "들여쓰기 교정":
                     last_work = ERBFunc().remodel_indent()
-                    sav_datatype = "textline"
+                    sav_datatype = "erblines"
                 elif menu_erb.selected_menu == "구상 번역기": # v3.7.0 현재 알파버전
                     print("양식에 맞는 txt 파일을 erb 문법 파일로 바꾸어주는 유틸리티입니다.")
                     menu_list_eratype = ["TW"]
@@ -129,8 +133,9 @@ def run_main():
                     last_work = ERBFunc().memory_optimizer()
                     sav_datatype = "erblines"
 
-                if last_work != None:
-                    MenuPreset().shall_save_data(last_work, sav_datatype)
+            if last_work != None:
+                MenuPreset().shall_save_data(last_work, sav_datatype)
+                if direct_erb:
                     print("결과물을 ERB로 출력하시고 싶은 경우 추가 절차를 진행해주세요.")
                     make_erb_yn = MenuPreset().yesno(1, "지금 바로 데이터를 erb화 할까요?")
                     if make_erb_yn:
