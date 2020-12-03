@@ -89,7 +89,7 @@ class AnalyzeFiles:
                         result = vfinder.find_csvfnc_line(line)
                         if result:
                             csv_varlist.extend(result)
-                    if mod & 0b1 and words[0] in ("TRYCALLFORM", "RETURNF", "CALL"):
+                    if mod & 0b1 and words[0] in ("TRYCALLFORM", "TRYCCALLFORM", "TRYCALL", "CALLFORM", "CALLF", "CALL"):
                         words.pop(0)
                         funcname = " ".join(words).split("(")[0]
                         try:
@@ -196,7 +196,7 @@ def compare_csvvar(csv_dict, used_list, dim_dict=dict()):
 def wrapping(dirname, csv_info, encode_type, diff_csvinfo):
     analyze = AnalyzeFiles(BringFiles(dirname), encode_type)
     analyze.anal_erhs()
-    used_funcs, used_csvvars, *compare_set = analyze.anal_erbs(csv_info)
+    used_funcs, used_csvvars, *compare_set = analyze.anal_erbs((csv_info, diff_csvinfo))
     index_csvvars = compare_csvvar(diff_csvinfo, *compare_set)
     report = PrintReport()
     report.basic_info(dirname, "외부함수 %d 개" % len(used_funcs), "미확인된 외부함수: ")
