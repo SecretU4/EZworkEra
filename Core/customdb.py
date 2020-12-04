@@ -386,7 +386,7 @@ class SheetInfo:
                 target_data[tag] = None
 
         for key, value in kwargs.items():
-            if not tags_exist or key in taginfo:
+            if not tags_exist or key in taginfo: # taginfo에 존재하지 않는 태그는 통과함.
                 target_data[key] = value
             
         target_sheet.append(target_data)
