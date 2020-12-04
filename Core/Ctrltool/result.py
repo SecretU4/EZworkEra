@@ -456,13 +456,14 @@ class ExportData:
         if not xlsxname:
             xlsxname = "basic_sheet"
 
-        _, data = self.__data_type_check(self.target_data, max_data=1) # 최대 1개만
+        _, data = self.__data_type_check(self.target_data, max_data=1)[0] # 최대 1개만
         if not isinstance(data, SheetInfo):
             print("차트화 기능은 현재 특정 기능에서만 지원합니다. 다른 처리방법을 시도해주세요.")
             return False
 
         xlsx_data = openpyxl.Workbook()
-        for count, sheetname in enumerate(data.sheet_dict):
+        for count, o_sheetname in enumerate(data.sheetdict):
+            sheetname = FileFilter(2).sep_filename(o_sheetname)
             if not count:
                 sheet = xlsx_data.active
                 sheet.title = sheetname
@@ -470,12 +471,16 @@ class ExportData:
                 xlsx_data.create_sheet(sheetname)
                 sheet = xlsx_data.get_sheet_by_name(sheetname)
 
-            main_data = data.sheet_dict[sheetname].copy()
+            main_data = data.sheetdict[o_sheetname].copy()
             sheet_info = main_data.pop(0)
             datatags = sheet_info["tags"]
             sheet.append(datatags)
+            tags_dict = dict(zip(datatags, range(1,len(datatags)+1)))
             for context in main_data:
-                sheet.append(context)
+                apnd_dict = dict()
+                for key, value in context.items():
+                    apnd_dict[tags_dict[key]] = value
+                sheet.append(apnd_dict)
         xlsx_data.save("%s%s.xlsx" % (self.dest_dir, xlsxname))
         return True
 
