@@ -63,8 +63,11 @@ class ExportData:
             inputed_count += 1
         return tuple(result_input)
 
-    def __data_type_check(self, mod_no, *data_names):
-        """입력받은 데이터 체크 후 인터페이스 선택 후 tuple 요소로 된 list 출력"""
+    def __data_type_check(self, *data_names, max_data=0):
+        """입력받은 데이터 체크 후 인터페이스 선택 후 tuple 요소로 된 list 출력
+        
+        max_data = 입력받을 수 있는 최대 데이터 수. 0이면 한도 없음
+        """
         checked_datadict = dict()
         for data in data_names:
             if isinstance(data, InfoDict):  # InfoDict 자료형인 경우
@@ -121,7 +124,7 @@ class ExportData:
             if selected_menu == "돌아가기":
                 break
             final_list.append((selected_menu, datasearch_dicts[selected_menu]))
-            if len(final_list) >= 2 and mod_no == 1:
+            if len(final_list) >= max_data:
                 break
             selected_name_list.append(selected_menu)
             menu_chk_datalist.title(
@@ -255,7 +258,7 @@ class ExportData:
                 self.target_name = print_data.selected_name
         else:
             print("이번 구동 중 실행된 {} 자료를 {}화 합니다.".format(self.target_name, filetype))
-        target_data = self.__data_type_check(0, self.target_data)  # ((자료명,알수 없는 자료형),...)
+        target_data = self.__data_type_check(self.target_data)  # ((자료명,알수 없는 자료형),...)
         menu_dict_sel_dest = {0: "원본 위치에 저장", 1: "결과물 폴더에 저장"}
         menu_sel_dest = Menu(menu_dict_sel_dest)
         menu_sel_dest.title(
@@ -336,16 +339,14 @@ class ExportData:
             dataset = self.__multi_data_input()
             print("처음 선택한 두 데이터만으로 진행합니다.\n")
             print("SRS 자료 입력시 첫번째를 원문, 두번째를 번역문으로 인식합니다.\n")
-            orig_dataset, trans_dataset, *_ = self.__data_type_check(
-                1, *dataset
-            )  # ((tag,data),(tag,data))
-            orig_data, trans_data = orig_dataset[1], trans_dataset[1]
+            o_dataset, t_dataset = self.__data_type_check(*dataset, max_data=2)
+            orig_data, trans_data = o_dataset[1], t_dataset[1]
             if orig_data and trans_data:
                 choose_yn = MenuPreset().yesno(
                     0,
                     "선택하신 두 자료가",
-                    "원본:  " + str(orig_dataset[0]),
-                    "번역본: " + str(trans_dataset[0]),
+                    "원본:  " + str(o_dataset[0]),
+                    "번역본: " + str(t_dataset[0]),
                     "입니까?",
                 )
                 if choose_yn == 0:
@@ -362,8 +363,8 @@ class ExportData:
             trans_infokeys = list(trans_data.dict_main.keys())
             self.infodict_switch = 1
         else:
-            orig_infokeys = [orig_dataset[0]]
-            trans_infokeys = [trans_dataset[0]]
+            orig_infokeys = [o_dataset[0]]
+            trans_infokeys = [t_dataset[0]]
             self.infodict_switch = 0
         if os.path.isfile(self.srs_filename) == False:  # SRS 유무 검사
             print("SRS 파일을 새로 작성합니다.")
@@ -452,17 +453,30 @@ class ExportData:
             else:
                 self.target_name = print_data.selected_name
 
-        # if not isinstance(self.target_data, SheetInfo):
-        #     print("차트화 기능은 현재 특정 기능에서만 지원합니다. 다른 처리방법을 시도해주세요.")
-        #     return False
-
         if not xlsxname:
             xlsxname = "basic_sheet"
 
-        #TODO xlsx 내용물 제작
+        _, data = self.__data_type_check(self.target_data, max_data=1) # 최대 1개만
+        if not isinstance(data, SheetInfo):
+            print("차트화 기능은 현재 특정 기능에서만 지원합니다. 다른 처리방법을 시도해주세요.")
+            return False
+
         xlsx_data = openpyxl.Workbook()
-        sheet = xlsx_data.active
-        sheet.title = ""
+        for count, sheetname in enumerate(data.sheet_dict):
+            if not count:
+                sheet = xlsx_data.active
+                sheet.title = sheetname
+            else:
+                xlsx_data.create_sheet(sheetname)
+                sheet = xlsx_data.get_sheet_by_name(sheetname)
+
+            main_data = data.sheet_dict[sheetname].copy()
+            sheet_info = main_data.pop(0)
+            datatags = sheet_info["tags"]
+            sheet.append(datatags)
+            for context in main_data:
+                sheet.append(context)
+        xlsx_data.save("%s%s.xlsx" % (self.dest_dir, xlsxname))
         return True
 
 

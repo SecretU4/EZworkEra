@@ -160,7 +160,8 @@ def run_main():
                 0: "이전으로",
                 1: "결과물 TXT화",
                 2: "결과물 ERB화",
-                3: "결과물 SRS화",
+                3: "결과물 srs화",
+                4: "결과물 xlsx화"
                 }
             menu_result = Menu(menu_dict_result)
             menu_result.title("추출 결과물에 대한 제어 메뉴입니다.")
