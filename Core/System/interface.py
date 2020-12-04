@@ -55,7 +55,7 @@ class Menu:
         is_prior_now = True
 
         for key, value in self.menu_dict.items():
-            if "All" in value:
+            if "All" in value or "ONLY" in value:
                 value = copy_menudict.pop(key)
                 prior_menulist.append(value)
             else:
@@ -65,12 +65,16 @@ class Menu:
 
         while True:
             # 2페이지인 경우만 상정함.(우선페이지/나머지)
-            if is_prior_now: # 우선 페이지 상황
-                to_work = ("다음 페이지", "이전 페이지")
-                target_menulist = prior_menulist.copy()
+            if not prior_menulist or not others_menulist: # 2페이지를 만들 수 없는 경우
+                to_work = ("", "")
+                target_menulist = list(comp_values.keys())
             else:
-                to_work = ("이전 페이지", "다음 페이지")
-                target_menulist = others_menulist.copy()
+                if is_prior_now: # 우선 페이지 상황
+                    to_work = ("다음 페이지", "이전 페이지")
+                    target_menulist = prior_menulist.copy()
+                else:
+                    to_work = ("이전 페이지", "다음 페이지")
+                    target_menulist = others_menulist.copy()
     
             target_menulist.append(to_work[0])
             try:
