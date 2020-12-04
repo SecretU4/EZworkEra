@@ -797,7 +797,7 @@ class ERBFunc:
     def extract_printfunc(self, erb_files=None, encode_type=None, opt=0):
         """ERB 파일 내 출력문 데이터를 추출하는 함수
         
-        opt bit 1 : 차트 내 중복 context 제거, 2: 파일당 차트 할당
+        opt bit 1 : 차트 내 중복 context 제거, 2: 파일당 차트 할당, 3: 공백 출력안함
         """
         print("PRINT/DATAFORM 구문의 추출을 시작합니다.")
         if not erb_files or not encode_type:
@@ -827,6 +827,9 @@ class ERBFunc:
                         continue
                     else:
                         dup_list.append(context)
+                if opt & 0b100: # 공백 처리안함
+                    if not context:
+                        continue
     
                 result_sheet.add_row(sheetname, file=filename, COM_type=comtype, context=context)
             file_count_check.how_much_done()
