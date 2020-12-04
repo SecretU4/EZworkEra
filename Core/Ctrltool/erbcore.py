@@ -639,7 +639,7 @@ class ERBVFinder:
         "UPBASE": "BASE",
         "DOWNBASE": "BASE",
     }
-    context_filter = r":([^\s]+)"
+    context_filter = r":([^\s,\)=\+\-]+)"
     # target_list = ['TARGET','PLAYER','MASTER','ASSI'] #TODO 차원지원 필요함
 
     def __init__(self, csvdict, log_set=None):
@@ -672,7 +672,8 @@ class ERBVFinder:
             var_head = var_head.strip()
             var_context = var_context.strip()
             if ":" in var_context:
-                var_pnoun, var_context_t, *etc = var_context.split(":")
+                var_pnoun, _, *etc = var_context.split(":")
+                var_context_t = re.compile(self.context_filter).search(var_context).group(1)
                 if etc:
                     print(var_bulk, "개발자에게 보고바람")
             else:
