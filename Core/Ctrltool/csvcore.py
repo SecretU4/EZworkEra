@@ -122,9 +122,13 @@ class CSVFunc:
                 if mode_num & 0b100 and "chara" not in filename.lower():
                     continue
                 else:
+                    is_filtered = 0
                     for name in name_filter:
                         if name in filename.lower():
-                            continue
+                            is_filtered = 1
+                            break
+                    if is_filtered:
+                        continue
 
             csvdata_dict = self.single_csv_read(filename, encode_type, *arg_list)
             if csvdata_dict == None:  # 인식되지 않은 경우 infodict에 추가되지 않음

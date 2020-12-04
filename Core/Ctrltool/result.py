@@ -7,7 +7,8 @@ Classes:
 """
 import re
 import os
-from customdb import ERBMetaInfo, InfoDict, FuncInfo
+import openpyxl
+from customdb import ERBMetaInfo, InfoDict, FuncInfo, SheetInfo
 from usefile import DirFilter, FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import Menu, StatusNum
@@ -24,7 +25,6 @@ class ExportData:
         dest_dir: 결과물 저장 폴더
         target_name: 입력받은 데이터 이름
         target_data: 입력받은 데이터
-        lazy_switch: 데이터 미선택시 켜짐. 작업 진행 확인용
         log_file: 로그파일 생성용 LogPreset
     Misc:
         single_namedict
@@ -37,13 +37,13 @@ class ExportData:
         str: "ONLYSTRING",
         list: "ONLYLIST",
         ERBMetaInfo: "ONLYMETALINES",
+        SheetInfo: "ONLYSHEET",
     }
 
     def __init__(self, dest_dir, target_name, target_data):
         self.dest_dir = dest_dir  # 결과물 저장 폴더
         self.target_name = target_name
         self.target_data = target_data
-        self.lazy_switch = 0  # 데이터 미선택한 경우 1
         self.log_file = LogPreset(4)  # 중간에 workclass 바꾸는 경우 있어 초기화 필요
 
     def __multi_data_input(self, data_count=2):
@@ -63,8 +63,11 @@ class ExportData:
             inputed_count += 1
         return tuple(result_input)
 
-    def __data_type_check(self, mod_no, *data_names):
-        """입력받은 데이터 체크 후 인터페이스 선택 후 tuple 요소로 된 list 출력"""
+    def __data_type_check(self, *data_names, max_data=0):
+        """입력받은 데이터 체크 후 인터페이스 선택 후 tuple 요소로 된 list 출력
+        
+        max_data = 입력받을 수 있는 최대 데이터 수. 0이면 한도 없음
+        """
         checked_datadict = dict()
         for data in data_names:
             if isinstance(data, InfoDict):  # InfoDict 자료형인 경우
@@ -77,7 +80,7 @@ class ExportData:
                     data_tag = "N/A"
                     self.log_file.write_error_log(aterror)
                 dict_data_vals = list(data.dict_main.values())  # InfoDict 결과물이라면 dict 데이터 list임.
-                if isinstance(dict_data_vals[0], (dict, list, ERBMetaInfo)) == True:
+                if isinstance(dict_data_vals[0], (dict, list, ERBMetaInfo, SheetInfo)) == True:
                     tagging_data = {
                         "All {} - {} etc.".format(data_tag, list(data.dict_main.keys())[0]): data
                     }
@@ -89,9 +92,9 @@ class ExportData:
                     tagging_data = {"None": None}
             elif isinstance(data, FuncInfo):
                 tagging_data = {"ex: " + list(data.file_func_dict.keys())[0]: data}
-            elif isinstance(data, (dict, list, str, ERBMetaInfo)):
+            elif isinstance(data, (dict, list, str, ERBMetaInfo, SheetInfo)):
                 tagging_data = {self.single_namedict[type(data)]: data}
-            else:  # 자료형이 InfoDict, ERBMetaInfo, dict, list 아님
+            else:  # 자료형이 InfoDict, ERBMetaInfo, SheetInfo, dict, list 아님
                 print("입력된 데이터가 유효한 데이터가 아닙니다.")
                 print("{} 타입 자료형입니다.".format(type(data)))
                 self.log_file.write_log("유효한 데이터 아님 - {} 타입 자료형\n".format(type(data)))
@@ -100,29 +103,28 @@ class ExportData:
 
         # 이하 분리 가능(자료 목록화 기능 담당)
         datasearch_dicts = checked_datadict.copy()  # {자료tag:data, 자료tag:data}
-        for tag_key in list(checked_datadict.keys()):
-            val_data = checked_datadict[tag_key]
+        for tag_key, val_data in checked_datadict.items():
             if tag_key in list(self.single_namedict.values()):
                 continue
             elif isinstance(val_data, InfoDict):
                 datasearch_dicts.update(val_data.dict_main)
 
-        chklist_for_menu = list(datasearch_dicts.keys())
-        menu_chk_datalist = Menu(chklist_for_menu)
+        menu_chk_datalist = Menu(list(datasearch_dicts.keys()))
         final_list = []
         selected_name_list = []
         while True:
             menu_chk_datalist.title(
                 "출력할 데이터를 원하시는 만큼 선택해주세요.",
-                "ALL ~ etc 라 표기된 항목은 표기된 자료가 포함된 전체를 뜻합니다.",
+                "All ~ etc 라 표기된 항목은 표기된 자료가 포함된 전체를 뜻합니다.",
+                "ONLY ~ 라 표기된 항목은 자료가 단독으로 입력되었다는 뜻입니다."
                 "모두 고르셨다면 돌아가기를 눌러주세요.",
             )
-            selected_num = menu_chk_datalist.run_menu()
+            menu_chk_datalist.run_paged_menu()
             selected_menu = menu_chk_datalist.selected_menu
             if selected_menu == "돌아가기":
                 break
-            final_list.append((selected_menu, datasearch_dicts[chklist_for_menu[selected_num]]))
-            if len(final_list) >= 2 and mod_no == 1:
+            final_list.append((selected_menu, datasearch_dicts[selected_menu]))
+            if len(final_list) >= max_data:
                 break
             selected_name_list.append(selected_menu)
             menu_chk_datalist.title(
@@ -251,13 +253,12 @@ class ExportData:
             self.target_data = print_data.load_saved_data(0, "미리 실행된 자료가 없습니다.")
             if self.target_data == None:
                 print("데이터가 선택되지 않았습니다.")
-                self.lazy_switch = 1
-                return 0
+                return False
             else:
                 self.target_name = print_data.selected_name
         else:
             print("이번 구동 중 실행된 {} 자료를 {}화 합니다.".format(self.target_name, filetype))
-        target_data = self.__data_type_check(0, self.target_data)  # ((자료명,알수 없는 자료형),...)
+        target_data = self.__data_type_check(self.target_data)  # ((자료명,알수 없는 자료형),...)
         menu_dict_sel_dest = {0: "원본 위치에 저장", 1: "결과물 폴더에 저장"}
         menu_sel_dest = Menu(menu_dict_sel_dest)
         menu_sel_dest.title(
@@ -322,8 +323,9 @@ class ExportData:
                         self.log_file.write_log("Can not write text by {}".format(type(context)))
             numstat.how_much_done()
         self.log_file.sucessful_done()
+        return True
 
-    def to_SRS(self, srs_opt=0, srsname="autobuild"):
+    def to_SRS(self, srs_opt=0, srsname=None):
         """입력받은 데이터를 updateera의 simplesrs 양식으로 출력
 
         Variables:
@@ -337,33 +339,32 @@ class ExportData:
             dataset = self.__multi_data_input()
             print("처음 선택한 두 데이터만으로 진행합니다.\n")
             print("SRS 자료 입력시 첫번째를 원문, 두번째를 번역문으로 인식합니다.\n")
-            orig_dataset, trans_dataset, *_ = self.__data_type_check(
-                1, *dataset
-            )  # ((tag,data),(tag,data))
-            orig_data, trans_data = orig_dataset[1], trans_dataset[1]
+            o_dataset, t_dataset = self.__data_type_check(*dataset, max_data=2)
+            orig_data, trans_data = o_dataset[1], t_dataset[1]
             if orig_data and trans_data:
                 choose_yn = MenuPreset().yesno(
                     0,
                     "선택하신 두 자료가",
-                    "원본:  " + str(orig_dataset[0]),
-                    "번역본: " + str(trans_dataset[0]),
+                    "원본:  " + str(o_dataset[0]),
+                    "번역본: " + str(t_dataset[0]),
                     "입니까?",
                 )
                 if choose_yn == 0:
                     break
             else:
                 print("공란인 데이터가 있습니다. 다시 시도해주세요.")
+        if not srsname:
+            srsname = "autobuild"
         self.srs_filename = "{}.simplesrs".format(self.dest_dir + srsname)
         if bool(orig_data) == False or bool(trans_data) == False:
-            self.lazy_switch = 1
-            return 0
+            return False
         elif isinstance(orig_data, InfoDict) and isinstance(trans_data, InfoDict):
             orig_infokeys = list(orig_data.dict_main.keys())
             trans_infokeys = list(trans_data.dict_main.keys())
             self.infodict_switch = 1
         else:
-            orig_infokeys = [orig_dataset[0]]
-            trans_infokeys = [trans_dataset[0]]
+            orig_infokeys = [o_dataset[0]]
+            trans_infokeys = [t_dataset[0]]
             self.infodict_switch = 0
         if os.path.isfile(self.srs_filename) == False:  # SRS 유무 검사
             print("SRS 파일을 새로 작성합니다.")
@@ -374,7 +375,7 @@ class ExportData:
                         if "chara" in dictname or "name" in dictname:
                             print("이름 관련 파일명이 감지되었습니다.")
                             wordwrap_yn = MenuPreset().yesno(
-                                0, "입력받은 데이터 전체를 정확한 단어 단위로만 변환하도록 조정할까요?"
+                                1, "입력받은 데이터 전체를 정확한 단어 단위로만 변환하도록 조정할까요?"
                             )
                             break
                 # TRIM:앞뒤공백 제거, SORT:긴 순서/알파벳 정렬, WORDWRAP:정확히 단어 단위일때만 치환
@@ -439,6 +440,49 @@ class ExportData:
                 print("{}쌍의 데이터가 정확히 작성되지 못했습니다.".format(self.cantwrite_srs_count))
             print("{}를 확인해주세요.".format(self.log_file.NameDir))
         self.log_file.sucessful_done()
+        return True
+
+    def to_xlsx(self, xlsxname=None):
+        """입력받은 데이터를 xlsx로 출력하는 함수. 현재 SheetInfo형만 지원함."""
+        if self.target_data == None: # 지정된 데이터가 없다면 데이터 로드 시도
+            print_data = MenuPreset()
+            self.target_data = print_data.load_saved_data(0, "미리 실행된 자료가 없습니다.")
+            if self.target_data == None:
+                print("데이터가 선택되지 않았습니다.")
+                return False
+            else:
+                self.target_name = print_data.selected_name
+
+        if not xlsxname:
+            xlsxname = "basic_sheet"
+
+        _, data = self.__data_type_check(self.target_data, max_data=1)[0] # 최대 1개만
+        if not isinstance(data, SheetInfo):
+            print("차트화 기능은 현재 특정 기능에서만 지원합니다. 다른 처리방법을 시도해주세요.")
+            return False
+
+        xlsx_data = openpyxl.Workbook()
+        for count, o_sheetname in enumerate(data.sheetdict):
+            sheetname = FileFilter(2).sep_filename(o_sheetname)
+            if not count:
+                sheet = xlsx_data.active
+                sheet.title = sheetname
+            else:
+                xlsx_data.create_sheet(sheetname)
+                sheet = xlsx_data.get_sheet_by_name(sheetname)
+
+            main_data = data.sheetdict[o_sheetname].copy()
+            sheet_info = main_data.pop(0)
+            datatags = sheet_info["tags"]
+            sheet.append(datatags)
+            tags_dict = dict(zip(datatags, range(1,len(datatags)+1)))
+            for context in main_data:
+                apnd_dict = dict()
+                for key, value in context.items():
+                    apnd_dict[tags_dict[key]] = value
+                sheet.append(apnd_dict)
+        xlsx_data.save("%s%s.xlsx" % (self.dest_dir, xlsxname))
+        return True
 
 
 class SubFilter:
@@ -475,34 +519,37 @@ class ResultFunc:
             target_data
                 출력될 데이터
             result_type
-                출력될 파일의 확장자 타입. 0:txt, 1:erb, 2:srs 이고 미입력시 txt가 출력됨.
+                출력될 파일의 확장자 타입. 0:txt, 1:erb, 2:srs, 3:xlsx 이고 미입력시 txt가 출력됨.
         """
+        done_success = None
         dirname = DirFilter("ResultFiles").dir_exist()
         result_file = ExportData(dirname, target_name, target_data)
-        if result_type == 0:
-            print("지정된 데이터의 TXT 파일화를 진행합니다.")
+        typename = ("TXT","ERB","srs","xlsx")[result_type]
+        print("지정된 데이터의 %s 파일화를 진행합니다." % typename)
+        if result_type == 0: # TXT
             press_enter_yn = MenuPreset().yesno(1, "데이터에 줄바꿈이 되어있던 경우, 줄바꿈 출력이 가능합니다. 시도하시겠습니까?")
-            result_file.to_TXT(option_num=press_enter_yn)
-        elif result_type == 1:
-            print("지정된 데이터의 ERB 파일화를 진행합니다.")
-            result_file.to_TXT("ERB", 1, "UTF-8-sig")
-        elif result_type == 2:
-            print("지정된 데이터의 SRS 파일화를 진행합니다.")
-            print("csv 변수로 작성시 chara 폴더가 제외되어있어야 합니다.")
-            print("ERB 데이터로 시도시 두 자료의 행 위치가 일치해야 합니다.")
-            print("작성 또는 수정할 srs 파일명을 입력해주세요.")
+            done_success = result_file.to_TXT(option_num=press_enter_yn)
+        elif result_type == 1: # ERB
+            done_success = result_file.to_TXT(typename, 1, "UTF-8-sig")
+        elif result_type == 2: # srs
+            print("csv 변수로 작성시 chara 폴더가 제외되어있어야 합니다.",
+                "ERB 데이터로 시도시 두 자료의 행 위치가 일치해야 합니다.",
+                "작성 또는 수정할 srs 파일명을 입력해주세요.",
+                sep="\n"
+            )
             srs_name = input("공란일 시 autobuild.simplesrs로 진행합니다. :")
             optimize_mod_dict = {
                 1: "미번역(영어 포함) 단어 제외",
                 2: "짧은 단어(1글자) 제외",
                 3 : "CSV 표적화 기능(CSV 변수만 변환할 수 있음)"
                 }
-            optimize_srs_yn = MenuPreset().select_mod(optimize_mod_dict, 0b1)
-            if srs_name:
-                result_file.to_SRS(optimize_srs_yn, srs_name)
-            else:
-                result_file.to_SRS(optimize_srs_yn)
-        if result_file.lazy_switch == 1:
+            srs_option = MenuPreset().select_mod(optimize_mod_dict, 0b1)
+            done_success = result_file.to_SRS(srs_option, srs_name)
+        elif result_type == 3: # xlsx
+            xlsx_name = input("작성할 xlsx 파일명을 입력해주세요. : ")
+            done_success = result_file.to_xlsx(xlsx_name)
+
+        if not done_success:
             print("파일 처리를 진행하지 못했습니다.")
         else:
             print("처리가 완료되었습니다.")

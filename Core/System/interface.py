@@ -24,7 +24,7 @@ class Menu:
         selected_menu
     """
 
-    def __init__(self, menu_data):  # TODO 항목 50개 초과시 페이지 정렬 지원
+    def __init__(self, menu_data):
         self.window_size = os.get_terminal_size().columns
         if isinstance(menu_data, dict):
             for key in list(menu_data.keys()):
@@ -32,7 +32,7 @@ class Menu:
                     raise TypeError
             self.menu_dict = menu_data
         elif isinstance(menu_data, list):
-            menu_data.append("돌아가기")
+            menu_data.insert(0, "돌아가기")
             self.menu_dict = {}
             for keyname in menu_data:  # 리스트 목록 번호 부여
                 self.menu_dict[menu_data.index(keyname)] = keyname
@@ -43,7 +43,55 @@ class Menu:
         for key in self.menu_dict:
             print("[{}]. {}".format(key, self.menu_dict[key]))
         CommonSent.print_line()
-        self.selected_num = input("번호를 입력하세요. 클릭은 지원하지 않습니다. :")
+        return input("번호를 입력하세요. 클릭은 지원하지 않습니다. :")
+
+    # TODO 항목 50개 초과시 페이지 정렬 지원
+    def __print_paged_menu(self):
+        """우선순위 페이지를 제공하는 메뉴 출력 옵션. 원 menu_data가 list인 경우만 상정함."""
+        copy_menudict = self.menu_dict.copy()
+        prior_menulist = list()
+        others_menulist = list()
+        comp_values = dict()
+        is_prior_now = True
+
+        for key, value in self.menu_dict.items():
+            if "All" in value or "ONLY" in value:
+                value = copy_menudict.pop(key)
+                prior_menulist.append(value)
+            else:
+                value = copy_menudict[key]
+                others_menulist.append(value)
+            comp_values[value] = key
+
+        while True: # 2페이지인 경우만 상정함.(우선페이지/나머지)
+            # 2페이지를 만들 수 없는 경우
+            if not prior_menulist or len(others_menulist) <= 1: # (others의 경우 돌아가기만 있는 경우 있음)
+                to_work = ()
+                target_menulist = self.menu_dict
+            else:
+                if is_prior_now: # 우선 페이지 상황
+                    to_work = ("다음 페이지", "이전 페이지")
+                    target_menulist = prior_menulist.copy()
+                else:
+                    to_work = ("이전 페이지", "다음 페이지")
+                    target_menulist = others_menulist.copy()
+    
+                target_menulist.append(to_work[0])
+                try:
+                    target_menulist.remove(to_work[1])
+                except ValueError:
+                    pass
+
+            menu_paged = Menu(target_menulist)
+            menu_paged.run_menu()
+            if menu_paged.selected_menu in to_work:
+                is_prior_now = not is_prior_now
+                continue
+            else:
+                selected_num = comp_values.get(menu_paged.selected_menu)
+                if selected_num != None:
+                    break
+        return selected_num
 
     def title(self, *title_names):
         """메뉴 제목용 함수. 메뉴 내 문장 출력에도 사용 가능"""
@@ -56,18 +104,31 @@ class Menu:
         """입력 정보를 int로 변환 후 해당하는 선택지가 있을 때 해당 숫자 반환함. 다른 경우 루프."""
         menu_numlist = tuple(self.menu_dict.keys())
         while True:
-            self.__print_menu()
+            selected_num = self.__print_menu()
             try:
-                self.selected_num = int(self.selected_num)
-                if menu_numlist.count(self.selected_num) == True:
-                    self.selected_menu = self.menu_dict[self.selected_num]
-                    return self.selected_num
+                selected_num = int(selected_num)
+                if menu_numlist.count(selected_num) == True:
+                    self.selected_menu = self.menu_dict[selected_num]
+                    return selected_num
                 # EasterEgg
-                elif self.selected_num in (4, 99, 127, 255, 999, 32767, 65535, 2147483647):
+                elif selected_num in (4, 99, 127, 255, 999, 32767, 65535, 2147483647):
                     print("디버그 기능 없습니다!")
                     time.sleep(0.5)
-                elif self.selected_num == 10:
+                elif selected_num == 10:
                     input("지켜보고 있다" * 500)
+                else:
+                    CommonSent.not_ok()
+            except ValueError:
+                CommonSent.not_ok()
+
+    def run_paged_menu(self):
+        while True:
+            selected_num = self.__print_paged_menu()
+            try:
+                selected_num = int(selected_num)
+                if self.menu_dict.get(selected_num):
+                    self.selected_menu = self.menu_dict[selected_num]
+                    return selected_num
                 else:
                     CommonSent.not_ok()
             except ValueError:

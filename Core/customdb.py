@@ -4,6 +4,7 @@ Classes:
     InfoDict
     ERBMetaInfo
     FuncInfo
+    SheetInfo
 """
 
 
@@ -328,8 +329,65 @@ class FuncInfo:
                 elif isinstance(data_already, list):
                     data_already.extend(data)
                 else:
-                    raise NotImplementedError(type(data))
+                    raise TypeError(type(data))
             else:
                 data_already = data
             self.file_func_dict[filename] = data_already
 
+
+class SheetInfo:
+    """시트(표) 기반 자료형 클래스
+    
+    xlsx, sql 등으로 출력하고자 하는 자료에 사용
+    * 자료의 추가, 조회만 지원함.
+    """
+    def __init__(self):
+        # sheetdict = {sheetname: [dict(sheetinfo), data, data...]}
+        # value의 각 요소가 하나의 행이라 보면 됨.
+        # sheetinfo = {tags:(aaa,bbb,ccc...)}
+        self.sheetdict = dict()
+        self.db_ver = 1.0
+    
+    def add_sheet(self, sheetname="Main", datatags=None):
+        """데이터 시트 추가 함수.
+        sheetname : 시트의 이름, 기본값 Main
+        datatags : 1열에 들어갈 데이터분류 태그 목록. 여기 없다면 기록되지 않음
+        """
+        sheetinfo = {"tags":datatags}
+        dataset = [sheetinfo]
+        if self.sheetdict.get(sheetname):
+            sheetinfo, *dataset = self.sheetdict[sheetname]
+            # datatags는 무조건 덮어쓰기로만 처리됨
+            sheetinfo["tags"] = datatags
+        
+        dataset[0] = sheetinfo
+
+        self.sheetdict.update({sheetname:dataset})
+
+    def add_row(self, sheetname="Main", **kwargs):
+        """행을 추가한 후 데이터를 입력함.
+
+        기록 후 열이 남는 부분은 None으로 저장됨.
+        """
+        tags_exist = False
+        target_sheet = self.sheetdict.get(sheetname)
+
+        if not target_sheet:
+            print("존재하지 않는 표 제목 %s" %sheetname)
+            return None
+
+        sheetinfo = target_sheet[0]
+        target_data = dict()
+    
+        taginfo = sheetinfo["tags"]
+        if isinstance(taginfo, list) or isinstance(taginfo, tuple):
+            tags_exist = True
+            for tag in taginfo:
+                target_data[tag] = None
+
+        for key, value in kwargs.items():
+            if not tags_exist or key in taginfo: # taginfo에 존재하지 않는 태그는 통과함.
+                target_data[key] = value
+            
+        target_sheet.append(target_data)
+        self.sheetdict.update({sheetname:target_sheet})
