@@ -97,11 +97,18 @@ def run_main():
                 continue
             # 작업완료시 바로 erb 처리로 넘어갈지 선택하지 않는 경우 (단순 분석기능임)
             elif no_erbmenu == 1:
-                last_work = ERBFunc().search_csv_var()
-                sav_datatype = "textline"
+                csvvar_mod_dict = {1:"CSV당 차트 생성(비활성화시 ERB당 생성됨)"}
+                csvvar_opt = MenuPreset().select_mod(csvvar_mod_dict)
+                last_work = ERBFunc().search_csv_var(opt=csvvar_opt)
+                sav_datatype = "sheetinfo"
             elif no_erbmenu == 2:
-                last_work = ERBFunc().extract_printfunc()
-                sav_datatype = "textline"
+                ext_print_mod_dict = {
+                    1:"차트 내 중복 자료 제거",
+                    2:"ERB파일당 차트 할당(비활성화시 차트 하나에 전부 포함)"
+                    }
+                ext_print_opt = MenuPreset().select_mod(ext_print_mod_dict)
+                last_work = ERBFunc().extract_printfunc(opt=ext_print_opt)
+                sav_datatype = "sheetinfo"
             else: # 작업완료시 바로 erb 처리로 넘어갈지 여부 선택하는 경우
                 last_work = None
                 direct_erb = True
