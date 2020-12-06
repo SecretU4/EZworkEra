@@ -512,7 +512,7 @@ class MenuPreset:
                 break
             elif sel_menu_num:
                 mod_name = mod_no_menudict[sel_menu_num]
-                real_no = 2 ** (sel_menu_num - 1)
+                real_no = 2 ** sel_menu_num
                 result_no = result_no ^ real_no
                 if "(선택됨)" in mod_name:
                     mod_no_menudict[sel_menu_num] = mod_name.replace("(선택됨)", "")
