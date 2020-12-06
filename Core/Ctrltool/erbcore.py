@@ -827,7 +827,7 @@ class ERBFunc:
                         continue
                     else:
                         dup_list.append(context)
-                if opt & 0b100: # 공백 처리안함
+                if opt & 0b1000: # 공백 처리안함
                     if not context:
                         continue
     
