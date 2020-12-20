@@ -145,8 +145,7 @@ def run_main():
                 MenuPreset().shall_save_data(last_work, sav_datatype)
                 if direct_erb:
                     print("결과물을 ERB로 출력하시고 싶은 경우 추가 절차를 진행해주세요.")
-                    make_erb_yn = MenuPreset().yesno(1, "지금 바로 데이터를 erb화 할까요?")
-                    if make_erb_yn:
+                    if MenuPreset().yesno("지금 바로 데이터를 erb화 할까요?"):
                         ResultFunc().make_result(menu_erb.selected_menu, last_work, 1)
 
             last_work_name = menu_erb.selected_menu # 마지막 작업 명칭 저장

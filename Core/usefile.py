@@ -121,18 +121,18 @@ class FileFilter:
         """특정 디렉토리 내 해당 확장자 파일의 목록을 불러옴.
 
         옵션 번호:
-            0: 하위폴더 포함
-            1: 하위폴더 미포함
+            bool(번호)가 True 면 하위폴더 포함, False 면 미포함
         """
         ext_target = ext_target.upper()
         self.files = []
-        if self.option_num == 0:
+
+        if self.option_num: # 하위폴더 포함
             for (path, _, files) in os.walk(dir_target):
                 for filename in files:
                     file_type = os.path.splitext(filename)[-1].upper()
                     if file_type == ext_target:
                         self.files.append("{0}\\{1}".format(path, filename))
-        elif self.option_num == 1:
+        else: # 하위폴더 미포함
             for filename in os.listdir(dir_target):
                 file_type = os.path.splitext(filename)[-1].upper()
                 if file_type == ext_target:
@@ -207,7 +207,7 @@ class FileFilter:
         encode_type = MenuPreset().encode()
 
         if os.path.isdir(target_dir):
-            self.option_num = MenuPreset().yesno(0, "하위폴더까지 포함해 진행하시겠습니까?")
+            self.option_num = MenuPreset().yesno("하위 디렉토리를 포함해 진행하시겠습니까?")
             files = self.files_ext(target_dir, "." + filetype)
         else: # 확인 가능한 목록 없음
             remake_dir = "\\".join(target_dir.split("\\")[:-1])
@@ -385,7 +385,7 @@ class MenuPreset:
 
     Functions:
         encode()
-        yesno(reverse,sentence)
+        yesno([sentence])
         shall_save_data(data,datatype)
         load_saved_data(opt_no,[sentence])
         select_mod(mod_no_dict{no:mod_name})
@@ -414,23 +414,22 @@ class MenuPreset:
             sel_encode = namedict_encode[sel_encode]
         return sel_encode
 
-    def yesno(self, reverse, *sentences):
-        """예/아니오 선택창. sentence로 선택창 앞에 문자열 출력 필요."""
+    def yesno(self, *sentences):
+        """예/아니오 선택창. sentence로 선택창 앞에 문자열 출력 필요.
+        예 = 1, 아니오 = 0 반환
+        """
         yesno_dict = {0: "예", 1: "아니오"}
         yesno = Menu(yesno_dict)
         yesno.title(*sentences)
         no_yn = yesno.run_menu()
-        if reverse:
-            no_yn = -no_yn
-        return no_yn
+        return int(not no_yn)
 
     def shall_save_data(self, data, datatype=None):
         """추출된 데이터의 저장 메뉴. data가 저장될 데이터. 필요시 datatype 입력
         * 같은 이름의 sav파일 작성 불가.
         """
-        menu_save = MenuPreset().yesno(0, "처리된 데이터를 sav 파일로 저장하시겠습니까?")
         DirFilter("sav").dir_exist()
-        if menu_save == 0:
+        if MenuPreset().yesno("처리된 데이터를 sav 파일로 저장하시겠습니까?"):
             while True:
                 save_name = input("sav 파일의 이름을 정해주세요.")
                 try:
@@ -452,26 +451,27 @@ class MenuPreset:
         please_choose_sent = "불러올 데이터 파일을 선택해주세요."
         if isinstance(sentence, str):
             yesno_sentence = sentence, yesno_sentence
+
         if opt_no == 0:
-            load_switch = MenuPreset().yesno(0, *yesno_sentence)
+            opt_no = MenuPreset().yesno(*yesno_sentence)
             please_sent_lines = [please_choose_sent]
         elif opt_no == 1:
-            load_switch = 0
             please_sent_lines = sentence, please_choose_sent
-        if load_switch == 1:
+
+        if not opt_no:
             return None
-        else:
-            savfile_list = FileFilter().files_ext("sav", ".sav")
-            menu_sav_list = Menu(savfile_list)
-            while True:
-                menu_sav_list.title(*please_sent_lines)
-                menu_sav_list.run_menu()
-                self.selected_name = menu_sav_list.selected_menu
-                if self.selected_name == "돌아가기":
-                    break
-                with open(self.selected_name, "rb") as opened_sav:
-                    target_data = pickle.load(opened_sav)
-                    return target_data
+
+        savfile_list = FileFilter().files_ext("sav", ".sav")
+        menu_sav_list = Menu(savfile_list)
+        while True:
+            menu_sav_list.title(*please_sent_lines)
+            menu_sav_list.run_menu()
+            self.selected_name = menu_sav_list.selected_menu
+            if self.selected_name == "돌아가기":
+                break
+            with open(self.selected_name, "rb") as opened_sav:
+                target_data = pickle.load(opened_sav)
+                return target_data
 
     def select_mod(self, mod_no_dict, default_mod=0, title_txt="활성화할 기능을 선택해주세요."):
         """작동 모드 선택 메뉴
