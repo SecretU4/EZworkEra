@@ -438,6 +438,9 @@ class MenuPreset:
                         break
                 except FileExistsError:
                     print("같은 이름의 파일이 존재합니다. 다시 시도해주세요.")
+            return True
+        
+        return False
 
     def load_saved_data(self, opt_no=0, sentence=""):
         """저장해둔 데이터의 로드 메뉴.
