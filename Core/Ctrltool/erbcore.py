@@ -864,7 +864,7 @@ class ERBFunc:
         for filename in erb_files:
             erb_bulk = ERBLoad(filename, encode_type).make_erblines()
             self.func_log.write_loaded_log(filename)
-            if not opt & 0b10: # ERB별 차트
+            if not opt & 0b1: # ERB별 차트
                 result_sheet.add_sheet(filename, sheet_tags)
                 sheet_name = filename
 
@@ -878,7 +878,7 @@ class ERBFunc:
             for var_info in dup_res_list:
                 varhead, varname, _, _ = var_info
                 context = vfinder.print_csvfnc([var_info,])[0]
-                if opt & 0b10:
+                if opt & 0b1:
                     sheet_name = varhead
                     if sheet_name not in result_sheet.sheetdict.keys():
                         result_sheet.add_sheet(sheet_name, sheet_tags)
