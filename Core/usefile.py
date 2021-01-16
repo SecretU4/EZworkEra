@@ -479,24 +479,25 @@ class MenuPreset:
     def select_mod(self, mod_no_dict, default_mod=0, title_txt="활성화할 기능을 선택해주세요."):
         """작동 모드 선택 메뉴
         0번 모드는 기본값 초기화 버튼이므로 따로 설정하면 날아감.
-        default_mod는 기본값 설정, title_txt는 메뉴 출력시 제목 설정
+        default_mod는 기본값 설정, title_txt는 메뉴 출력시 제목 설정.
+        default_mod = Σ (n=1 ~ 가능범위) 2 ** (선택할 mod_no - 1)
+        return = Σ (n=1 ~ 가능범위) 2 ** (선택된 mod_no - 1)
 
         mod_no_dict = {mod_no: mod_name}
         """
 
-        mod_no_menudict = {0:""}
+        mod_no_menudict = {0:"ERROR"}
         mod_no_menudict.update(mod_no_dict)
-        show_def_modno = bin(default_mod).split("b")[-1]
-        result_no = default_mod
+        result_no = (default_mod << 1)
         default_name = ["모두 꺼짐"]
 
-        if show_def_modno != "0":
+        if default_mod:
             default_name = []
-            for mod_no, switch in enumerate(show_def_modno):
+            for mod_no in range(len(mod_no_dict)):
                 mod_no += 1
 
                 mod_name = mod_no_dict[mod_no]
-                if switch:
+                if result_no & 2 ** mod_no:
                     default_name.append(str(mod_no))
                     mod_name += "(선택됨)"
                 mod_no_menudict[mod_no] = mod_name
@@ -526,5 +527,5 @@ class MenuPreset:
                 result_no = default_mod
                 break
 
-        return result_no
+        return (result_no >> 1)
 

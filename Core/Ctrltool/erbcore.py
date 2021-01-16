@@ -806,28 +806,28 @@ class ERBFunc:
         file_count_check.how_much_there()
         result_sheet = SheetInfo()
         sheet_tags = ["COM_type", "context"]
-        if not opt & 0b100: # 파일당 차트 할당 아님
+        if not opt & 0b10: # 파일당 차트 할당 아님
             sheet_tags.insert(0, "file")
             sheetname = "print_sent"
             result_sheet.add_sheet(sheetname, sheet_tags)
-        if opt & 0b10: # 중복 후처리
+        if opt & 0b1: # 중복 후처리
             dup_list = list()
 
         for filename in erb_files:
             bulk_lines = ERBLoad(filename, encode_type)
-            if opt & 0b100: # 파일당 차트 할당
+            if opt & 0b10: # 파일당 차트 할당
                 sheetname = filename
                 result_sheet.add_sheet(sheetname, sheet_tags)
             printfunc_list = bulk_lines.search_line("PRINT", "DATA", except_args=["PRINTDATA","DATALIST"], opt=0b10)
             for line in printfunc_list:
                 comtype = line.split()[0]
                 context = " ".join(line.split()[1:])
-                if opt & 0b10: # 중복 후처리
+                if opt & 0b1: # 중복 후처리
                     if dup_list.count(context):
                         continue
                     else:
                         dup_list.append(context)
-                if opt & 0b1000: # 공백 처리안함
+                if opt & 0b100: # 공백 처리안함
                     if not context:
                         continue
     
@@ -836,7 +836,7 @@ class ERBFunc:
 
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
-        if opt & 0b10 and dup_list:
+        if opt & 0b1 and dup_list:
             print("중복으로 발견되어 누락 처리한 문장이 한 개 이상 존재합니다. 이후 처리에 유의해주세요.")
         return result_sheet  # SheetInfo
 
@@ -965,7 +965,7 @@ class ERBFunc:
             erb_files, encode_type = FileFilter().get_filelist("ERB")
             file_count_check = StatusNum(erb_files, "파일")
             file_count_check.how_much_there()
-            mod_no = MenuPreset().select_mod(mod_dict, 0)
+            mod_no = MenuPreset().select_mod(mod_dict)
 
             for filename in erb_files:
                 erb_bulk = ERBLoad(filename, encode_type).make_erblines()
@@ -980,7 +980,7 @@ class ERBFunc:
 
             result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:ERBMetaInfo 클래스 메소드}
         else:
-            mod_no = MenuPreset().select_mod(mod_dict, 1)
+            mod_no = MenuPreset().select_mod(mod_dict, 0b1)
             result_dataset = ERBUtil().grammar_corrector(metalineinfo, mod_no)  # ERBMetaInfo 클래스 메소드
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
