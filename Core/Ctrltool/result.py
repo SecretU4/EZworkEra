@@ -220,18 +220,23 @@ class ExportData:
                     except ValueError:
                         self.for_dup_content.append(orig_txt)
                         if opt_no: # 모드 설정이 하나 이상 있을때
-                            if opt_no & 0b1 and orig_txt == trans_txt: # 미번역 단어 제외
+                            if opt_no & 0b10 and orig_txt == trans_txt: # 미번역 단어 제외
                                 continue
-                            if opt_no & 0b10 and len(orig_txt) < 2: # 짧은 단어 필터링
+                            if opt_no & 0b100 and len(orig_txt) < 2: # 짧은 단어 필터링
                                 self.log_file.write_log(
                                     "단어가 너무 짧습니다 : {}번째 항목의 {}\n".format(total_key, orig_txt)
                                 )
                                 self.cantwrite_srs_count += 1
                                 continue
-                            if opt_no & 0b100: # CSV 표적화
+                            if opt_no & 0b1000: # CSV 표적화 - CSV 기반 srs의 ERB 처리용
                                 orig_txt = ":" + orig_txt
                                 trans_txt = ":" + trans_txt
-                        srs_file.write("{}\n{}\n\n".format(orig_txt, trans_txt))
+
+                        if opt_no & 0b10000: # CSV 표적화 - Chara CSV 내 인명(NAME, CALLNAME) 처리용
+                            srs_file.write("名前,%s\n名前,%s\n\n" % (orig_txt, trans_txt)) # NAME
+                            srs_file.write("呼び名,%s\n呼び名,%s\n\n" % (orig_txt, trans_txt)) # CALLNAME
+                        else:
+                            srs_file.write("{}\n{}\n\n".format(orig_txt, trans_txt))
                         self.worked_switch = 1
 
         if not self.worked_switch:
@@ -539,9 +544,11 @@ class ResultFunc:
             optimize_mod_dict = {
                 1: "미번역(영어 포함) 단어 제외",
                 2: "짧은 단어(1글자) 제외",
-                3 : "CSV 표적화 기능(CSV 변수만 변환할 수 있음)"
+                3: "CSV 표적화 기능(ERB 내 CSV 변수만 변환할 수 있음)",
+                4: "CSV 표적화 기능(Chara CSV 내 NAME, CALLNAME만)"
                 }
-            srs_option = MenuPreset().select_mod(optimize_mod_dict, 0b1)
+            srs_option = MenuPreset().select_mod(
+                optimize_mod_dict, 0b1, "활성화할 기능을 선택해주세요.\n  * CSV 표적화는 하나만 선택해주세요.")
             done_success = result_file.to_SRS(srs_option, srs_name)
         elif result_type == 3: # xlsx
             xlsx_name = input("작성할 xlsx 파일명을 입력해주세요. : ")
