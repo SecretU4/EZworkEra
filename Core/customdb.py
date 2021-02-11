@@ -71,12 +71,7 @@ class InfoDict:
         for main_key in self.dict_main.keys():
             data = self.dict_main[main_key]
             try:
-                reversed_data = {}
-                data_raw = list(data.items())
-                data_raw.reverse()
-                for item in data_raw:
-                    key, value = item
-                    reversed_data[value] = key
+                reversed_data = {val: key for key, val in data.items()}
                 self.dict_name_reverse[main_key] = reversed_data
             except AttributeError:
                 error_count += 1
