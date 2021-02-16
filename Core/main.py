@@ -1,7 +1,7 @@
 # EmuEra용 번역 파일 처리/합병 툴
 # 사용되는 라이브러리
 from util import CommonSent
-from Ctrltool import CSVFunc, ERBFunc, ResultFunc
+from Ctrltool import CSVFunc, ERBFunc, ResultFunc, EXTFunc
 from usefile import MenuPreset
 from System.interface import Menu
 from System.xmlhandling import SettingXML
@@ -105,7 +105,8 @@ def run_main():
                 ext_print_mod_dict = {
                     1:"차트 내 중복 자료 제거",
                     2:"ERB파일당 차트 할당(비활성화시 차트 하나에 전부 포함)",
-                    3:"공백을 포함하지 않음"
+                    3:"공백을 포함하지 않음",
+                    4:"주석추출 모드"
                     }
                 ext_print_opt = MenuPreset().select_mod(ext_print_mod_dict)
                 last_work = ERBFunc().extract_printfunc(opt=ext_print_opt)
@@ -145,8 +146,7 @@ def run_main():
                 MenuPreset().shall_save_data(last_work, sav_datatype)
                 if direct_erb:
                     print("결과물을 ERB로 출력하시고 싶은 경우 추가 절차를 진행해주세요.")
-                    make_erb_yn = MenuPreset().yesno(1, "지금 바로 데이터를 erb화 할까요?")
-                    if make_erb_yn:
+                    if MenuPreset().yesno("지금 바로 데이터를 erb화 할까요?"):
                         ResultFunc().make_result(menu_erb.selected_menu, last_work, 1)
 
             last_work_name = menu_erb.selected_menu # 마지막 작업 명칭 저장
@@ -162,14 +162,26 @@ def run_main():
                 1: "결과물 TXT화",
                 2: "결과물 ERB화",
                 3: "결과물 srs화",
-                4: "결과물 xlsx화"
+                4: "결과물 xlsx화",
+                5: "UserDic.json srs화"
                 }
             menu_result = Menu(menu_dict_result)
             menu_result.title("추출 결과물에 대한 제어 메뉴입니다.")
             no_resultmenu = menu_result.run_menu()
             if not no_resultmenu:
                 continue
-            ResultFunc().make_result(last_work_name, last_work, no_resultmenu - 1)
+            elif no_resultmenu == 5: # UserDic infodict화
+                last_work = EXTFunc().userdict_to_srs()
+                if not last_work:
+                    input("작업한 내용이 없습니다.")
+                    continue
+                last_work_name = menu_result.selected_menu
+                if MenuPreset().yesno("바로 srs화를 진행할까요?"):
+                    ResultFunc().make_result(last_work_name, last_work, 2)
+                else:
+                    input("저장된 infodict 데이터를 기반으로 '결과물 srs화'를 해주셔야 srs화가 되니 참고해주세요.")
+            else:
+                ResultFunc().make_result(last_work_name, last_work, no_resultmenu - 1)
             # 결과물 처리 이후 last_work, last_work_name 은 초기화되지 않음
 
         # [4] 프로그램 정보

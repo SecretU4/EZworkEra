@@ -228,10 +228,15 @@ class ExportData:
                                 )
                                 self.cantwrite_srs_count += 1
                                 continue
-                            if opt_no & 0b100: # CSV 표적화
+                            if opt_no & 0b100: # CSV 표적화 - CSV 기반 srs의 ERB 처리용
                                 orig_txt = ":" + orig_txt
                                 trans_txt = ":" + trans_txt
-                        srs_file.write("{}\n{}\n\n".format(orig_txt, trans_txt))
+
+                        if opt_no & 0b1000: # CSV 표적화 - Chara CSV 내 인명(NAME, CALLNAME) 처리용
+                            srs_file.write("名前,%s\n名前,%s\n\n" % (orig_txt, trans_txt)) # NAME
+                            srs_file.write("呼び名,%s\n呼び名,%s\n\n" % (orig_txt, trans_txt)) # CALLNAME
+                        else:
+                            srs_file.write("{}\n{}\n\n".format(orig_txt, trans_txt))
                         self.worked_switch = 1
 
         if not self.worked_switch:
@@ -342,14 +347,12 @@ class ExportData:
             o_dataset, t_dataset = self.__data_type_check(*dataset, max_data=2)
             orig_data, trans_data = o_dataset[1], t_dataset[1]
             if orig_data and trans_data:
-                choose_yn = MenuPreset().yesno(
-                    0,
+                if MenuPreset().yesno(
                     "선택하신 두 자료가",
                     "원본:  " + str(o_dataset[0]),
                     "번역본: " + str(t_dataset[0]),
                     "입니까?",
-                )
-                if choose_yn == 0:
+                    ):
                     break
             else:
                 print("공란인 데이터가 있습니다. 다시 시도해주세요.")
@@ -366,16 +369,16 @@ class ExportData:
             orig_infokeys = [o_dataset[0]]
             trans_infokeys = [t_dataset[0]]
             self.infodict_switch = 0
-        if os.path.isfile(self.srs_filename) == False:  # SRS 유무 검사
+        if not os.path.isfile(self.srs_filename):  # SRS 유무 검사
             print("SRS 파일을 새로 작성합니다.")
             with LoadFile(self.srs_filename, "UTF-8-sig").readwrite() as srs_file:
-                wordwrap_yn = None
+                wordwrap_yn = False
                 if isinstance(orig_data, InfoDict) and isinstance(trans_data, InfoDict):
                     for dictname in orig_infokeys:
-                        if "chara" in dictname or "name" in dictname:
+                        if "chara" in dictname.lower() or "name" in dictname.lower():
                             print("이름 관련 파일명이 감지되었습니다.")
                             wordwrap_yn = MenuPreset().yesno(
-                                1, "입력받은 데이터 전체를 정확한 단어 단위로만 변환하도록 조정할까요?"
+                                "입력받은 데이터 전체를 정확한 단어 단위로만 변환하도록 조정할까요?"
                             )
                             break
                 # TRIM:앞뒤공백 제거, SORT:긴 순서/알파벳 정렬, WORDWRAP:정확히 단어 단위일때만 치환
@@ -527,8 +530,8 @@ class ResultFunc:
         typename = ("TXT","ERB","srs","xlsx")[result_type]
         print("지정된 데이터의 %s 파일화를 진행합니다." % typename)
         if result_type == 0: # TXT
-            press_enter_yn = MenuPreset().yesno(1, "데이터에 줄바꿈이 되어있던 경우, 줄바꿈 출력이 가능합니다. 시도하시겠습니까?")
-            done_success = result_file.to_TXT(option_num=press_enter_yn)
+            writelines_yn = MenuPreset().yesno("데이터에 줄바꿈이 되어있던 경우, 줄바꿈 출력이 가능합니다. 시도하시겠습니까?")
+            done_success = result_file.to_TXT(option_num=writelines_yn)
         elif result_type == 1: # ERB
             done_success = result_file.to_TXT(typename, 1, "UTF-8-sig")
         elif result_type == 2: # srs
@@ -541,9 +544,11 @@ class ResultFunc:
             optimize_mod_dict = {
                 1: "미번역(영어 포함) 단어 제외",
                 2: "짧은 단어(1글자) 제외",
-                3 : "CSV 표적화 기능(CSV 변수만 변환할 수 있음)"
+                3: "CSV 표적화 기능(ERB 내 CSV 변수만 변환할 수 있음)",
+                4: "CSV 표적화 기능(Chara CSV 내 NAME, CALLNAME만)"
                 }
-            srs_option = MenuPreset().select_mod(optimize_mod_dict, 0b1)
+            srs_option = MenuPreset().select_mod(
+                optimize_mod_dict, 0b1, "활성화할 기능을 선택해주세요.\n  * CSV 표적화는 하나만 선택해주세요.")
             done_success = result_file.to_SRS(srs_option, srs_name)
         elif result_type == 3: # xlsx
             xlsx_name = input("작성할 xlsx 파일명을 입력해주세요. : ")
