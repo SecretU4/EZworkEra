@@ -818,7 +818,12 @@ class ERBFunc:
             if opt & 0b10: # 파일당 차트 할당
                 sheetname = filename
                 result_sheet.add_sheet(sheetname, sheet_tags)
-            printfunc_list = bulk_lines.search_line("PRINT", "DATA", except_args=["PRINTDATA","DATALIST"], opt=0b10)
+
+            if opt & 0b1000: # 주석처리 모드
+                printfunc_list = [line for line in bulk_lines.make_erblines() if line.find(";")]
+            else:
+                printfunc_list = bulk_lines.search_line("PRINT", "DATA", except_args=["PRINTDATA","DATALIST"], opt=0b1)
+
             for line in printfunc_list:
                 comtype = line.split()[0]
                 context = " ".join(line.split()[1:])

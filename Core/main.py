@@ -105,7 +105,8 @@ def run_main():
                 ext_print_mod_dict = {
                     1:"차트 내 중복 자료 제거",
                     2:"ERB파일당 차트 할당(비활성화시 차트 하나에 전부 포함)",
-                    3:"공백을 포함하지 않음"
+                    3:"공백을 포함하지 않음",
+                    4:"주석추출 모드"
                     }
                 ext_print_opt = MenuPreset().select_mod(ext_print_mod_dict)
                 last_work = ERBFunc().extract_printfunc(opt=ext_print_opt)
