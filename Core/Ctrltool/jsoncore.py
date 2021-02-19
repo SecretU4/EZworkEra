@@ -1,4 +1,4 @@
-"""에라 구동계 파일 이외 처리용 모듈"""
+"""에라 구동계 파일 이외(JSON) 처리용 모듈"""
 
 import json
 from customdb import InfoDict
