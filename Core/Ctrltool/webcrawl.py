@@ -24,6 +24,8 @@ class ArcaliveCrawl(WebCrawl):
         for p_line in p_lines:
             if p_line.find("br"): # 공백
                 extracted_string = "\n"
+            elif p_line.find("img"): # 이미지 링크
+                continue
             else: # 나머지 모든 텍스트줄
                 extracted_string = p_line.string + "\n"
             lines.append(extracted_string)
