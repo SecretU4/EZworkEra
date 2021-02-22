@@ -22,13 +22,7 @@ class ArcaliveCrawl(WebCrawl):
         main_context = self.html_obj(self.url).body.find("div", {"class":"fr-view article-content"})
         p_lines = main_context.find_all("p")
         for p_line in p_lines:
-            if p_line.find("br"): # 공백
-                extracted_string = "\n"
-            elif p_line.find("img"): # 이미지 링크
-                continue
-            else: # 나머지 모든 텍스트줄
-                extracted_string = p_line.string + "\n"
-            lines.append(extracted_string)
+            lines.append(p_line.text + "\n")
         return lines
 
 
