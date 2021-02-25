@@ -2,6 +2,7 @@
 
 import requests
 from bs4 import BeautifulSoup
+from customdb import InfoDict
 
 class WebCrawl:
     def open_html(self, url):
@@ -45,12 +46,13 @@ class CrawlFunc:
         if not result_data:
             print("크롤링된 데이터가 없습니다.")
         
-        print("결과물 제어 - txt화를 통해 크롤링된 데이터를 출력하실 수 있습니다.")
-
-        return result_data
+        result_infodict = InfoDict("WebCrawl")
+        result_infodict.add_dict(target_url, result_data)
+        return result_infodict
 
 if __name__ == "__main__":
     print("베타 테스트입니다.")
-    lines = CrawlFunc().crawl_text()
+    target_infodict = CrawlFunc().crawl_text()
+    lines = target_infodict.dict_main.values()[0]
     f_name = input("저장시킬 파일명을 입력해주세요.")
     f_open = open(f_name + ".txt", "w", encoding="UTF-8").writelines(lines)
