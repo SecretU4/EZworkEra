@@ -9,5 +9,6 @@ from .erbcore import ERBFunc
 from .result import ResultFunc
 from .erhcore import ERHFunc
 from .jsoncore import EXTFunc
+from .webcrawl import CrawlFunc
 
 __all__ = ["CSVFunc", "ERBFunc", "ResultFunc", "ERHFunc", "EXTFunc"]
