@@ -19,7 +19,7 @@ class ArcaliveCrawl(WebCrawl):
 
     def txt_data(self):
         lines = []
-        main_context = self.html_obj(self.url).body.find("div", {"class":"fr-view article-content"})
+        main_context = self.object.body.find("div", {"class":"fr-view article-content"})
         p_lines = main_context.find_all("p")
         for p_line in p_lines:
             lines.append(p_line.text + "\n")
