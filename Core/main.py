@@ -1,25 +1,27 @@
 # EmuEra용 번역 파일 처리/합병 툴
 # 사용되는 라이브러리
 from util import CommonSent
-from Ctrltool import CSVFunc, ERBFunc, ResultFunc, EXTFunc
+from Ctrltool import CSVFunc, ERBFunc, ResultFunc, EXTFunc, CrawlFunc
 from usefile import MenuPreset
 from System.interface import Menu
 from System.xmlhandling import SettingXML
 
 menu_dict_main = {
-    0: "CSV 파일 처리",
-    1: "ERB 파일 처리",
-    2: "ERH 파일 처리 (미실장)",
-    3: "결과물 제어",
-    4: "프로그램 정보",
-    5: "프로그램 종료",
+    0: "프로그램 종료",
+    1: "CSV 파일 분석",
+    2: "ERB 파일 분석",
+    3: "ERB 파일 처리",
+    4: "ERH 파일 분석 (미실장)",
+    5: "외부 데이터 처리",
+    6: "결과물 처리",
+    7: "프로그램 정보",
 }
 menu_main = Menu(menu_dict_main)
 menu_main.title("EZworkEra - Develop utility for EmuEra base game")
 
 last_work = None
 last_work_name = None
-version_no = "v3.9.0"
+version_no = "v4.0.0"
 
 def run_main():
     global last_work
@@ -29,8 +31,13 @@ def run_main():
         print("작업 후 버튼을 눌러 프로그램을 종료하셔야 작업파일이 손실되지 않습니다.")
         CommonSent.print_line()
         menu_main.run_menu()
-        # [0] CSV 파일의 처리
-        if menu_main.selected_menu == "CSV 파일 처리":
+
+        # [0] 프로그램 종료
+        if menu_main.selected_menu == "프로그램 종료":
+            break
+
+        # [1] CSV 파일의 분석
+        elif menu_main.selected_menu == "CSV 파일 분석":
             CommonSent.print_line()
             menu_dict_csv = {
                 0: "이전으로",
@@ -38,7 +45,7 @@ def run_main():
                 2: "CSV 변수 명칭 사전",
             }
             menu_csv = Menu(menu_dict_csv)
-            menu_csv.title("CSV 파일 처리 유틸리티입니다.", "따로 표기해놓지 않았다면 숫자:변수명 꼴입니다.")
+            menu_csv.title("CSV 파일 분석 메뉴입니다.", "따로 표기해놓지 않았다면 숫자:변수명 꼴입니다.")
             no_csvmenu = menu_csv.run_menu()
             if not no_csvmenu: # 이전으로
                 continue
@@ -77,25 +84,18 @@ def run_main():
 
             last_work_name = menu_csv.selected_menu  # 마지막 작업 명칭 저장
 
-        # [1] ERB 파일의 처리
-        elif menu_main.selected_menu == "ERB 파일 처리":
-            print("ERB 파일 처리 유틸리티입니다. 현재 TW 파일 이외의 구동을 보장하지 않습니다.")
-            menu_dict_erb = {
+        # [2] ERB 파일의 분석
+        elif menu_main.selected_menu == "ERB 파일 분석":
+            menu_dict_anal_erb = {
                 0: "이전으로",
                 1: "ERB 내 CSV 변수 추출",
                 2: "구상추출",
-                3: "들여쓰기 교정",
-                4: "구상 번역기",
-                5: "ERB 내 CSV 인덱스 변환",
-                6: "불완전 수식 정리",
-                7: "구상 메모리 최적화",
             }
-            menu_erb = Menu(menu_dict_erb)
-            no_erbmenu = menu_erb.run_menu()
-            direct_erb = False
+            menu_anal_erb = Menu(menu_dict_anal_erb)
+            menu_anal_erb.title("ERB 파일 분석 메뉴입니다.")
+            no_erbmenu = menu_anal_erb.run_menu()
             if not no_erbmenu: # 이전으로
                 continue
-            # 작업완료시 바로 erb 처리로 넘어갈지 선택하지 않는 경우 (단순 분석기능임)
             elif no_erbmenu == 1:
                 csvvar_mod_dict = {1:"CSV당 차트 생성(비활성화시 ERB당 생성됨)"}
                 csvvar_opt = MenuPreset().select_mod(csvvar_mod_dict)
@@ -111,80 +111,123 @@ def run_main():
                 ext_print_opt = MenuPreset().select_mod(ext_print_mod_dict)
                 last_work = ERBFunc().extract_printfunc(opt=ext_print_opt)
                 sav_datatype = "sheetinfo"
-            else: # 작업완료시 바로 erb 처리로 넘어갈지 여부 선택하는 경우
-                last_work = None
-                direct_erb = True
-
-                if menu_erb.selected_menu == "들여쓰기 교정":
-                    last_work = ERBFunc().remodel_indent()
-                    sav_datatype = "erblines"
-                elif menu_erb.selected_menu == "구상 번역기": # v3.7.0 현재 알파버전
-                    print("양식에 맞는 txt 파일을 erb 문법 파일로 바꾸어주는 유틸리티입니다.")
-                    menu_list_eratype = ["TW"]
-                    menu_eratype = Menu(menu_list_eratype)
-                    menu_eratype.title("어느 종류의 에라인지 선택해주세요.")
-                    menu_eratype.run_menu()
-                    if menu_eratype.selected_menu in menu_list_eratype:
-                        sent_load_dis = "csvvar 딕셔너리를 불러와주세요. 미선택시 추후 생성 단계로 넘어갑니다."
-                        csvvar_dict = MenuPreset().load_saved_data(0, sent_load_dis)
-                        last_work = ERBFunc().translate_txt_to_erb(menu_eratype.selected_menu, csvvar_dict)
-                        sav_datatype = "metaerb"
-                elif menu_erb.selected_menu == "ERB 내 CSV 인덱스 변환":
-                    menu_dict_erb_rep = {0: "숫자를 변수로", 1: "변수를 숫자로"}
-                    menu_erb_rep = Menu(menu_dict_erb_rep)
-                    mod_num = menu_erb_rep.run_menu()
-                    last_work = ERBFunc().replace_num_or_name(mod_num)
-                    sav_datatype = "erblines"
-                elif menu_erb.selected_menu == "불완전 수식 정리":
-                    last_work = ERBFunc().remodel_equation()
-                    sav_datatype = "metainfoline"
-                elif menu_erb.selected_menu == "구상 메모리 최적화": # 3.7.0 현재 베타버전
-                    last_work = ERBFunc().memory_optimizer()
-                    sav_datatype = "erblines"
 
             if last_work != None:
                 MenuPreset().shall_save_data(last_work, sav_datatype)
-                if direct_erb:
-                    print("결과물을 ERB로 출력하시고 싶은 경우 추가 절차를 진행해주세요.")
-                    if MenuPreset().yesno("지금 바로 데이터를 erb화 할까요?"):
-                        ResultFunc().make_result(menu_erb.selected_menu, last_work, 1)
+
+            last_work_name = menu_anal_erb.selected_menu # 마지막 작업 명칭 저장
+
+        # [3] ERB 파일의 처리
+        elif menu_main.selected_menu == "ERB 파일 처리":
+            menu_dict_erb = {
+                0: "이전으로",
+                1: "들여쓰기 교정",
+                2: "구상 번역기",
+                3: "ERB 내 CSV 인덱스 변환",
+                4: "불완전 수식 정리",
+                5: "구상 메모리 최적화",
+            }
+            menu_erb = Menu(menu_dict_erb)
+            menu_erb.title("ERB 파일 처리 메뉴입니다.", "현재 TW 파일 이외의 정상 구동을 보장하지 않습니다.")
+            no_erbmenu = menu_erb.run_menu()
+            if not no_erbmenu: # 이전으로
+                continue
+
+            last_work = None
+
+            if menu_erb.selected_menu == "들여쓰기 교정":
+                last_work = ERBFunc().remodel_indent()
+                sav_datatype = "erblines"
+            elif menu_erb.selected_menu == "구상 번역기": # v3.7.0 현재 알파버전
+                print("양식에 맞는 txt 파일을 erb 문법 파일로 바꾸어주는 유틸리티입니다.")
+                menu_list_eratype = ["TW"]
+                menu_eratype = Menu(menu_list_eratype)
+                menu_eratype.title("어느 종류의 에라인지 선택해주세요.")
+                menu_eratype.run_menu()
+                if menu_eratype.selected_menu in menu_list_eratype:
+                    sent_load_dis = "csvvar 딕셔너리를 불러와주세요. 미선택시 추후 생성 단계로 넘어갑니다."
+                    csvvar_dict = MenuPreset().load_saved_data(0, sent_load_dis)
+                    last_work = ERBFunc().translate_txt_to_erb(menu_eratype.selected_menu, csvvar_dict)
+                    sav_datatype = "metaerb"
+            elif menu_erb.selected_menu == "ERB 내 CSV 인덱스 변환":
+                menu_dict_erb_rep = {0: "숫자를 변수로", 1: "변수를 숫자로"}
+                menu_erb_rep = Menu(menu_dict_erb_rep)
+                mod_num = menu_erb_rep.run_menu()
+                last_work = ERBFunc().replace_num_or_name(mod_num)
+                sav_datatype = "erblines"
+            elif menu_erb.selected_menu == "불완전 수식 정리":
+                last_work = ERBFunc().remodel_equation()
+                sav_datatype = "metainfoline"
+            elif menu_erb.selected_menu == "구상 메모리 최적화": # 3.7.0 현재 베타버전
+                last_work = ERBFunc().memory_optimizer()
+                sav_datatype = "erblines"
+
+            if last_work != None:
+                MenuPreset().shall_save_data(last_work, sav_datatype)
+                print("결과물을 ERB로 출력하시고 싶은 경우 추가 절차를 진행해주세요.")
+                if MenuPreset().yesno("지금 바로 데이터를 erb화 할까요?"):
+                    ResultFunc().make_result(menu_erb.selected_menu, last_work, 1)
 
             last_work_name = menu_erb.selected_menu # 마지막 작업 명칭 저장
 
-        # [2] ERH 파일의 처리
-        elif menu_main.selected_menu == "ERH 파일 처리 (미실장)":
+        # [4] ERH 파일의 분석
+        elif menu_main.selected_menu == "ERH 파일 분석 (미실장)":
             print("미실장입니다")
 
-        # [3] 결과물 제어
-        elif menu_main.selected_menu == "결과물 제어":
+        # [5] 외부 데이터 처리
+        elif menu_main.selected_menu == "외부 데이터 처리":
+            menu_dict_other_data = {
+                0: "이전으로",
+                1: "UserDic.json srs화",
+                2: "웹 게시글 txt화"
+            }
+            menu_other_data = Menu(menu_dict_other_data)
+            menu_other_data.title("에라 파일과 관련성이 적은 데이터의 처리 메뉴입니다.")
+            no_othermenu = menu_other_data.run_menu()
+            
+            if not no_othermenu: # 이전으로
+                continue
+
+            last_work_name = menu_other_data.selected_menu
+
+            if last_work_name == "UserDic.json srs화":
+                last_work = EXTFunc().userdict_to_srs()
+                if not last_work:
+                    input("작업한 내용이 없습니다.")
+                    continue
+
+                if MenuPreset().yesno("바로 srs화를 진행할까요?"):
+                    ResultFunc().make_result(last_work_name, last_work, 2)
+                else:
+                    input("저장된 infodict 데이터를 기반으로 '결과물 srs화'를 해주셔야 srs화가 되니 참고해주세요.")
+            elif last_work_name == "웹 게시글 txt화":
+                last_work = CrawlFunc().crawl_text()
+                if last_work == None:
+                    input("작업한 내용이 없습니다.")
+                    continue
+
+                print("바로 txt화를 진행합니다.")
+                ResultFunc().make_result(last_work_name, last_work)
+
+        # [6] 결과물 처리
+        elif menu_main.selected_menu == "결과물 처리":
             menu_dict_result = {
                 0: "이전으로",
                 1: "결과물 TXT화",
                 2: "결과물 ERB화",
                 3: "결과물 srs화",
                 4: "결과물 xlsx화",
-                5: "UserDic.json srs화"
                 }
             menu_result = Menu(menu_dict_result)
             menu_result.title("추출 결과물에 대한 제어 메뉴입니다.")
             no_resultmenu = menu_result.run_menu()
             if not no_resultmenu:
                 continue
-            elif no_resultmenu == 5: # UserDic infodict화
-                last_work = EXTFunc().userdict_to_srs()
-                if not last_work:
-                    input("작업한 내용이 없습니다.")
-                    continue
-                last_work_name = menu_result.selected_menu
-                if MenuPreset().yesno("바로 srs화를 진행할까요?"):
-                    ResultFunc().make_result(last_work_name, last_work, 2)
-                else:
-                    input("저장된 infodict 데이터를 기반으로 '결과물 srs화'를 해주셔야 srs화가 되니 참고해주세요.")
-            else:
-                ResultFunc().make_result(last_work_name, last_work, no_resultmenu - 1)
+
+            ResultFunc().make_result(last_work_name, last_work, no_resultmenu - 1)
             # 결과물 처리 이후 last_work, last_work_name 은 초기화되지 않음
 
-        # [4] 프로그램 정보
+        # [7] 프로그램 정보
         elif menu_main.selected_menu == "프로그램 정보":
             xml_settings = SettingXML()
             menu_dict_prginfo = {0: "이전으로", 1: "버전명", 2: "오류보고 관련", 3: "유의사항"}
@@ -197,10 +240,6 @@ def run_main():
                 print("{}/issues 으로 연락주세요.".format(xml_settings.show_info("github")))
             elif no_proginfo == 3:
                 print(xml_settings.show_info("caution"))
-
-        # [5] 프로그램 종료
-        elif menu_main.selected_menu == "프로그램 종료":
-            break
 
     CommonSent.end_comment()
 
