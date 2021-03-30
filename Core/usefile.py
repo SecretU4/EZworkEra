@@ -396,15 +396,16 @@ class MenuPreset:
         menu_encode_dict = {
             0: "UTF-8",
             1: "UTF-8 with BOM",
-            2: "SHIFT-JIS",
-            3: "일본어 확장(cp932)",
-            4: "EUC-KR",
-            5: "한국어 확장(cp949)",
+            2: "EUC-JP",
+            3: "SHIFT-JIS(일본어) 확장(cp932)",
+            4: "EUC-KR(한국어) 확장(cp949)",
+            5: "UTF-16 LE",
         }
         namedict_encode = {
             "UTF-8 with BOM":"UTF-8-sig",
-            "일본어 확장(cp932)":"cp932",
-            "한국어 확장(cp949)":"cp949"
+            "SHIFT-JIS(일본어) 확장(cp932)":"cp932",
+            "EUC-KR(한국어) 확장(cp949)":"cp949",
+            "UTF-16 LE":"utf-16-le"
         }
         encode = Menu(menu_encode_dict)
         encode.title("대상 파일의 인코딩을 선택하세요.")

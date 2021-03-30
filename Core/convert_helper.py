@@ -39,7 +39,8 @@ def result_maker(filename, dir_from):
     return filename
 
 
-encode_dict = {"Shift-JIS": "cp932", "UTF-8 with BOM": "utf-8-sig", "Korean-Windows": "cp949"}
+encode_dict = {"Shift-JIS": "cp932", "UTF-8 with BOM": "utf-8-sig",
+    "Korean-Windows": "cp949", "UTF-16 LE":"utf-16-le"}
 
 
 class ImageConvert:
