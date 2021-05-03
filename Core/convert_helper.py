@@ -1,10 +1,13 @@
 """Simple file encoding & image format converter"""
+if __name__ == "__main__":
+    from PySide2.QtCore import QCoreApplication
+    QCoreApplication.setLibraryPaths([r"E:\ProgramData\Anaconda3\envs\ezworkera\Lib\site-packages\PySide2\plugins"]) # Write your QT_PLUGIN_PATH
 
 import sys
 import os
 import chardet
 from PIL import Image
-from PyQt5.QtWidgets import (
+from PySide2.QtWidgets import (
     QApplication,
     QWidget,
     QPushButton,
@@ -20,8 +23,8 @@ from PyQt5.QtWidgets import (
     QMainWindow,
     QMessageBox,
 )
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QCoreApplication, QThread, pyqtSignal, pyqtSlot
+from PySide2.QtGui import QIcon
+from PySide2.QtCore import QCoreApplication, QThread, Signal, Slot
 from simple_util import BringFiles
 # import debugpy
 
@@ -253,7 +256,7 @@ class MainWidget(QWidget):
             result_path = self.selected_dir
         os.startfile(result_path)
 
-    @pyqtSlot(int)
+    @Slot(int)
     def progbar_set(self, progress_stat):
         if not self.work_started:
             self.prog_bar.setMaximum(progress_stat)
@@ -261,7 +264,7 @@ class MainWidget(QWidget):
         else:
             self.prog_bar.setValue(progress_stat)
 
-    @pyqtSlot(bool)
+    @Slot(bool)
     def donebox(self):
         msgbox = QMessageBox(
             QMessageBox.Warning,
@@ -332,8 +335,8 @@ class MainWindow(QMainWindow):
 
 
 class MyThread(QThread):
-    processed = pyqtSignal(int)
-    finished = pyqtSignal(bool)
+    processed = Signal(int)
+    finished = Signal(bool)
 
     def __init__(self, target_array, bar_array, option_array, parent=None):
         super().__init__(parent)
