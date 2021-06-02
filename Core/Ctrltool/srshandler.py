@@ -110,3 +110,7 @@ class SRSEditor:
             print("%s 내부에서 중복되는 요소들이 발견되었습니다." % filename)
 
         return result_dict
+
+
+class SRSFunc:
+    pass

@@ -8,11 +8,11 @@ Classes:
 import re
 import os
 import openpyxl
-from customdb import ERBMetaInfo, InfoDict, FuncInfo, SheetInfo
+from customdb import *
 from usefile import DirFilter, FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import Menu, StatusNum
-from . import CSVFunc, ERBFunc
+from . import ERBFunc
 
 
 class ExportData:
