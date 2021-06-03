@@ -148,6 +148,49 @@ class SRSEditor:
         return result_dict, filtered
 
 
+class SRSMaker:
+    """주어진 자료를 dict형으로 변환해 srs화하기 쉽게 해줌"""
+    def __init__(self, data):
+        self.data = data
+
+    def make_srsdict(self, dupcheck=None, text=""):
+        srsdict = {}
+        have_null = {}
+        dup_caseset = set()
+
+        if len(self.data) != 2:
+            raise IndexError("데이터 갯수가 올바르지 않습니다")
+        data_a, data_b = self.data
+        
+        if type(data_a) == type(data_b):
+            key_vals = []
+            if isinstance(data_a, dict): # CSV 변수목록 or FuncInfo
+                k_data_keys = list(data_a.keys())
+                v_data_keys = list(data_b.keys())
+                total_keys = DataFilter().dup_filter(k_data_keys + v_data_keys)
+                for t_key in total_keys:
+                    if t_key not in k_data_keys:
+                        have_null[t_key] = 1
+                    elif t_key not in v_data_keys:
+                        have_null[t_key] = 2
+                    else:
+                        key_vals.append( (data_a[t_key], data_b[t_key]) )
+            elif isinstance(data_a, list):                
+                key_vals = zip(DataFilter().strip_filter(data_a), DataFilter().strip_filter(data_b))
+
+            if key_vals:
+                for key, value in key_vals:
+                    if dupcheck:
+                        dup_case = dupcheck.check(key, value)
+                        dupcheck.after(key, value)
+                        dup_caseset.add(dup_case)
+                    srsdict[key] = value
+        else:
+            raise TypeError("%s두 데이터의 자료형이 같지 않습니다." % text)
+
+        return srsdict, have_null, dup_caseset, dupcheck
+
+
 class SRSFunc:
     def merge_srs(self, files):
         if not files:
@@ -176,33 +219,7 @@ class SRSFunc:
         if len(key_dataset) != len(val_dataset):
             print("%s특정 자료의 개수가 같지 않아 올바른 동작을 보장할 수 없습니다." % text)
 
-        have_null = {}
-        srsdict = {}
-        dup_caseset = set()
-        if type(key_dataset) == type(val_dataset):
-            key_vals = []
-            if isinstance(key_dataset, dict): # CSV 변수목록 or FuncInfo
-                k_data_keys = list(key_dataset.keys())
-                v_data_keys = list(val_dataset.keys())
-                total_keys = DataFilter().dup_filter(k_data_keys + v_data_keys)
-                for t_key in total_keys:
-                    if t_key not in k_data_keys:
-                        have_null[t_key] = 1
-                    elif t_key not in v_data_keys:
-                        have_null[t_key] = 2
-                    else:
-                        key_vals.append( (key_dataset[t_key], val_dataset[t_key]) )
-            elif isinstance(key_dataset, list):                
-                key_vals = zip(DataFilter().strip_filter(key_dataset), DataFilter().strip_filter(val_dataset))
-
-            if key_vals:
-                for key, value in key_vals:
-                    dup_case = dupcheck.check(key, value)
-                    dup_caseset.add(dup_case)
-                    srsdict[key] = value
-                    dupcheck.after(key, value)            
-        else:
-            raise TypeError("%s두 데이터의 자료형이 같지 않습니다." % text)
+        srsdict, have_null, dup_caseset, dupcheck = SRSMaker((key_dataset, val_dataset)).make_srsdict(dupcheck, text)
 
         if not srsdict:
             print("%s처리 가능한 데이터를 찾지 못했습니다." % text)
