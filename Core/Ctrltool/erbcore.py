@@ -1,7 +1,7 @@
 # ERB 관련 모듈
 import re
-from customdb import ERBMetaInfo, InfoDict
-from usefile import FileFilter, LoadFile, LogPreset, MenuPreset
+from customdb import ERBMetaInfo, InfoDict, SheetInfo
+from usefile import CustomInput, FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import StatusNum
 from System.xmlhandling import ERBGrammarXML, SettingXML
@@ -19,7 +19,11 @@ class ERBLoad(LoadFile):
     def make_erblines(self):
         return self.make_bulklines(self.debug_log)
 
-    def search_line(self, *args, except_args=None):
+    def search_line(self, *args, except_args=None, opt=0):
+        """불러온 ERB 파일 내 특정 단어가 포함된 행 리스트 출력
+        
+        opt bit 1 : 참이면 startswith인 경우에만 결과에 포함
+        """
         self.make_erblines()
         self.targeted_list = []
         skip_switch = 0
@@ -38,7 +42,10 @@ class ERBLoad(LoadFile):
                             continue
                 for target in args:
                     if target in line:
+                        if opt & 0b1 and not line.strip().startswith(target):
+                            continue
                         self.targeted_list.append(line)
+                        break
         return self.targeted_list
 
 
@@ -632,7 +639,7 @@ class ERBVFinder:
         "UPBASE": "BASE",
         "DOWNBASE": "BASE",
     }
-    symbol_filter = r":([^&=,;\*\#\$\%\/\|\!\+\-\.\(\)\<\>\{\}\r\n]+)"
+    context_filter = r":([^\s,\)=\+\-]+)"
     # target_list = ['TARGET','PLAYER','MASTER','ASSI'] #TODO 차원지원 필요함
 
     def __init__(self, csvdict, log_set=None):
@@ -649,7 +656,7 @@ class ERBVFinder:
             raise TypeError
         csv_all_head = self.csv_head + list(self.extra_dict.keys())
         re_varshead = "({})".format("|".join(csv_all_head))
-        self.csvvar_re = re.compile(re_varshead + self.symbol_filter)
+        self.csvvar_re = re.compile(re_varshead + self.context_filter)
         self.log_set = log_set
 
     def find_csvfnc_line(self, line):
@@ -665,7 +672,8 @@ class ERBVFinder:
             var_head = var_head.strip()
             var_context = var_context.strip()
             if ":" in var_context:
-                var_pnoun, var_context_t, *etc = var_context.split(":")
+                var_pnoun, _, *etc = var_context.split(":")
+                var_context_t = re.compile(self.context_filter).search(var_context).group(1)
                 if etc:
                     print(var_bulk, "개발자에게 보고바람")
             else:
@@ -758,7 +766,7 @@ class ERBBlkFinder:
 
     def __init__(self):
         self.block_data = InfoDict(1)  # {filename:{index:(func,(code_block))}}
-        self.files, self.encode_type = FileFilter(1).get_filelist("ERB")
+        self.files, self.encode_type = CustomInput("ERB").get_filelist()
 
     def block_maker(self):
         for filename in self.files:
@@ -786,30 +794,65 @@ class ERBFunc:
     def __init__(self):
         self.result_infodict = InfoDict(1)
 
-    def extract_printfunc(self, erb_files=None, encode_type=None):
+    def extract_printfunc(self, erb_files=None, encode_type=None, opt=0):
+        """ERB 파일 내 출력문 데이터를 추출하는 함수
+        
+        opt bit 1 : 차트 내 중복 context 제거, 2: 파일당 차트 할당, 3: 공백 출력안함
+        """
         print("PRINT/DATAFORM 구문의 추출을 시작합니다.")
         if not erb_files or not encode_type:
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
         file_count_check = StatusNum(erb_files, "파일")
         file_count_check.how_much_there()
+        result_sheet = SheetInfo()
+        sheet_tags = ["COM_type", "context"]
+        if not opt & 0b10: # 파일당 차트 할당 아님
+            sheet_tags.insert(0, "file")
+            sheetname = "print_sent"
+            result_sheet.add_sheet(sheetname, sheet_tags)
+        if opt & 0b1: # 중복 후처리
+            dup_list = list()
 
         for filename in erb_files:
             bulk_lines = ERBLoad(filename, encode_type)
-            printfunc_list = bulk_lines.search_line("PRINT", "DATAFORM", except_args=["PRINTDATA"])
+            if opt & 0b10: # 파일당 차트 할당
+                sheetname = filename
+                result_sheet.add_sheet(sheetname, sheet_tags)
+
+            if opt & 0b1000: # 주석처리 모드
+                printfunc_list = [line for line in bulk_lines.make_erblines() if line.find(";")]
+            else:
+                printfunc_list = bulk_lines.search_line("PRINT", "DATA", except_args=["PRINTDATA","DATALIST"], opt=0b1)
+
             for line in printfunc_list:
-                if len(line.split()) == 1:
-                    printfunc_list.remove(line)
-            self.result_infodict.add_dict(filename, printfunc_list)
+                comtype = line.split()[0]
+                context = " ".join(line.split()[1:])
+                if opt & 0b1: # 중복 후처리
+                    if dup_list.count(context):
+                        continue
+                    else:
+                        dup_list.append(context)
+                if opt & 0b100: # 공백 처리안함
+                    if not context:
+                        continue
+    
+                result_sheet.add_row(sheetname, file=filename, COM_type=comtype, context=context)
             file_count_check.how_much_done()
 
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
-        return self.result_infodict  # {파일명:lines} 형태가 포함된 infodict
+        if opt & 0b1 and dup_list:
+            print("중복으로 발견되어 누락 처리한 문장이 한 개 이상 존재합니다. 이후 처리에 유의해주세요.")
+        return result_sheet  # SheetInfo
 
-    def search_csv_var(self, erb_files=None, encode_type=None):
+    def search_csv_var(self, erb_files=None, encode_type=None, opt=0):
+        """ERB 파일 내 사용된 csv 변수 목록 출력
+        
+        opt bit 1: 참이면 CSV별 차트, 아니면 ERB별 차트
+        """
         print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
         if not erb_files or not encode_type:
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
         csvvar_list = ERBUtil().csv_infodict_maker()
         if csvvar_list == None:
             try:
@@ -820,39 +863,44 @@ class ERBFunc:
         vfinder = ERBVFinder(csvvar_list)
         file_count_check = StatusNum(erb_files, "파일")
         file_count_check.how_much_there()
+        result_sheet = SheetInfo()
+        sheet_tags = ["file", "var_name", "orig_word"]
 
         for filename in erb_files:
             erb_bulk = ERBLoad(filename, encode_type).make_erblines()
             self.func_log.write_loaded_log(filename)
+            if not opt & 0b1: # ERB별 차트
+                result_sheet.add_sheet(filename, sheet_tags)
+                sheet_name = filename
+
             file_results = []
             for line in erb_bulk:
                 vars_list = vfinder.find_csvfnc_line(line)
                 if vars_list:
                     file_results.extend(vars_list)
             dup_res_list = DataFilter().dup_filter(file_results)
-            var_check = dict()
-            for fnc_info in dup_res_list:
-                fnchead, fnctext, _, _ = fnc_info
-                if fnchead not in var_check.keys():
-                    var_check[fnchead] = list()
-                var_check[fnchead].append(fnctext)
-            result_lines = ["파일명: {}에서 이하의 변수가 발견됨.\n\n".format(filename)]
-            for varkey in var_check.keys():
-                context_list = DataFilter().dup_filter(var_check[varkey])
-                result_lines.append(varkey + "를 참조함\n")
-                result_lines.append(", ".join(context_list))
-                result_lines.append("\n\n")
-            self.result_infodict.add_dict(filename, result_lines)
+
+            for var_info in dup_res_list:
+                varhead, varname, _, _ = var_info
+                context = vfinder.print_csvfnc([var_info,])[0]
+                if opt & 0b1:
+                    sheet_name = varhead
+                    if sheet_name not in result_sheet.sheetdict.keys():
+                        result_sheet.add_sheet(sheet_name, sheet_tags)
+                    f_name = filename
+                else:
+                    f_name = varhead
+                result_sheet.add_row(sheet_name, file=f_name, var_name=varname, orig_word=context)
             file_count_check.how_much_done()
 
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
-        return self.result_infodict  # {파일명:정보 텍스트} 형태의 infodict
+        return result_sheet # SheetInfo
 
     def remodel_indent(self, metainfo_option_num=0, metalineinfo=None):
         if metalineinfo == None:
             print("들여쓰기를 자동 교정하는 유틸리티입니다.")
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
             file_count_check = StatusNum(erb_files, "파일")
             file_count_check.how_much_there()
 
@@ -877,7 +925,7 @@ class ERBFunc:
         return result_dataset
 
     def translate_txt_to_erb(self, era_type, csvvar_dict):
-        txt_files, encode_type = FileFilter().get_filelist("TXT")
+        txt_files, encode_type = CustomInput("TXT").get_filelist()
         file_count_check = StatusNum(txt_files, "파일")
         file_count_check.how_much_there()
         chara_num = input("작성하실 캐릭터의 번호를 입력해주세요. : ")
@@ -898,7 +946,7 @@ class ERBFunc:
     def replace_num_or_name(self, mod_num=0, erb_files=None, encode_type=None):
         """0:숫자 > 변수, 1: 변수 > 숫자"""
         if not erb_files or not encode_type:
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
         file_count_check = StatusNum(erb_files, "ERB 파일")
         file_count_check.how_much_there()
         csv_infodict = ERBUtil().csv_infodict_maker(mod_num + 1, self.func_log)
@@ -919,10 +967,10 @@ class ERBFunc:
         mod_dict = {1:"중첩 PRNTDATA 변환"}
         if metalineinfo == None:
             print("불완전한 수식을 교정해주는 유틸리티입니다.")
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
             file_count_check = StatusNum(erb_files, "파일")
             file_count_check.how_much_there()
-            mod_no = MenuPreset().select_mod(mod_dict, 0)
+            mod_no = MenuPreset().select_mod(mod_dict)
 
             for filename in erb_files:
                 erb_bulk = ERBLoad(filename, encode_type).make_erblines()
@@ -937,7 +985,7 @@ class ERBFunc:
 
             result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:ERBMetaInfo 클래스 메소드}
         else:
-            mod_no = MenuPreset().select_mod(mod_dict, 1)
+            mod_no = MenuPreset().select_mod(mod_dict, 0b1)
             result_dataset = ERBUtil().grammar_corrector(metalineinfo, mod_no)  # ERBMetaInfo 클래스 메소드
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
@@ -946,7 +994,7 @@ class ERBFunc:
     def memory_optimizer(self, erb_files=None, encode_type=None):
         print("현재 기능이 완성되지 않았습니다. 되도록 백업 후 이용해주시고, 구상 파일에만 사용해주세요.")
         if not erb_files or not encode_type:
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
         file_count_check = StatusNum(erb_files, "파일")
         file_count_check.how_much_there()
 
@@ -958,7 +1006,6 @@ class ERBFunc:
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return self.result_infodict  # {파일명:lines} 형태가 포함된 infodict
-
 
     def erb_trans_helper(self):  # TODO 공사중
         """번역본의 원본 이식에 도움을 주는 함수"""

@@ -5,13 +5,13 @@ Classes:
     SubFilter
     ResultFunc
 """
-import re
 import os
-from customdb import ERBMetaInfo, InfoDict, FuncInfo
+import openpyxl
+from customdb import *
 from usefile import DirFilter, FileFilter, LoadFile, LogPreset, MenuPreset
-from util import CommonSent, DataFilter
+from util import CommonSent, DataFilter, DupItemCheck
 from System.interface import Menu, StatusNum
-from . import CSVFunc, ERBFunc
+from . import ERBFunc, SRSFunc
 
 
 class ExportData:
@@ -19,12 +19,10 @@ class ExportData:
 
     Functions:
         to_TXT([filetype,option_num,encode_type])
-        to_SRS([srs_opt, srsname])
     Vairables:
         dest_dir: 결과물 저장 폴더
         target_name: 입력받은 데이터 이름
         target_data: 입력받은 데이터
-        lazy_switch: 데이터 미선택시 켜짐. 작업 진행 확인용
         log_file: 로그파일 생성용 LogPreset
     Misc:
         single_namedict
@@ -37,14 +35,16 @@ class ExportData:
         str: "ONLYSTRING",
         list: "ONLYLIST",
         ERBMetaInfo: "ONLYMETALINES",
+        SheetInfo: "ONLYSHEET",
     }
 
     def __init__(self, dest_dir, target_name, target_data):
         self.dest_dir = dest_dir  # 결과물 저장 폴더
         self.target_name = target_name
         self.target_data = target_data
-        self.lazy_switch = 0  # 데이터 미선택한 경우 1
         self.log_file = LogPreset(4)  # 중간에 workclass 바꾸는 경우 있어 초기화 필요
+        self.res_filename = ""
+        self.encoding = "UTF-8"
 
     def __multi_data_input(self, data_count=2):
         """입력받는 데이터가 2개인 경우 사용. sav 디랙토리의 저장 파일을 불러옴."""
@@ -63,8 +63,11 @@ class ExportData:
             inputed_count += 1
         return tuple(result_input)
 
-    def __data_type_check(self, mod_no, *data_names):
-        """입력받은 데이터 체크 후 인터페이스 선택 후 tuple 요소로 된 list 출력"""
+    def __data_type_check(self, *data_names, max_data=0):
+        """입력받은 데이터 체크 후 인터페이스 선택 후 tuple 요소로 된 list 출력
+        
+        max_data = 입력받을 수 있는 최대 데이터 수. 0이면 한도 없음
+        """
         checked_datadict = dict()
         for data in data_names:
             if isinstance(data, InfoDict):  # InfoDict 자료형인 경우
@@ -77,7 +80,7 @@ class ExportData:
                     data_tag = "N/A"
                     self.log_file.write_error_log(aterror)
                 dict_data_vals = list(data.dict_main.values())  # InfoDict 결과물이라면 dict 데이터 list임.
-                if isinstance(dict_data_vals[0], (dict, list, ERBMetaInfo)) == True:
+                if isinstance(dict_data_vals[0], (dict, list, ERBMetaInfo, SheetInfo)) == True:
                     tagging_data = {
                         "All {} - {} etc.".format(data_tag, list(data.dict_main.keys())[0]): data
                     }
@@ -89,9 +92,9 @@ class ExportData:
                     tagging_data = {"None": None}
             elif isinstance(data, FuncInfo):
                 tagging_data = {"ex: " + list(data.file_func_dict.keys())[0]: data}
-            elif isinstance(data, (dict, list, str, ERBMetaInfo)):
+            elif isinstance(data, (dict, list, str, ERBMetaInfo, SheetInfo)):
                 tagging_data = {self.single_namedict[type(data)]: data}
-            else:  # 자료형이 InfoDict, ERBMetaInfo, dict, list 아님
+            else:  # 자료형이 InfoDict, ERBMetaInfo, SheetInfo, dict, list 아님
                 print("입력된 데이터가 유효한 데이터가 아닙니다.")
                 print("{} 타입 자료형입니다.".format(type(data)))
                 self.log_file.write_log("유효한 데이터 아님 - {} 타입 자료형\n".format(type(data)))
@@ -112,7 +115,8 @@ class ExportData:
         while True:
             menu_chk_datalist.title(
                 "출력할 데이터를 원하시는 만큼 선택해주세요.",
-                "ALL ~ etc 라 표기된 항목은 표기된 자료가 포함된 전체를 뜻합니다.",
+                "All ~ etc 라 표기된 항목은 표기된 자료가 포함된 전체를 뜻합니다.",
+                "ONLY ~ 라 표기된 항목은 자료가 단독으로 입력되었다는 뜻입니다."
                 "모두 고르셨다면 돌아가기를 눌러주세요.",
             )
             menu_chk_datalist.run_paged_menu()
@@ -120,7 +124,7 @@ class ExportData:
             if selected_menu == "돌아가기":
                 break
             final_list.append((selected_menu, datasearch_dicts[selected_menu]))
-            if len(final_list) >= 2 and mod_no == 1:
+            if len(final_list) >= max_data:
                 break
             selected_name_list.append(selected_menu)
             menu_chk_datalist.title(
@@ -128,110 +132,11 @@ class ExportData:
             )
         return tuple(final_list)  # ((tag,data),(tag,data))
 
-    def __SRS_multi_write(self, data_orig, data_trans, keyname, opt_no=0):
-        """SRS용 교차출력 함수. 유효하지 않은 내용 판단이 동시에 이루어짐."""
-        self.worked_switch = 0
-        error_target = []
-        if data_orig == None or data_trans == None:
-            if data_trans == None:
-                error_target.append(self.trans_key)
-            if data_orig == None:
-                error_target.append(self.orig_key)
-            self.log_file.write_log("{} 자료를 이용한 SRS를 작성할 수 없습니다.".format("자료와 ".join(error_target)))
-            return 0
-
-        if self.infodict_switch:
-            if isinstance(data_orig, dict) and isinstance(data_trans, dict):
-                # CSV 변수목록
-                orig_keys = list(data_orig.keys())
-                trans_keys = list(data_trans.keys())
-                total_keys = DataFilter().dup_filter(orig_keys + trans_keys)
-                dict_switch = 1
-            elif isinstance(data_orig, list) and isinstance(data_trans, list):
-                # ERB lines
-                orig_keys = data_orig
-                trans_keys = data_trans
-                total_keys = range((len(data_orig) + len(data_trans) / 2))
-                dict_switch = 0
-        elif isinstance(data_orig, dict) and isinstance(data_trans, dict):
-            # FuncInfo 대응용
-            orig_keys = list(data_orig.keys())
-            trans_keys = list(data_trans.keys())
-            total_keys = DataFilter().dup_filter(orig_keys + trans_keys)
-            dict_switch = 1
-        else:
-            orig_keys = data_orig
-            trans_keys = data_trans
-            total_keys = range((len(data_orig) + len(data_trans) / 2))
-            dict_switch = 0
-
-        if not dict_switch and len(total_keys) != (len(data_orig) + len(data_trans)):
-            print("줄의 개수가 맞지 않아 오류가 발생할 수 있습니다.")
-            self.log_file.write_log("두 자료의 행 개수 맞지 않음\n")
-
-        with LoadFile(self.srs_filename).addwrite() as srs_file:
-            srs_file.write(";이하 {0}\n\n".format(keyname))
-            self.log_file.write_log(keyname + " 정보를 불러옴\n")
-
-            for total_key in total_keys:
-                if total_key in orig_keys and total_key in trans_keys:
-                    val_orig = data_orig[total_key]
-                    val_trans = data_trans[total_key]
-                    if isinstance(val_orig, str) and isinstance(val_trans, str):
-                        if val_orig.strip() == "" and val_trans.strip() == "":
-                            self.log_file.write_log("{} 의 내용이 빈칸입니다.\n".format(total_key))
-                            self.cantwrite_srs_count += 1
-                            continue
-                        orig_text = [val_orig.strip()]
-                        trans_text = [val_trans.strip()]
-                    elif isinstance(val_orig, list) and isinstance(val_trans, list):  # FuncInfo 대응용
-                        if not val_orig and not val_trans:
-                            self.log_file.write_log("%s 함수의 자료가 발견되지 않았습니다.\n" % total_key)
-                            self.cantwrite_srs_count += 1
-                            continue
-                        orig_text = val_orig
-                        trans_text = val_trans
-                elif dict_switch:
-                    if total_key not in orig_keys:
-                        error_dictname = self.orig_key
-                    elif total_key not in trans_keys:
-                        error_dictname = self.trans_key
-                    self.log_file.write_log(
-                        "{}번 숫자가 {}에 존재하지 않습니다.\n".format(total_key, error_dictname)
-                    )
-                    srs_file.write(";숫자 {} 확인필요\n\n".format(total_key))
-                    self.cantwrite_srs_count += 1
-                    continue
-                else:
-                    orig_text = [orig_keys[total_key]]
-                    trans_text = [trans_keys[total_key]]
-
-                if len(orig_text) != len(trans_text):
-                    print("특정 자료의 개수가 같지 않아 올바른 동작을 보장할 수 없습니다.")
-                for orig_txt, trans_txt in zip(orig_text, trans_text):
-                    orig_txt = orig_txt.strip()
-                    trans_txt = trans_txt.strip()
-                    try:  # 중복변수 존재 유무 검사
-                        self.for_dup_content.index(orig_txt)
-                    except ValueError:
-                        self.for_dup_content.append(orig_txt)
-                        if opt_no: # 모드 설정이 하나 이상 있을때
-                            if opt_no & 0b1 and orig_txt == trans_txt: # 미번역 단어 제외
-                                continue
-                            if opt_no & 0b10 and len(orig_txt) < 2: # 짧은 단어 필터링
-                                self.log_file.write_log(
-                                    "단어가 너무 짧습니다 : {}번째 항목의 {}\n".format(total_key, orig_txt)
-                                )
-                                self.cantwrite_srs_count += 1
-                                continue
-                            if opt_no & 0b100: # CSV 표적화
-                                orig_txt = ":" + orig_txt
-                                trans_txt = ":" + trans_txt
-                        srs_file.write("{}\n{}\n\n".format(orig_txt, trans_txt))
-                        self.worked_switch = 1
-
-        if not self.worked_switch:
-            self.log_file.write_log("전체 중복 또는 오류로 인해 자료 전체 통과됨\n")
+    def __output_txt(self, lines, add_flag=False):
+        txt_file = LoadFile(self.res_filename, self.encoding)
+        opened = txt_file.addwrite() if add_flag else txt_file.readwrite()
+        opened.writelines(lines)
+        txt_file.onlyopen().close()
 
     def to_TXT(self, filetype="TXT", option_num=0, encode_type="UTF-8"):
         """입력받은 데이터를 텍스트 파일 형태로 출력하는 함수.
@@ -244,18 +149,18 @@ class ExportData:
         # txt, erb 공용
         # erb metaline은 ERBUtil.indent_maker에서 텍스트.readlines형으로 양식화됨
         self.log_file.workclass = "TXTwrite"
+        self.encoding = encode_type
         if self.target_data == None:
             print_data = MenuPreset()
             self.target_data = print_data.load_saved_data(0, "미리 실행된 자료가 없습니다.")
             if self.target_data == None:
                 print("데이터가 선택되지 않았습니다.")
-                self.lazy_switch = 1
-                return 0
+                return False
             else:
                 self.target_name = print_data.selected_name
         else:
             print("이번 구동 중 실행된 {} 자료를 {}화 합니다.".format(self.target_name, filetype))
-        target_data = self.__data_type_check(0, self.target_data)  # ((자료명,알수 없는 자료형),...)
+        target_data = self.__data_type_check(self.target_data)  # ((자료명,알수 없는 자료형),...)
         menu_dict_sel_dest = {0: "원본 위치에 저장", 1: "결과물 폴더에 저장"}
         menu_sel_dest = Menu(menu_dict_sel_dest)
         menu_sel_dest.title(
@@ -290,101 +195,210 @@ class ExportData:
                 else:
                     data_filename = que_key
                 result_filename = "{}.{}".format(FileFilter().sep_filename(data_filename), filetype)
-                the_filename = self.dest_dir + result_filename
+                self.res_filename = self.dest_dir + result_filename
             elif dest_mod == 0:  # 원본 디렉토리에 저장
-                the_filename = que_key
+                self.res_filename = que_key
             self.log_file.which_type_loaded(filetype)
 
-            with LoadFile(the_filename, encode_type).readwrite() as txt_file:
-                if filetype == "TXT":
-                    txt_file.write("{}에서 불러옴\n".format(self.target_name))
-                context = que[que_key]
-                if type(context) == dict:
-                    for key, value in list(context.items()):
-                        print("{}:{}".format(key, value), file=txt_file)
-                elif type(context) == FuncInfo:
-                    for key, value in list(context.func_dict.items()):
-                        if isinstance(value, (str, int)):
-                            value = value
-                        print("{}:{}".format(key, ",\n".join(value)), file=txt_file)
-                elif option_num == 0:
-                    print("{}\n".format(context), file=txt_file)
-                elif option_num == 1:
-                    if type(context) == list:
-                        txt_file.writelines(context)
-                    elif isinstance(context, ERBMetaInfo):
-                        the_lines = ERBFunc().remodel_indent(metalineinfo=context.printable_lines())
-                        txt_file.writelines(the_lines)
-                    else:
-                        print("텍스트화 할 수 없는 데이터입니다. 옵션을 바꿔 다시 시도해주세요.")
-                        self.log_file.write_log("Can not write text by {}".format(type(context)))
+            result_lines = []
+            if filetype == "TXT":
+                result_lines.append("{}에서 불러옴\n".format(self.target_name))
+            context = que[que_key]
+            if type(context) == dict:
+                for key, value in list(context.items()):
+                    result_lines.append("{}:{}\n".format(key, value))
+            elif type(context) == FuncInfo:
+                for key, value in list(context.func_dict.items()):
+                    if isinstance(value, (str, int)):
+                        value = value
+                    result_lines.append("{}:{}".format(key, ",\n".join(value)))
+            elif option_num == 0:
+                result_lines.append("{}\n".format(context))
+            elif option_num == 1:
+                if type(context) == list:
+                    result_lines = context
+                elif isinstance(context, ERBMetaInfo):
+                    result_lines = ERBFunc().remodel_indent(metalineinfo=context.printable_lines())
+                else:
+                    print("텍스트화 할 수 없는 데이터입니다. 옵션을 바꿔 다시 시도해주세요.")
+                    self.log_file.write_log("Can not write text by {}".format(type(context)))
+            if result_lines:
+                self.__output_txt(result_lines)
             numstat.how_much_done()
         self.log_file.sucessful_done()
+        return True
 
-    def to_SRS(self, srs_opt=0, srsname="autobuild"):
+    def to_xlsx(self, xlsxname=None):
+        """입력받은 데이터를 xlsx로 출력하는 함수. 현재 SheetInfo형만 지원함."""
+        if self.target_data == None: # 지정된 데이터가 없다면 데이터 로드 시도
+            print_data = MenuPreset()
+            self.target_data = print_data.load_saved_data(0, "미리 실행된 자료가 없습니다.")
+            if self.target_data == None:
+                print("데이터가 선택되지 않았습니다.")
+                return False
+            else:
+                self.target_name = print_data.selected_name
+
+        if not xlsxname:
+            xlsxname = "basic_sheet"
+
+        _, data = self.__data_type_check(self.target_data, max_data=1)[0] # 최대 1개만
+        if not isinstance(data, SheetInfo):
+            print("차트화 기능은 현재 특정 기능에서만 지원합니다. 다른 처리방법을 시도해주세요.")
+            return False
+
+        xlsx_data = openpyxl.Workbook()
+        for count, o_sheetname in enumerate(data.sheetdict):
+            sheetname = FileFilter(2).sep_filename(o_sheetname)
+            if not count:
+                sheet = xlsx_data.active
+                sheet.title = sheetname
+            else:
+                xlsx_data.create_sheet(sheetname)
+                sheet = xlsx_data.get_sheet_by_name(sheetname)
+
+            main_data = data.sheetdict[o_sheetname].copy()
+            sheet_info = main_data.pop(0)
+            datatags = sheet_info["tags"]
+            sheet.append(datatags)
+            tags_dict = dict(zip(datatags, range(1,len(datatags)+1)))
+            for context in main_data:
+                apnd_dict = dict()
+                for key, value in context.items():
+                    apnd_dict[tags_dict[key]] = value
+                sheet.append(apnd_dict)
+        xlsx_data.save("%s%s.xlsx" % (self.dest_dir, xlsxname))
+        return True
+
+
+class ExportSRS(ExportData):
+    """ExportData에서 SRS 관련 기능만 독립시킨 클래스
+
+        Funcitons
+            to_SRS([srs_opt, srsname])
+    """
+    def __SRS_multi_write(self, o_data, t_data, keyname, flags, dup_chk, h_opt=0, opt_no=0):
+        """SRS용 교차출력 함수. 유효하지 않은 내용 판단이 동시에 이루어짐."""
+        debugging = False
+        error_target = []
+        error_code = 0b000
+
+        if o_data == None:
+            error_target.append(self.orig_key)
+        if t_data == None:
+            error_target.append(self.trans_key)
+        if error_target:
+            error_code |= 0b001
+            self.log_file.write_log("{} 자료를 이용한 SRS를 작성할 수 없습니다.".format("자료와 ".join(error_target)))
+            return False
+
+        self.log_file.write_log(keyname + " 정보를 불러옴\n")
+        lines = []
+
+        # srs_dict 생성 (SRSFormat 형태)
+        srs_result = SRSFunc().make_srsfmt(
+            o_data, t_data, dup_chk, keyname, opt_no, debugging
+        )
+        if srs_result:
+            srsfmt, dupcheck, error_cases = srs_result
+            dup_chk.main_dict.update(dupcheck.main_dict)
+            dup_chk.dup_dict.update(dupcheck.dup_dict)
+            lines = srsfmt.print_srs(h_opt, True)
+
+            error_lines = []
+            for cnt, error_list in enumerate(error_cases):
+                if cnt == 0: line = "미번역 단어: "
+                elif cnt == 1: line = "한글자 단어: "
+                elif cnt == 2: line = "원문 누락: "
+                elif cnt == 3: line = "번역문 누락: "
+                if error_list and flags & (2 ** cnt):
+                    line += str(error_list)
+                    error_lines.append(srsfmt.print_comment(line))
+        # 실제 srs 작성부
+        if lines:
+            if error_lines and opt_no & 0b10000:
+                error_code |= 0b010
+                lines.extend(error_lines)
+            self.__output_txt(lines, True)
+        else:
+            error_code |= 0b100
+            self.log_file.write_log("전체 중복 또는 오류로 인해 자료 전체 통과됨\n")
+
+        return lines, error_code
+
+    def to_SRS(self, srs_opt=0, srsname=None):
         """입력받은 데이터를 updateera의 simplesrs 양식으로 출력
 
         Variables:
             srs_opt: bit 기반 모드 설정 - 짧은 단어, srs 내부 중복 문자열 필터링 등 체크.
             srsname: 저장될 simplesrs 파일명
         """
-        total_worked_switch = 0
+        flags = 0b000000
+        h_opt = 0b0000
+        done_count = 0
+        failed_count = 0
         self.log_file.workclass = "SRSWrite"
-        self.cantwrite_srs_count = 0
         while True:
             dataset = self.__multi_data_input()
             print("처음 선택한 두 데이터만으로 진행합니다.\n")
             print("SRS 자료 입력시 첫번째를 원문, 두번째를 번역문으로 인식합니다.\n")
-            orig_dataset, trans_dataset, *_ = self.__data_type_check(
-                1, *dataset
-            )  # ((tag,data),(tag,data))
-            orig_data, trans_data = orig_dataset[1], trans_dataset[1]
+            o_dataset, t_dataset = self.__data_type_check(*dataset, max_data=2)
+            orig_data, trans_data = o_dataset[1], t_dataset[1]
             if orig_data and trans_data:
-                choose_yn = MenuPreset().yesno(
-                    0,
+                if MenuPreset().yesno(
                     "선택하신 두 자료가",
-                    "원본:  " + str(orig_dataset[0]),
-                    "번역본: " + str(trans_dataset[0]),
+                    "원본:  " + str(o_dataset[0]),
+                    "번역본: " + str(t_dataset[0]),
                     "입니까?",
-                )
-                if choose_yn == 0:
+                    ):
                     break
             else:
                 print("공란인 데이터가 있습니다. 다시 시도해주세요.")
-        self.srs_filename = "{}.simplesrs".format(self.dest_dir + srsname)
-        if bool(orig_data) == False or bool(trans_data) == False:
-            self.lazy_switch = 1
-            return 0
-        elif isinstance(orig_data, InfoDict) and isinstance(trans_data, InfoDict):
+
+        if srs_opt & 0b10000: # srs 내 제외사항 기록
+            exp_opt_dict = {
+                1:"미번역 단어",
+                2:"한글자 단어",
+                3:"원문 누락",
+                4:"번역문 누락"
+            }
+            exp_opt = MenuPreset().select_mod(
+                exp_opt_dict, 0b1010, "srs 내 작성할 항목을 선택해주세요."
+                )
+            flags |= exp_opt
+
+        # SRS type 설정부
+        ext_str = "simplesrs"
+        if not srsname:
+            srsname = "autobuild"
+        self.res_filename = "{}.{}".format(self.dest_dir + srsname, ext_str)
+
+        # 데이터가 InfoDict형이라면 데이터 목록 호출
+        if isinstance(orig_data, InfoDict) and isinstance(trans_data, InfoDict):
             orig_infokeys = list(orig_data.dict_main.keys())
             trans_infokeys = list(trans_data.dict_main.keys())
-            self.infodict_switch = 1
+            flags |= 0b010000 # isInfoDict
         else:
-            orig_infokeys = [orig_dataset[0]]
-            trans_infokeys = [trans_dataset[0]]
-            self.infodict_switch = 0
-        if os.path.isfile(self.srs_filename) == False:  # SRS 유무 검사
+            orig_infokeys = [o_dataset[0]]
+            trans_infokeys = [t_dataset[0]]
+
+        # SRS 가필 유무 검사
+        if not os.path.isfile(self.res_filename):
             print("SRS 파일을 새로 작성합니다.")
-            with LoadFile(self.srs_filename, "UTF-8-sig").readwrite() as srs_file:
-                wordwrap_yn = None
-                if isinstance(orig_data, InfoDict) and isinstance(trans_data, InfoDict):
-                    for dictname in orig_infokeys:
-                        if "chara" in dictname or "name" in dictname:
-                            print("이름 관련 파일명이 감지되었습니다.")
-                            wordwrap_yn = MenuPreset().yesno(
-                                1, "입력받은 데이터 전체를 정확한 단어 단위로만 변환하도록 조정할까요?"
-                            )
-                            break
-                # TRIM:앞뒤공백 제거, SORT:긴 순서/알파벳 정렬, WORDWRAP:정확히 단어 단위일때만 치환
-                if wordwrap_yn:
-                    srs_file.write("[-TRIM-][-SORT-][-WORDWRAP-]\n\n")
-                else:
-                    srs_file.write("[-TRIM-][-SORT-]\n\n")
-                self.for_dup_content = []
+            flags |= 0b100000 # isFirst
+            wordwrap_yn = False
+            if flags & 0b010000: # isInfoDict
+                for dictname in orig_infokeys:
+                    if "chara" in dictname.lower() or "name" in dictname.lower():
+                        print("이름 관련 파일명이 감지되었습니다.")
+                        wordwrap_yn = MenuPreset().yesno(
+                            "입력받은 데이터 전체를 정확한 단어 단위로만 변환하도록 조정할까요?"
+                        )
+                        break
+            h_opt = 0b1011 if wordwrap_yn else 0b1010
+            dup_chk = DupItemCheck()
         else:
-            with LoadFile(self.srs_filename, "UTF-8-sig").readonly() as srs_preread:
-                bulk_srs = srs_preread.read()
-                self.for_dup_content = SubFilter().srs_check_dup(bulk_srs)
+            _, dup_chk = SRSFunc().make_srsdict(self.res_filename)
 
         print("SRS 입력을 시작합니다...")
         for num in range(len(orig_infokeys)):
@@ -394,67 +408,58 @@ class ExportData:
             except IndexError as error:
                 comment = "두 자료의 항목 수 또는 행이 같지 않습니다."
                 self.log_file.write_error_log(error, self.orig_key, comment)
-                self.cantwrite_srs_count += 1
+                failed_count += 1
                 continue
-            if self.orig_key in list(ExportData.single_namedict.values()):
+
+            if self.orig_key in list(self.single_namedict.values()):
                 keyname = "단독파일"
             elif self.orig_key.startswith("ex: "):  # FuncInfo 대응용 임시
                 keyname = "단독파일"
             else:
                 keyname = FileFilter().sep_filename(self.orig_key)
 
-            if (
-                keyname != "단독파일"
-                and keyname.lower() != FileFilter().sep_filename(self.trans_key).lower()
-            ):
-                # orig_key와 trans_key가 일치하지 않을때
+            if (keyname != "단독파일" and keyname.lower() != 
+                FileFilter().sep_filename(self.trans_key).lower()
+                ): # orig_key와 trans_key가 일치하지 않을때
                 self.trans_key = FileFilter().search_filename_wordwrap(
                     trans_infokeys, keyname.split()
                 )
                 if self.trans_key == None:
-                    self.cantwrite_srs_count += 1
+                    failed_count += 1
                     self.log_file.write_log("키워드: {} 불일치 존재.\n\n".format(keyname))
                     continue
+
                 self.log_file.write_log("{}번째부터 순서 불일치로 추가탐색 진행함.\n".format(num))
-            if self.infodict_switch:
-                target_orig = orig_data.dict_main.get(self.orig_key)
-                target_trans = trans_data.dict_main.get(self.trans_key)
+
+            if flags & 0b010000: # isInfoDict
+                target_couple = orig_data.dict_main.get(self.orig_key), trans_data.dict_main.get(self.trans_key)
             elif isinstance(orig_data, FuncInfo) and isinstance(trans_data, FuncInfo):
                 # TODO 함수별 또는 파일별 나눠 분류 가능하도록
-                target_orig = orig_data.func_dict
-                target_trans = trans_data.func_dict
+                target_couple = orig_data.func_dict, trans_data.func_dict
             else:
-                target_orig = orig_data
-                target_trans = trans_data
-            self.__SRS_multi_write(target_orig, target_trans, keyname, srs_opt)
-            total_worked_switch += self.worked_switch
-        if total_worked_switch and self.cantwrite_srs_count == 0:
+                target_couple = orig_data, trans_data
+
+            multiwrite = self.__SRS_multi_write(*target_couple, keyname, flags, dup_chk, h_opt, srs_opt)
+            if not multiwrite:
+                failed_count += 1
+            else:
+                if multiwrite[0]: #is_worked 
+                    flags &= flags ^ 0b100000 # remove isFirst Flag when first write finished
+                    h_opt = 0
+                    done_count += 1
+                if multiwrite[1] & 0b100 or multiwrite[1] & 0b001:
+                    failed_count += 1
+
+        if done_count and failed_count == 0:
             pass
         else:
-            if not total_worked_switch:
+            if not done_count:
                 print("입력된 정보로 이전에 만들어진 SRS 파일이거나 오류로 인해 SRS의 가필이 이루어지지 않았습니다.")
-            elif self.cantwrite_srs_count != 0:
-                print("{}쌍의 데이터가 정확히 작성되지 못했습니다.".format(self.cantwrite_srs_count))
+            elif failed_count != 0:
+                print("{}쌍의 데이터가 정확히 작성되지 못했습니다.".format(failed_count))
             print("{}를 확인해주세요.".format(self.log_file.NameDir))
         self.log_file.sucessful_done()
-
-
-class SubFilter:
-    """필요시 타 모듈에서 사용 가능한 필터를 제공하는 모듈
-
-    Functions:
-        srs_check_dup(textbulk)
-    Misc:
-        wholeword: re 모듈용 필터. r'[^,;\\r\\n]+'
-    """
-
-    wholeword = r"[^,;\r\n]+"
-
-    def srs_check_dup(self, textbulk):
-        """이미 존재하는 srs 내의 original 문자열 데이터 list화"""
-        srs_textfilter = re.compile("{1}({0}){1}({0}){1}".format(self.wholeword, os.linesep))
-        found_list = list(map(lambda x: x[0], srs_textfilter.findall(textbulk)))
-        return DataFilter().dup_filter(found_list)
+        return True
 
 
 class ResultFunc:
@@ -473,34 +478,40 @@ class ResultFunc:
             target_data
                 출력될 데이터
             result_type
-                출력될 파일의 확장자 타입. 0:txt, 1:erb, 2:srs 이고 미입력시 txt가 출력됨.
+                출력될 파일의 확장자 타입. 0:txt, 1:erb, 2:srs, 3:xlsx 이고 미입력시 txt가 출력됨.
         """
+        done_success = None
         dirname = DirFilter("ResultFiles").dir_exist()
         result_file = ExportData(dirname, target_name, target_data)
-        if result_type == 0:
-            print("지정된 데이터의 TXT 파일화를 진행합니다.")
-            press_enter_yn = MenuPreset().yesno(1, "데이터에 줄바꿈이 되어있던 경우, 줄바꿈 출력이 가능합니다. 시도하시겠습니까?")
-            result_file.to_TXT(option_num=press_enter_yn)
-        elif result_type == 1:
-            print("지정된 데이터의 ERB 파일화를 진행합니다.")
-            result_file.to_TXT("ERB", 1, "UTF-8-sig")
-        elif result_type == 2:
-            print("지정된 데이터의 SRS 파일화를 진행합니다.")
-            print("csv 변수로 작성시 chara 폴더가 제외되어있어야 합니다.")
-            print("ERB 데이터로 시도시 두 자료의 행 위치가 일치해야 합니다.")
-            print("작성 또는 수정할 srs 파일명을 입력해주세요.")
+        typename = ("TXT","ERB","srs","xlsx")[result_type]
+        print("지정된 데이터의 %s 파일화를 진행합니다." % typename)
+        if result_type == 0: # TXT
+            writelines_yn = MenuPreset().yesno("데이터에 줄바꿈이 되어있던 경우, 줄바꿈 출력이 가능합니다. 시도하시겠습니까?")
+            done_success = result_file.to_TXT(option_num=writelines_yn)
+        elif result_type == 1: # ERB
+            done_success = result_file.to_TXT(typename, 1, "UTF-8-sig")
+        elif result_type == 2: # srs
+            print("csv 변수로 작성시 chara 폴더가 제외되어있어야 합니다.",
+                "ERB 데이터로 시도시 두 자료의 행 위치가 일치해야 합니다.",
+                "작성 또는 수정할 srs 파일명을 입력해주세요.",
+                sep="\n"
+            )
             srs_name = input("공란일 시 autobuild.simplesrs로 진행합니다. :")
             optimize_mod_dict = {
                 1: "미번역(영어 포함) 단어 제외",
                 2: "짧은 단어(1글자) 제외",
-                3 : "CSV 표적화 기능(CSV 변수만 변환할 수 있음)"
+                3: "CSV 표적화 기능(ERB 내 CSV 변수만 변환할 수 있음)",
+                4: "CSV 표적화 기능(Chara CSV 내 NAME, CALLNAME만)",
+                5: "srs 파일에 제외항목 기록"
                 }
-            optimize_srs_yn = MenuPreset().select_mod(optimize_mod_dict, 0b1)
-            if srs_name:
-                result_file.to_SRS(optimize_srs_yn, srs_name)
-            else:
-                result_file.to_SRS(optimize_srs_yn)
-        if result_file.lazy_switch == 1:
+            srs_option = MenuPreset().select_mod(
+                optimize_mod_dict, 0b1, "활성화할 기능을 선택해주세요.\n  * CSV 표적화는 하나만 선택해주세요.")
+            done_success = ExportSRS(dirname, target_name, target_data).to_SRS(srs_option, srs_name)
+        elif result_type == 3: # xlsx
+            xlsx_name = input("작성할 xlsx 파일명을 입력해주세요. : ")
+            done_success = result_file.to_xlsx(xlsx_name)
+
+        if not done_success:
             print("파일 처리를 진행하지 못했습니다.")
         else:
             print("처리가 완료되었습니다.")

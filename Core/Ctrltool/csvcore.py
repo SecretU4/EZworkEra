@@ -3,7 +3,7 @@ import csv
 from System.interface import StatusNum
 from customdb import InfoDict
 from util import CommonSent, DataFilter
-from usefile import FileFilter, LoadFile, LogPreset, MenuPreset
+from usefile import CustomInput, LoadFile, LogPreset, MenuPreset
 
 
 class CSVLoad(LoadFile):
@@ -94,7 +94,7 @@ class CSVFunc:
         print("추출을 시작합니다.")
 
         if not csv_files or not encode_type:
-            csv_files, encode_type = FileFilter().get_filelist("CSV")
+            csv_files, encode_type = CustomInput("CSV").get_filelist()
         self.dic_assemble = InfoDict(0)
         count_check = StatusNum(csv_files, "파일", self.debug_log.NameDir)
         count_check.how_much_there()
@@ -173,7 +173,7 @@ class CSVFunc:
         """{csv변수명:[파일명,번호]} 형태 딕셔너리 제작"""
         print("csv 변수 대응 딕셔너리를 제작합니다.")
         if not csv_files or not encode_type:
-            csv_files, encode_type = FileFilter().get_filelist("CSV")
+            csv_files, encode_type = CustomInput("CSV").get_filelist()
 
         count_check = StatusNum(csv_files, "파일", self.debug_log.NameDir)
         count_check.how_much_there()

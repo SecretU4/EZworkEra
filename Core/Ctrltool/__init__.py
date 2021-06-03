@@ -6,7 +6,9 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from .csvcore import CSVFunc
 from .erbcore import ERBFunc
-from .result import ResultFunc
 from .erhcore import ERHFunc
+from .jsoncore import EXTFunc
+from .srshandler import SRSFunc
+from .webcrawl import CrawlFunc
 
-__all__ = ["CSVFunc", "ERBFunc", "ResultFunc", "ERHFunc"]
+__all__ = ["CSVFunc", "ERBFunc", "ERHFunc", "EXTFunc", "CrawlFunc", "SRSFunc"]

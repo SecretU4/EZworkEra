@@ -55,7 +55,7 @@ class Menu:
         is_prior_now = True
 
         for key, value in self.menu_dict.items():
-            if "All" in value:
+            if "All" in value or "ONLY" in value:
                 value = copy_menudict.pop(key)
                 prior_menulist.append(value)
             else:
@@ -63,20 +63,24 @@ class Menu:
                 others_menulist.append(value)
             comp_values[value] = key
 
-        while True:
-            # 2페이지인 경우만 상정함.(우선페이지/나머지)
-            if is_prior_now: # 우선 페이지 상황
-                to_work = ("다음 페이지", "이전 페이지")
-                target_menulist = prior_menulist.copy()
+        while True: # 2페이지인 경우만 상정함.(우선페이지/나머지)
+            # 2페이지를 만들 수 없는 경우
+            if not prior_menulist or len(others_menulist) <= 1: # (others의 경우 돌아가기만 있는 경우 있음)
+                to_work = ()
+                target_menulist = self.menu_dict
             else:
-                to_work = ("이전 페이지", "다음 페이지")
-                target_menulist = others_menulist.copy()
+                if is_prior_now: # 우선 페이지 상황
+                    to_work = ("다음 페이지", "이전 페이지")
+                    target_menulist = prior_menulist.copy()
+                else:
+                    to_work = ("이전 페이지", "다음 페이지")
+                    target_menulist = others_menulist.copy()
     
-            target_menulist.append(to_work[0])
-            try:
-                target_menulist.remove(to_work[1])
-            except ValueError:
-                pass
+                target_menulist.append(to_work[0])
+                try:
+                    target_menulist.remove(to_work[1])
+                except ValueError:
+                    pass
 
             menu_paged = Menu(target_menulist)
             menu_paged.run_menu()

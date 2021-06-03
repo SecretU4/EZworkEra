@@ -111,7 +111,6 @@ class FileFilter:
         files_name(dir,name)
         sep_filename(name)
         search_filename_wordwrap(names,kwaglist)
-        get_filelist(ext)
     """
 
     def __init__(self, opt_num=0):
@@ -121,18 +120,18 @@ class FileFilter:
         """특정 디렉토리 내 해당 확장자 파일의 목록을 불러옴.
 
         옵션 번호:
-            0: 하위폴더 포함
-            1: 하위폴더 미포함
+            bool(번호)가 True 면 하위폴더 포함, False 면 미포함
         """
         ext_target = ext_target.upper()
         self.files = []
-        if self.option_num == 0:
+
+        if self.option_num: # 하위폴더 포함
             for (path, _, files) in os.walk(dir_target):
                 for filename in files:
                     file_type = os.path.splitext(filename)[-1].upper()
                     if file_type == ext_target:
                         self.files.append("{0}\\{1}".format(path, filename))
-        elif self.option_num == 1:
+        else: # 하위폴더 미포함
             for filename in os.listdir(dir_target):
                 file_type = os.path.splitext(filename)[-1].upper()
                 if file_type == ext_target:
@@ -199,24 +198,6 @@ class FileFilter:
                 target_name = None
         return target_name
 
-    def get_filelist(self, filetype):
-        """Ctrltool의 Func 클래스들이 사용하는 파일 목록 입력 양식 함수.\n
-        입력 인자는 파일 목록화할 확장자."""
-        user_input = CustomInput(filetype)
-        target_dir = user_input.input_option(1)
-        encode_type = MenuPreset().encode()
-
-        if os.path.isdir(target_dir):
-            self.option_num = MenuPreset().yesno(0, "하위폴더까지 포함해 진행하시겠습니까?")
-            files = self.files_ext(target_dir, "." + filetype)
-        else: # 확인 가능한 목록 없음
-            remake_dir = "\\".join(target_dir.split("\\")[:-1])
-            if os.path.isfile(remake_dir):
-                files = [remake_dir]
-            else:
-                files = []
-        return files, encode_type
-
 
 class CustomInput:
     """사용자의 파일 관련 입력 부분 처리 클래스.\n
@@ -224,71 +205,78 @@ class CustomInput:
 
     Functions:
         input_option(num)
+        get_filelist(ext)
 
     Variables:
-        dir_inputed
-        name_inputed
-        type_inputed
+        target
     """
 
     def __init__(self, target):
         self.target = target
 
     def __input_dir(self):
-        self.dir_inputed = str(
-            input(
-                "{0}이(가) 위치하는 디렉토리명을 입력해주세요.\
- 존재하지 않는 디렉토리인 경우 오류가 발생합니다. : ".format(
-                    self.target
-                )
-            )
+        dir_inputed = input("%s이(가) 위치하는 디렉토리명을 입력해주세요.\n" % self.target +
+        "존재하지 않는 디렉토리인 경우 오류가 발생합니다. : "
         )
-        if len(self.dir_inputed) == 0:
+
+        if len(dir_inputed) == 0:
             print("특정 디렉토리의 입력 없이 Root 디렉토리로 진행합니다. 오류가 발생할 수 있습니다.")
-            self.dir_inputed = "."
+            dir_inputed = "."
             time.sleep(1)
-        self.dir_inputed = DirFilter(self.dir_inputed).dir_slash()
 
-    def __input_name(self):
+        return DirFilter(dir_inputed).dir_slash()
+
+    def __no_void_str(self, opt):
+        if opt & 0b010:
+            text = "명칭"
+        elif opt & 0b100:
+            text = "타입"
+        else:
+            return False
         while True:
-            self.name_inputed = str(input("{0}의 명칭을 입력해주세요. : ".format(self.target)))
-            if len(self.name_inputed) == 0:
+            inputed = input("%s의 %s을 입력해주세요. : " % (text, self.target))
+            if len(inputed) == 0:
                 CommonSent.no_void()
                 continue
             break
 
-    def __input_type(self):
-        while True:
-            self.type_inputed = str(input("{0}의 타입을 입력해주세요. : ".format(self.target))).upper()
-            if len(self.type_inputed) == 0:
-                CommonSent.no_void()
-                continue
-            break
+        return inputed
 
     def input_option(self, option_num):
         """설정 번호 입력시 해당 입력값을 받아 return함.
 
-        설정 번호
-            0: 디렉토리/이름/타입
-            1: 디렉토리
-            2: 이름
-            3: 이름/타입
+        설정 bit
+            0: 디렉토리
+            1: 이름
+            2: 타입
         """
-        if option_num == 0:
-            self.__input_dir()
-            self.__input_name()
-            self.__input_type()
-            return self.dir_inputed, self.name_inputed, self.type_inputed
-        elif option_num == 1:
-            self.__input_dir()
-            return self.dir_inputed
-        elif option_num == 2:
-            self.__input_name()
-            return self.name_inputed
-        elif option_num == 3:
-            self.__input_name()
-            self.__input_type()
-            return self.name_inputed, self.__input_type
+        result = []
+        if option_num & 0b001: # dir
+            result.append(self.__input_dir())
+        if option_num & 0b010: # name
+            result.append(self.__no_void_str(0b010))
+        if option_num & 0b100: # type
+            result.append(self.__no_void_str(0b100))
+
+        return result
+
+    def get_filelist(self):
+        """Ctrltool의 Func 클래스들이 사용하는 파일 목록 입력 양식 함수.\n
+        입력 인자는 파일 목록화할 확장자."""
+        target_dir, *_ = self.input_option(0b001)
+        encode_type = MenuPreset().encode()
+
+        if os.path.isdir(target_dir):
+            opt_no = MenuPreset().yesno("하위 디렉토리를 포함해 진행하시겠습니까?")
+            f_filter = FileFilter(opt_no)
+            files = f_filter.files_ext(target_dir, "." + self.target)
+        else: # 확인 가능한 목록 없음
+            remake_dir = "\\".join(target_dir.split("\\")[:-1])
+            if os.path.isfile(remake_dir):
+                files = [remake_dir]
+            else:
+                files = []
+        return files, encode_type
 
 
 class MakeLog(LoadFile):
@@ -385,7 +373,7 @@ class MenuPreset:
 
     Functions:
         encode()
-        yesno(reverse,sentence)
+        yesno([sentence])
         shall_save_data(data,datatype)
         load_saved_data(opt_no,[sentence])
         select_mod(mod_no_dict{no:mod_name})
@@ -396,15 +384,16 @@ class MenuPreset:
         menu_encode_dict = {
             0: "UTF-8",
             1: "UTF-8 with BOM",
-            2: "SHIFT-JIS",
-            3: "일본어 확장(cp932)",
-            4: "EUC-KR",
-            5: "한국어 확장(cp949)",
+            2: "EUC-JP",
+            3: "SHIFT-JIS(일본어) 확장(cp932)",
+            4: "EUC-KR(한국어) 확장(cp949)",
+            5: "UTF-16 LE",
         }
         namedict_encode = {
             "UTF-8 with BOM":"UTF-8-sig",
-            "일본어 확장(cp932)":"cp932",
-            "한국어 확장(cp949)":"cp949"
+            "SHIFT-JIS(일본어) 확장(cp932)":"cp932",
+            "EUC-KR(한국어) 확장(cp949)":"cp949",
+            "UTF-16 LE":"utf-16-le"
         }
         encode = Menu(menu_encode_dict)
         encode.title("대상 파일의 인코딩을 선택하세요.")
@@ -414,23 +403,22 @@ class MenuPreset:
             sel_encode = namedict_encode[sel_encode]
         return sel_encode
 
-    def yesno(self, reverse, *sentences):
-        """예/아니오 선택창. sentence로 선택창 앞에 문자열 출력 필요."""
+    def yesno(self, *sentences):
+        """예/아니오 선택창. sentence로 선택창 앞에 문자열 출력 필요.
+        예 = 1, 아니오 = 0 반환
+        """
         yesno_dict = {0: "예", 1: "아니오"}
         yesno = Menu(yesno_dict)
         yesno.title(*sentences)
         no_yn = yesno.run_menu()
-        if reverse:
-            no_yn = -no_yn
-        return no_yn
+        return int(not no_yn)
 
     def shall_save_data(self, data, datatype=None):
         """추출된 데이터의 저장 메뉴. data가 저장될 데이터. 필요시 datatype 입력
         * 같은 이름의 sav파일 작성 불가.
         """
-        menu_save = MenuPreset().yesno(0, "처리된 데이터를 sav 파일로 저장하시겠습니까?")
         DirFilter("sav").dir_exist()
-        if menu_save == 0:
+        if MenuPreset().yesno("처리된 데이터를 sav 파일로 저장하시겠습니까?"):
             while True:
                 save_name = input("sav 파일의 이름을 정해주세요.")
                 try:
@@ -439,6 +427,9 @@ class MenuPreset:
                         break
                 except FileExistsError:
                     print("같은 이름의 파일이 존재합니다. 다시 시도해주세요.")
+            return True
+        
+        return False
 
     def load_saved_data(self, opt_no=0, sentence=""):
         """저장해둔 데이터의 로드 메뉴.
@@ -452,48 +443,50 @@ class MenuPreset:
         please_choose_sent = "불러올 데이터 파일을 선택해주세요."
         if isinstance(sentence, str):
             yesno_sentence = sentence, yesno_sentence
+
         if opt_no == 0:
-            load_switch = MenuPreset().yesno(0, *yesno_sentence)
+            opt_no = MenuPreset().yesno(*yesno_sentence)
             please_sent_lines = [please_choose_sent]
         elif opt_no == 1:
-            load_switch = 0
             please_sent_lines = sentence, please_choose_sent
-        if load_switch == 1:
+
+        if not opt_no:
             return None
-        else:
-            savfile_list = FileFilter().files_ext("sav", ".sav")
-            menu_sav_list = Menu(savfile_list)
-            while True:
-                menu_sav_list.title(*please_sent_lines)
-                menu_sav_list.run_menu()
-                self.selected_name = menu_sav_list.selected_menu
-                if self.selected_name == "돌아가기":
-                    break
-                with open(self.selected_name, "rb") as opened_sav:
-                    target_data = pickle.load(opened_sav)
-                    return target_data
+
+        savfile_list = FileFilter().files_ext("sav", ".sav")
+        menu_sav_list = Menu(savfile_list)
+        while True:
+            menu_sav_list.title(*please_sent_lines)
+            menu_sav_list.run_menu()
+            self.selected_name = menu_sav_list.selected_menu
+            if self.selected_name == "돌아가기":
+                break
+            with open(self.selected_name, "rb") as opened_sav:
+                target_data = pickle.load(opened_sav)
+                return target_data
 
     def select_mod(self, mod_no_dict, default_mod=0, title_txt="활성화할 기능을 선택해주세요."):
         """작동 모드 선택 메뉴
         0번 모드는 기본값 초기화 버튼이므로 따로 설정하면 날아감.
-        default_mod는 기본값 설정, title_txt는 메뉴 출력시 제목 설정
+        default_mod는 기본값 설정, title_txt는 메뉴 출력시 제목 설정.
+        default_mod = Σ (n=1 ~ 가능범위) 2 ** (선택할 mod_no - 1)
+        return = Σ (n=1 ~ 가능범위) 2 ** (선택된 mod_no - 1)
 
         mod_no_dict = {mod_no: mod_name}
         """
 
-        mod_no_menudict = {0:""}
+        mod_no_menudict = {0:"ERROR"}
         mod_no_menudict.update(mod_no_dict)
-        show_def_modno = bin(default_mod).split("b")[-1]
-        result_no = default_mod
+        result_no = (default_mod << 1)
         default_name = ["모두 꺼짐"]
 
-        if show_def_modno != "0":
+        if default_mod:
             default_name = []
-            for mod_no, switch in enumerate(show_def_modno):
+            for mod_no in range(len(mod_no_dict)):
                 mod_no += 1
 
                 mod_name = mod_no_dict[mod_no]
-                if switch:
+                if result_no & 2 ** mod_no:
                     default_name.append(str(mod_no))
                     mod_name += "(선택됨)"
                 mod_no_menudict[mod_no] = mod_name
@@ -512,7 +505,7 @@ class MenuPreset:
                 break
             elif sel_menu_num:
                 mod_name = mod_no_menudict[sel_menu_num]
-                real_no = 2 ** (sel_menu_num - 1)
+                real_no = 2 ** sel_menu_num
                 result_no = result_no ^ real_no
                 if "(선택됨)" in mod_name:
                     mod_no_menudict[sel_menu_num] = mod_name.replace("(선택됨)", "")
@@ -523,5 +516,5 @@ class MenuPreset:
                 result_no = default_mod
                 break
 
-        return result_no
+        return (result_no >> 1)
 
