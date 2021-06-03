@@ -427,13 +427,13 @@ class SRSFormat:
             head += "[-REGEX-]"
         if h_opt & 0b1000:
             head += "[-SORT-]"
-        if h_opt & 0b1100:
+        if (h_opt & 0b1000) and (h_opt & 0b0100):
             raise TypeError("REGEX와 SORT 옵션은 동시 사용이 불가합니다")
 
-        return head
+        return head + '\n'
 
     def print_comment(self, sentence):
-        return self.srstype_format()["com"].replace("commnet", sentence)
+        return self.srstype_format()["com"].replace("comment", sentence)
 
     def print_srs(self, h_opt=0, title=False):
         """문자열 포함 list 형태로 srsdict 데이터를 변환"""
