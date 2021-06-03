@@ -391,19 +391,21 @@ class SheetInfo:
 
 class SRSFormat:
     """SRS 형식의 데이터 관리와 관련된 클래스"""
-    def __init__(self, srsdict, dataname="ONLYSRS"):
+    def __init__(self, srsdict, dataname="ONLYSRS", srs_type=1):
         self.srsdict = srsdict
         self.dataname = dataname
+        self.srs_type = srs_type
+        self.db_ver = 1.0
 
-    def srstype_format(self, srs_type):
+    def srstype_format(self):
         """srs_type 1:simplesrs 2:srs"""
-        if srs_type == 1:
+        if self.srs_type == 1:
             fmtdata = {
                 "pat":"$1#\n$2#\n\n",
                 "head":True,
                 "com":";comment\n\n"
             }
-        elif srs_type == 2:
+        elif self.srs_type == 2:
             fmtdata = {
                 "pat":"[Search]\n$1#\n[Replace]\n$2#\n",               
                 "head":False,
@@ -415,6 +417,7 @@ class SRSFormat:
         return fmtdata
 
     def set_head(self, h_opt):
+        # TRIM:앞뒤공백 제거, SORT:긴 순서/알파벳 정렬, WORDWRAP:정확히 단어 단위일때만 치환
         head = ""
         if h_opt & 0b0001:
             head += "[-WORDWRAP-]"
@@ -429,22 +432,22 @@ class SRSFormat:
 
         return head
 
-    def print_srs(self, srs_type=1, h_opt=0, title=False):
+    def print_comment(self, sentence):
+        return self.srstype_format()["com"].replace("commnet", sentence)
+
+    def print_srs(self, h_opt=0, title=False):
         """문자열 포함 list 형태로 srsdict 데이터를 변환"""
         result_lines = []
-        fmtdata = self.srstype_format(srs_type)
+        fmtdata = self.srstype_format()
 
         if fmtdata["head"] and h_opt:
-            line = fmtdata["com"].replace("comment", self.set_head(h_opt))
-            result_lines.append(line)
+            result_lines.append(self.set_head(h_opt))
 
         if title:
-            line = fmtdata["com"].replace("comment", self.dataname)
-            result_lines.append(line)
+            result_lines.append(self.print_comment("from: " +self.dataname))
 
         for key, value in self.srsdict.items():
             line = fmtdata["pat"].replace("$1#", key).replace("$2#", value)
             result_lines.append(line)
 
         return result_lines
-
