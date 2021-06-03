@@ -1,6 +1,6 @@
 # #DIM 등 전역변수/지역변수 처리 관련 모듈
 from customdb import InfoDict
-from usefile import FileFilter, LoadFile, LogPreset, MenuPreset
+from usefile import CustomInput, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 
 
@@ -67,7 +67,7 @@ class ERHFunc:
     def analyze_erh(self, erh_files=None, encode_type=None):  # TODO 본격적으로 만져야함
         """return (ERH_infodict, 구동중 통합 dim_dict)"""
         if not erh_files or not encode_type:
-            erh_files, encode_type = FileFilter().get_filelist("ERH")
+            erh_files, encode_type = CustomInput("ERH").get_filelist()
         clsdim = HandleDIM()
         infodict = InfoDict("ERHInfoDict")
 

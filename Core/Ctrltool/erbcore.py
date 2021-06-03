@@ -1,7 +1,7 @@
 # ERB 관련 모듈
 import re
 from customdb import ERBMetaInfo, InfoDict, SheetInfo
-from usefile import FileFilter, LoadFile, LogPreset, MenuPreset
+from usefile import CustomInput, FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import StatusNum
 from System.xmlhandling import ERBGrammarXML, SettingXML
@@ -766,7 +766,7 @@ class ERBBlkFinder:
 
     def __init__(self):
         self.block_data = InfoDict(1)  # {filename:{index:(func,(code_block))}}
-        self.files, self.encode_type = FileFilter(1).get_filelist("ERB")
+        self.files, self.encode_type = CustomInput("ERB").get_filelist()
 
     def block_maker(self):
         for filename in self.files:
@@ -801,7 +801,7 @@ class ERBFunc:
         """
         print("PRINT/DATAFORM 구문의 추출을 시작합니다.")
         if not erb_files or not encode_type:
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
         file_count_check = StatusNum(erb_files, "파일")
         file_count_check.how_much_there()
         result_sheet = SheetInfo()
@@ -852,7 +852,7 @@ class ERBFunc:
         """
         print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
         if not erb_files or not encode_type:
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
         csvvar_list = ERBUtil().csv_infodict_maker()
         if csvvar_list == None:
             try:
@@ -900,7 +900,7 @@ class ERBFunc:
     def remodel_indent(self, metainfo_option_num=0, metalineinfo=None):
         if metalineinfo == None:
             print("들여쓰기를 자동 교정하는 유틸리티입니다.")
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
             file_count_check = StatusNum(erb_files, "파일")
             file_count_check.how_much_there()
 
@@ -925,7 +925,7 @@ class ERBFunc:
         return result_dataset
 
     def translate_txt_to_erb(self, era_type, csvvar_dict):
-        txt_files, encode_type = FileFilter().get_filelist("TXT")
+        txt_files, encode_type = CustomInput("TXT").get_filelist()
         file_count_check = StatusNum(txt_files, "파일")
         file_count_check.how_much_there()
         chara_num = input("작성하실 캐릭터의 번호를 입력해주세요. : ")
@@ -946,7 +946,7 @@ class ERBFunc:
     def replace_num_or_name(self, mod_num=0, erb_files=None, encode_type=None):
         """0:숫자 > 변수, 1: 변수 > 숫자"""
         if not erb_files or not encode_type:
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
         file_count_check = StatusNum(erb_files, "ERB 파일")
         file_count_check.how_much_there()
         csv_infodict = ERBUtil().csv_infodict_maker(mod_num + 1, self.func_log)
@@ -967,7 +967,7 @@ class ERBFunc:
         mod_dict = {1:"중첩 PRNTDATA 변환"}
         if metalineinfo == None:
             print("불완전한 수식을 교정해주는 유틸리티입니다.")
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
             file_count_check = StatusNum(erb_files, "파일")
             file_count_check.how_much_there()
             mod_no = MenuPreset().select_mod(mod_dict)
@@ -994,7 +994,7 @@ class ERBFunc:
     def memory_optimizer(self, erb_files=None, encode_type=None):
         print("현재 기능이 완성되지 않았습니다. 되도록 백업 후 이용해주시고, 구상 파일에만 사용해주세요.")
         if not erb_files or not encode_type:
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
         file_count_check = StatusNum(erb_files, "파일")
         file_count_check.how_much_there()
 

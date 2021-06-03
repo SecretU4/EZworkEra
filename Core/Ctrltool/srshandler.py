@@ -1,7 +1,7 @@
 # simplesrs, srs 관련 처리 모듈
 
 from customdb import SheetInfo, SRSFormat
-from usefile import FileFilter, LoadFile, MenuPreset
+from usefile import CustomInput, FileFilter, LoadFile, MenuPreset
 from util import DataFilter, DupItemCheck
 
 
@@ -151,7 +151,7 @@ class SRSEditor:
 class SRSFunc:
     def merge_srs(self, files):
         if not files:
-            files, encoding = FileFilter().get_filelist("SIMPLESRS")
+            files, encoding = CustomInput("SIMPLESRS").get_filelist()
         srs_dict = SRSEditor().merge(*files, encoding=encoding)
 
         return SRSFormat(srs_dict, 'merged-srs')

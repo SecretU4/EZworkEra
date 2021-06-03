@@ -111,7 +111,6 @@ class FileFilter:
         files_name(dir,name)
         sep_filename(name)
         search_filename_wordwrap(names,kwaglist)
-        get_filelist(ext)
     """
 
     def __init__(self, opt_num=0):
@@ -199,24 +198,6 @@ class FileFilter:
                 target_name = None
         return target_name
 
-    def get_filelist(self, filetype):
-        """Ctrltool의 Func 클래스들이 사용하는 파일 목록 입력 양식 함수.\n
-        입력 인자는 파일 목록화할 확장자."""
-        user_input = CustomInput(filetype)
-        target_dir = user_input.input_option(1)
-        encode_type = MenuPreset().encode()
-
-        if os.path.isdir(target_dir):
-            self.option_num = MenuPreset().yesno("하위 디렉토리를 포함해 진행하시겠습니까?")
-            files = self.files_ext(target_dir, "." + filetype)
-        else: # 확인 가능한 목록 없음
-            remake_dir = "\\".join(target_dir.split("\\")[:-1])
-            if os.path.isfile(remake_dir):
-                files = [remake_dir]
-            else:
-                files = []
-        return files, encode_type
-
 
 class CustomInput:
     """사용자의 파일 관련 입력 부분 처리 클래스.\n
@@ -224,71 +205,78 @@ class CustomInput:
 
     Functions:
         input_option(num)
+        get_filelist(ext)
 
     Variables:
-        dir_inputed
-        name_inputed
-        type_inputed
+        target
     """
 
     def __init__(self, target):
         self.target = target
 
     def __input_dir(self):
-        self.dir_inputed = str(
-            input(
-                "{0}이(가) 위치하는 디렉토리명을 입력해주세요.\
- 존재하지 않는 디렉토리인 경우 오류가 발생합니다. : ".format(
-                    self.target
-                )
-            )
+        dir_inputed = input("%s이(가) 위치하는 디렉토리명을 입력해주세요.\n" % self.target +
+        "존재하지 않는 디렉토리인 경우 오류가 발생합니다. : "
         )
-        if len(self.dir_inputed) == 0:
+
+        if len(dir_inputed) == 0:
             print("특정 디렉토리의 입력 없이 Root 디렉토리로 진행합니다. 오류가 발생할 수 있습니다.")
-            self.dir_inputed = "."
+            dir_inputed = "."
             time.sleep(1)
-        self.dir_inputed = DirFilter(self.dir_inputed).dir_slash()
 
-    def __input_name(self):
+        return DirFilter(dir_inputed).dir_slash()
+
+    def __no_void_str(self, opt):
+        if opt & 0b010:
+            text = "명칭"
+        elif opt & 0b100:
+            text = "타입"
+        else:
+            return False
         while True:
-            self.name_inputed = str(input("{0}의 명칭을 입력해주세요. : ".format(self.target)))
-            if len(self.name_inputed) == 0:
+            inputed = input("%s의 %s을 입력해주세요. : " % (text, self.target))
+            if len(inputed) == 0:
                 CommonSent.no_void()
                 continue
             break
 
-    def __input_type(self):
-        while True:
-            self.type_inputed = str(input("{0}의 타입을 입력해주세요. : ".format(self.target))).upper()
-            if len(self.type_inputed) == 0:
-                CommonSent.no_void()
-                continue
-            break
+        return inputed
 
     def input_option(self, option_num):
         """설정 번호 입력시 해당 입력값을 받아 return함.
 
-        설정 번호
-            0: 디렉토리/이름/타입
-            1: 디렉토리
-            2: 이름
-            3: 이름/타입
+        설정 bit
+            0: 디렉토리
+            1: 이름
+            2: 타입
         """
-        if option_num == 0:
-            self.__input_dir()
-            self.__input_name()
-            self.__input_type()
-            return self.dir_inputed, self.name_inputed, self.type_inputed
-        elif option_num == 1:
-            self.__input_dir()
-            return self.dir_inputed
-        elif option_num == 2:
-            self.__input_name()
-            return self.name_inputed
-        elif option_num == 3:
-            self.__input_name()
-            self.__input_type()
-            return self.name_inputed, self.__input_type
+        result = []
+        if option_num & 0b001: # dir
+            result.append(self.__input_dir())
+        if option_num & 0b010: # name
+            result.append(self.__no_void_str(0b010))
+        if option_num & 0b100: # type
+            result.append(self.__no_void_str(0b100))
+
+        return result
+
+    def get_filelist(self):
+        """Ctrltool의 Func 클래스들이 사용하는 파일 목록 입력 양식 함수.\n
+        입력 인자는 파일 목록화할 확장자."""
+        target_dir, *_ = self.input_option(0b001)
+        encode_type = MenuPreset().encode()
+
+        if os.path.isdir(target_dir):
+            opt_no = MenuPreset().yesno("하위 디렉토리를 포함해 진행하시겠습니까?")
+            f_filter = FileFilter(opt_no)
+            files = f_filter.files_ext(target_dir, "." + self.target)
+        else: # 확인 가능한 목록 없음
+            remake_dir = "\\".join(target_dir.split("\\")[:-1])
+            if os.path.isfile(remake_dir):
+                files = [remake_dir]
+            else:
+                files = []
+        return files, encode_type
 
 
 class MakeLog(LoadFile):

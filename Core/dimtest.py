@@ -2,7 +2,7 @@
 
 import re
 from customdb import FuncInfo
-from usefile import FileFilter, MenuPreset
+from usefile import CustomInput, MenuPreset
 from Ctrltool.erbcore import ERBLoad
 from Ctrltool.erhcore import HandleDIM
 
@@ -12,7 +12,7 @@ search_str = re.compile('"([^"]+)"')
 
 def erb_translate_check(erb_files=None, encode_type=None):
     if not erb_files or not encode_type:
-        erb_files, encode_type = FileFilter().get_filelist("ERB")
+        erb_files, encode_type = CustomInput("ERB").get_filelist()
     func_dict = FuncInfo()
 
     for erb_file in erb_files:
