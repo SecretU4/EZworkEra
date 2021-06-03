@@ -107,17 +107,10 @@ class AnalyzeFiles:
                 if mod & 0b100 and words[0].startswith("#DIM"): # DIM Vars
                     self.dim_dict.update(handle_dim.dim_search(line))  # TODO DIM 분석필요
 
-        for used_func in list(used_func_list):
-            if used_func in def_func_list:
-                used_func_list.remove(used_func)
-
-        if mod & 0b10:
-            changed_csvvar = list(set(vfinder.change_var_index(csv_varlist, 1)))
-            used_csvvar = vfinder.print_csvfnc(changed_csvvar, 2)
-            index_csvvar = vfinder.print_csvfnc(changed_csvvar, 3)
-        else:
-            used_csvvar = []
-            index_csvvar = []
+        if mod & 0b010: # CSV Vars
+            changed_csvvar = vfinder.change_var_index(csv_varlist, 1)
+            changed_csvvar = DataFilter().dup_filter(changed_csvvar)
+            used_csvvar, index_csvvar = vfinder.print_csvfnc(changed_csvvar, 0b1100)
 
         return used_func_list, used_csvvar, index_csvvar, self.dim_dict
 

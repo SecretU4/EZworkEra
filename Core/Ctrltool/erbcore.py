@@ -377,8 +377,7 @@ class ERBRemodel(ERBLoad):
                 find_list = vfinder.find_csvfnc_line(line)
                 if find_list:
                     rep_list = vfinder.change_var_index(find_list, mod_num)
-                    orig_fncs = vfinder.print_csvfnc(rep_list)
-                    comp_fncs = vfinder.print_csvfnc(rep_list, 3)
+                    orig_fncs, comp_fncs = vfinder.print_csvfnc(rep_list, 0b1001)
                     for no in range(len(orig_fncs)):
                         orig_fnc = orig_fncs[no]
                         comp_fnc = comp_fncs[no]
@@ -642,7 +641,7 @@ class ERBVFinder:
     context_filter = r":([^\s,\)=\+\-]+)"
     # target_list = ['TARGET','PLAYER','MASTER','ASSI'] #TODO 차원지원 필요함
 
-    def __init__(self, csvdict, log_set=None):
+    def __init__(self, csvdict :InfoDict or list, log_set=None):
         if isinstance(csvdict, InfoDict):
             self.csv_infodict = csvdict
             self.csv_fnames = dict()
@@ -659,7 +658,7 @@ class ERBVFinder:
         self.csvvar_re = re.compile(re_varshead + self.context_filter)
         self.log_set = log_set
 
-    def find_csvfnc_line(self, line):
+    def find_csvfnc_line(self, line: str) -> list[tuple]:
         """해당하는 결과물이 있을 시 [(csv명,변수내용,ERB상 함수명,대명사)] 로 출력함.
         이외는 None 리턴"""
         if line.startswith(";"):
@@ -684,57 +683,51 @@ class ERBVFinder:
             else:
                 var_head_t = var_head
             find_result.append((var_head_t, var_context_t, var_head, var_pnoun))
-        if find_result:
-            return find_result
-        else:
-            return None
+        return find_result
 
-    def change_var_index(self, found_result, mod_num=0):
+    def change_var_index(self, found_result: list[tuple], mod_num: int = 0):
         """find_csvfnc_line의 결과값을 받아 context을 변환한 후 다시 리스트 리턴.
 
         mod_num 0 : 숫자 > 단어, mod_num 1 : 단어 > 숫자
         """
-        index_count = 0
-        if self.csv_infodict.db_ver > 1.2:
-            reversed_dict = self.csv_infodict.make_reverse()
-        else:
-            reversed_dict = None
-        for result in found_result:
-            if result:
-                var_head, var_context, orig_head, p_noun = result
-                int_checker = list(filter(str.isdecimal, var_context))
-                if (mod_num == 0 and int_checker) or (
-                    mod_num == 1 and int_checker != list(var_context)
+        reversed_dict = self.csv_infodict.make_reverse() if self.csv_infodict.db_ver > 1.2 else None
+
+        for res_cnt, result in enumerate(found_result):
+            var_head, var_context, orig_head, p_noun = result
+            int_checker = list(filter(str.isdecimal, var_context))
+            if (mod_num == 0 and int_checker) or (mod_num == 1 and
+                int_checker != list(var_context)
                 ):
-                    try:
-                        csv_filename = self.csv_fnames[var_head]
-                        context_t = self.csv_infodict.dict_main[csv_filename].get(var_context)
-                        if not context_t and reversed_dict:
-                            context_t = reversed_dict[csv_filename].get(var_context)
-                        found_result[index_count] = (
-                            var_head,
-                            (var_context, context_t),
-                            orig_head,
-                            p_noun,
-                        )
-                    except KeyError:
-                        if self.log_set:
-                            self.log_set.write_error_log(KeyError, orig_head)
-            index_count += 1
+                try:
+                    csv_filename = self.csv_fnames[var_head]
+                    context_t = self.csv_infodict.dict_main[csv_filename].get(var_context)
+                    if not context_t and reversed_dict:
+                        context_t = reversed_dict[csv_filename].get(var_context)
+                    found_result[res_cnt] = (var_head, (var_context, context_t),
+                        orig_head, p_noun)
+                except KeyError:
+                    if self.log_set:
+                        self.log_set.write_error_log(KeyError, orig_head)
+
         return found_result
 
-    def print_csvfnc(self, comp_list, opt_no=0):
-        """line에서 추출된 erb내 변수 리스트를 다시 결합한 목록 리턴
+    def print_csvfnc(self, comp_list: list[tuple], opt_no: int=0b0001):
+        """line에서 추출된 erb내 변수 리스트를 다시 결합한 목록 리턴, 복수 가능
 
-        opt_no
-            0: 디폴트. erb 내 원래 형태로 출력
-            1: csv에서 인식되는 형태로 출력 (대명사 포함)
-            2: csv에서 인식되는 형태로 출력 (대명사 제외)
-            3: (index 변환 사용시) erb 내 index 변환 행태로 출력
+        opt_no bit
+            1: 디폴트. erb 내 원래 형태로 출력
+            2: csv에서 인식되는 형태로 출력 (대명사 포함)
+            3: csv에서 인식되는 형태로 출력 (대명사 제외)
+            4: (index 변환 사용시) erb 내 index 변환 행태로 출력
         """
-        result_list = []
+        result_list:list[list[str]] = []
         if not comp_list:
-            return None
+            return result_list
+
+        for i in range(3):
+            if opt_no & (2 ** i):
+                result_list.append(list())
+
         for fncinfo in comp_list:
             csvhead, context, orighead, pnoun = fncinfo
             if isinstance(context, tuple):
@@ -748,16 +741,19 @@ class ERBVFinder:
             elif isinstance(context, str):
                 o_context = t_context = context
             else:
-                raise TypeError
-            if opt_no == 0:
-                head, cont = orighead, o_context
-            elif opt_no in (1, 2):
-                head, cont = csvhead, o_context
-            elif opt_no == 3:
-                head, cont = orighead, t_context
-            if pnoun and opt_no in (0, 1, 3):
-                cont = pnoun + ":" + cont
-            result_list.append("{}:{}".format(head, cont))
+                raise NotImplementedError("잘못된 context 타입: " + str(type(context)))
+
+            for i in range(3):
+                temp_opt = opt_no & (2 ** i)
+                if temp_opt & 0b0001:
+                    head, cont = orighead, o_context
+                elif temp_opt & 0b0010 or temp_opt & 0b0100:
+                    head, cont = csvhead, o_context
+                else: # temp_opt & 0b1000
+                    head, cont = orighead, t_context
+                if pnoun and temp_opt ^ 0b0100:
+                    cont = pnoun + ":" + cont
+                result_list[i].append("{}:{}".format(head, cont))
         return result_list
 
 
