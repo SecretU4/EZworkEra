@@ -3,6 +3,7 @@
 Classes:
     CommonSent
     DataFilter
+    DupItemCheck
     KoreanSupport
 """
 # 사용 라이브러리
@@ -62,8 +63,9 @@ class DataFilter:
     """주어진 데이터를 처리하는 클래스
 
     Functions:
-        dup_filter(list)
+        dup_filter(list_name)
         erase_quote(data,quotechar)
+        strip_filter(list_name)
     """
 
     def dup_filter(self, list_name):
@@ -107,6 +109,70 @@ class DataFilter:
                 return None
         else:
             raise NotImplementedError
+        
+    def strip_filter(self, list_name):
+        """받은 list자료 내 요소에 strip처리 후 반환"""
+        result_list = []
+        error_flag = 0
+        for arg in list_name:
+            if not isinstance(arg, str):
+                result_list.append(arg)
+                error_flag |= 0b0001
+                continue
+
+            result_list.append(arg.strip())
+
+        if error_flag:
+            print("오류 코드: %d" % error_flag)
+        
+        return result_list
+            
+
+class DupItemCheck:
+    """dict 자료형 내 중복요소 확인.
+
+    1:key 2:value 3:key,value 둘다 있음
+
+    사용시 check 로 체크 후 after로 검사요소 추가.
+    dup_dict 여부로 중복 여부 확인
+    """
+    def __init__(self, main_dict={}, dup_dict={}):
+        self.main_dict = main_dict
+        self.dup_dict = dup_dict
+    
+    def check(self, key, value):
+        for arg in (key, value):
+            if key == value:
+                return -1
+    
+            if self.main_dict.get(arg):
+                dup_val = self.dup_dict.get(arg)
+                if not dup_val:
+                    self.dup_dict[arg] = self.main_dict[arg]
+                elif dup_val == 1 and arg == key:
+                    pass
+                elif dup_val == 2 and arg == value:
+                    pass
+                else:
+                    self.dup_dict[arg] = 3
+                return self.dup_dict[arg]
+
+        return 0
+
+    def after(self, key, value):
+        self.main_dict[key] = 1
+        self.main_dict[value] = 2
+
+    def bulkcheck(self, srs_data):
+        self.__init__()
+        for key, value in srs_data.items():
+            self.check(key, value)
+            self.after(key, value)
+
+        return self.dup_dict
+
+    def tot_dup(self):
+        return self.main_dict, self.dup_dict
 
 
 class KoreanSupport:

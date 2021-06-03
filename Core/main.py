@@ -1,7 +1,8 @@
 # EmuEra용 번역 파일 처리/합병 툴
 # 사용되는 라이브러리
 from util import CommonSent
-from Ctrltool import CSVFunc, ERBFunc, ResultFunc, EXTFunc, CrawlFunc
+from Ctrltool import CrawlFunc, CSVFunc, ERBFunc, EXTFunc, SRSFunc
+from Ctrltool.result import ResultFunc
 from usefile import MenuPreset
 from System.interface import Menu
 from System.xmlhandling import SettingXML
