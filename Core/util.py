@@ -136,9 +136,9 @@ class DupItemCheck:
     사용시 check 로 체크 후 after로 검사요소 추가.
     dup_dict 여부로 중복 여부 확인
     """
-    def __init__(self):
-        self.main_dict = {}
-        self.dup_dict = {}
+    def __init__(self, main_dict={}, dup_dict={}):
+        self.main_dict = main_dict
+        self.dup_dict = dup_dict
     
     def check(self, key, value):
         for arg in (key, value):
@@ -162,6 +162,17 @@ class DupItemCheck:
     def after(self, key, value):
         self.main_dict[key] = 1
         self.main_dict[value] = 2
+
+    def bulkcheck(self, srs_data):
+        self.__init__()
+        for key, value in srs_data.items():
+            self.check(key, value)
+            self.after(key, value)
+
+        return self.dup_dict
+
+    def tot_dup(self):
+        return self.main_dict, self.dup_dict
 
 
 class KoreanSupport:
