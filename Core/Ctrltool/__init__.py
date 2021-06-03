@@ -8,8 +8,7 @@ from .csvcore import CSVFunc
 from .erbcore import ERBFunc
 from .erhcore import ERHFunc
 from .jsoncore import EXTFunc
-from .result import ResultFunc
 from .srshandler import SRSFunc
 from .webcrawl import CrawlFunc
 
-__all__ = ["CSVFunc", "ERBFunc", "ResultFunc", "ERHFunc", "EXTFunc", "CrawlFunc", "SRSFunc"]
+__all__ = ["CSVFunc", "ERBFunc", "ERHFunc", "EXTFunc", "CrawlFunc", "SRSFunc"]
