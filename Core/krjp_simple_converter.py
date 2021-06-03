@@ -4,6 +4,7 @@ import pickle
 import os
 from customdb import InfoDict
 from simple_util import BringFiles
+from usefile import CustomInput, MenuPreset
 from Ctrltool.erbcore import ERBRemodel, ERBVFinder
 from Ctrltool.erhcore import HandleDIM, ERHFunc
 
@@ -18,10 +19,10 @@ class SaveSetting:
             "처리할 구상을 넣을 폴더에는 ERB는 이식할 것만 넣어주시고,\n",
             "CSV 폴더는 되도록 통째로, ERH 파일은 대상 에라 안의 것을 되도록 모두 넣어주세요.",
         )
-        orig_dir = input("일어본이 있는 폴더명을 입력하세요. : ")
-        trans_dir = input("번역본이 있는 폴더명을 입력하세요. : ")
-        orig_csv = BringFiles(orig_dir).search_csvdict("cp932")
-        trans_csv = BringFiles(trans_dir).search_csvdict("UTF-8-sig")
+        orig_dir, *_ = CustomInput("원본 에라").input_option(0b001)
+        trans_dir, *_ = CustomInput("번역본 에라").input_option(0b001)
+        orig_csv = BringFiles(orig_dir).search_csvdict(MenuPreset().encode())
+        trans_csv = BringFiles(trans_dir).search_csvdict(MenuPreset().encode())
         self.set_list = [orig_dir, trans_dir, orig_csv, trans_csv]
 
     def save(self):
