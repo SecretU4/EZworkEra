@@ -277,7 +277,7 @@ class ExportSRS(ExportData):
         Funcitons
             to_SRS([srs_opt, srsname])
     """
-    def __SRS_multi_write(self, o_data, t_data, keyname, flags, h_opt=0, opt_no=0):
+    def __SRS_multi_write(self, o_data, t_data, keyname, flags, dup_chk, h_opt=0, opt_no=0):
         """SRS용 교차출력 함수. 유효하지 않은 내용 판단이 동시에 이루어짐."""
         debugging = False
         error_target = []
@@ -292,15 +292,10 @@ class ExportSRS(ExportData):
             self.log_file.write_log("{} 자료를 이용한 SRS를 작성할 수 없습니다.".format("자료와 ".join(error_target)))
             return False
 
-        if flags & 0b100000: # isFirst
-            dup_chk = DupItemCheck()
-        else:
-            h_opt = 0
-            _, dup_chk = SRSFunc().make_srsdict(self.res_filename)
-
         self.log_file.write_log(keyname + " 정보를 불러옴\n")
         lines = []
 
+        # srs_dict 생성 (SRSFormat 형태)
         srs_result = SRSFunc().make_srsfmt(
             o_data, t_data, dup_chk, keyname, opt_no, debugging
         )
@@ -311,7 +306,6 @@ class ExportSRS(ExportData):
             lines = srsfmt.print_srs(h_opt, True)
 
             error_lines = []
-
             for cnt, error_list in enumerate(error_cases):
                 if cnt == 0: line = "미번역 단어: "
                 elif cnt == 1: line = "한글자 단어: "
@@ -320,14 +314,13 @@ class ExportSRS(ExportData):
                 if error_list and flags & (2 ** cnt):
                     line += str(error_list)
                     error_lines.append(srsfmt.print_comment(line))
-            if lines:
-                if error_lines and opt_no & 0b10000:
-                    error_code |= 0b010
-                    lines.extend(error_lines)
-
-                self.__output_txt(lines, True)
-
-        if not lines:
+        # 실제 srs 작성부
+        if lines:
+            if error_lines and opt_no & 0b10000:
+                error_code |= 0b010
+                lines.extend(error_lines)
+            self.__output_txt(lines, True)
+        else:
             error_code |= 0b100
             self.log_file.write_log("전체 중복 또는 오류로 인해 자료 전체 통과됨\n")
 
@@ -374,11 +367,13 @@ class ExportSRS(ExportData):
                 )
             flags |= exp_opt
 
+        # SRS type 설정부
         ext_str = "simplesrs"
         if not srsname:
             srsname = "autobuild"
         self.res_filename = "{}.{}".format(self.dest_dir + srsname, ext_str)
 
+        # 데이터가 InfoDict형이라면 데이터 목록 호출
         if isinstance(orig_data, InfoDict) and isinstance(trans_data, InfoDict):
             orig_infokeys = list(orig_data.dict_main.keys())
             trans_infokeys = list(trans_data.dict_main.keys())
@@ -401,6 +396,9 @@ class ExportSRS(ExportData):
                         )
                         break
             h_opt = 0b1011 if wordwrap_yn else 0b1010
+            dup_chk = DupItemCheck()
+        else:
+            _, dup_chk = SRSFunc().make_srsdict(self.res_filename)
 
         print("SRS 입력을 시작합니다...")
         for num in range(len(orig_infokeys)):
@@ -420,11 +418,9 @@ class ExportSRS(ExportData):
             else:
                 keyname = FileFilter().sep_filename(self.orig_key)
 
-            if (
-                keyname != "단독파일"
-                and keyname.lower() != FileFilter().sep_filename(self.trans_key).lower()
-            ):
-                # orig_key와 trans_key가 일치하지 않을때
+            if (keyname != "단독파일" and keyname.lower() != 
+                FileFilter().sep_filename(self.trans_key).lower()
+                ): # orig_key와 trans_key가 일치하지 않을때
                 self.trans_key = FileFilter().search_filename_wordwrap(
                     trans_infokeys, keyname.split()
                 )
@@ -443,12 +439,13 @@ class ExportSRS(ExportData):
             else:
                 target_couple = orig_data, trans_data
 
-            multiwrite = self.__SRS_multi_write(*target_couple, keyname, flags, h_opt, srs_opt)
+            multiwrite = self.__SRS_multi_write(*target_couple, keyname, flags, dup_chk, h_opt, srs_opt)
             if not multiwrite:
                 failed_count += 1
             else:
                 if multiwrite[0]: #is_worked 
                     flags &= flags ^ 0b100000 # remove isFirst Flag when first write finished
+                    h_opt = 0
                     done_count += 1
                 if multiwrite[1] & 0b100 or multiwrite[1] & 0b001:
                     failed_count += 1
