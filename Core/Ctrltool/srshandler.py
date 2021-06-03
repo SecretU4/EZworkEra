@@ -169,34 +169,74 @@ class SRSFunc:
 
         return result
 
-    def make_srsfmt(self, key_dataset, val_dataset, total_data={}, dup_data={}, dataname="", adv_opt=0, pnt_flag=False):
+    def make_srsfmt(self, key_dataset, val_dataset, dupcheck, dataname="", adv_opt=0, debug=False):
         """주어진 데이터셋(str list)을 바탕으로 SRSFormat 및 DupItemCheck 객체 반환"""
-        if len(key_dataset) != len(val_dataset):
-            print("특정 자료의 개수가 같지 않아 올바른 동작을 보장할 수 없습니다.")
-
-        dupcheck = DupItemCheck(total_data, dup_data)
-        srsdict = {}
-        dup_case = set()
-        for key, value in zip(key_dataset, val_dataset):
-            dup_case.add(dupcheck.check(key, value))
-            srsdict[key] = value
-            dupcheck.after(key, value)
-
-        srsdict, filtered = SRSEditor().advanced_filter(srsdict, adv_opt)
-
-        if dupcheck.dup_dict:
-            print("중복된 케이스들이 발견되었습니다. 코드: ", dup_case)
-
         text = dataname + " 내에서 " if dataname else ""
-        for cnt, flt_list in enumerate(filtered):
-            if cnt == 0: # 미번역 단어
-                text += "미번역된 단어 %d 개가 필터링되었습니다." % len(flt_list)
-            elif cnt == 1: # 한글자 단어
-                text += "한글자 단어 %d 개가 필터링되었습니다." % len(flt_list)
-            if flt_list and pnt_flag:
-                print(text)
 
-        return SRSFormat(srsdict, dataname), dupcheck, filtered
+        if len(key_dataset) != len(val_dataset):
+            print("%s특정 자료의 개수가 같지 않아 올바른 동작을 보장할 수 없습니다." % text)
+
+        have_null = {}
+        srsdict = {}
+        dup_caseset = set()
+        if type(key_dataset) == type(val_dataset):
+            key_vals = []
+            if isinstance(key_dataset, dict): # CSV 변수목록 or FuncInfo
+                k_data_keys = list(key_dataset.keys())
+                v_data_keys = list(val_dataset.keys())
+                total_keys = DataFilter().dup_filter(k_data_keys + v_data_keys)
+                for t_key in total_keys:
+                    if t_key not in k_data_keys:
+                        have_null[t_key] = 1
+                    elif t_key not in v_data_keys:
+                        have_null[t_key] = 2
+                    else:
+                        key_vals.append( (key_dataset[t_key], val_dataset[t_key]) )
+            elif isinstance(key_dataset, list):                
+                key_vals = zip(DataFilter().strip_filter(key_dataset), DataFilter().strip_filter(val_dataset))
+
+            if key_vals:
+                for key, value in key_vals:
+                    dup_case = dupcheck.check(key, value)
+                    dup_caseset.add(dup_case)
+                    srsdict[key] = value
+                    dupcheck.after(key, value)            
+        else:
+            raise TypeError("%s두 데이터의 자료형이 같지 않습니다." % text)
+
+        if not srsdict:
+            print("%s처리 가능한 데이터를 찾지 못했습니다." % text)
+            return False
+
+        srsdict, except_list = SRSEditor().advanced_filter(srsdict, adv_opt)
+
+        dup_caseset.remove(0)
+        if dupcheck.dup_dict and debug:
+            print("%s중복된 케이스들이 발견되었습니다. 코드: " % dataname, dup_caseset)
+
+        if have_null:
+            if debug:
+                print("%s일부 자료에서 공란이 확인되었습니다." % text)
+            blank_list = [ [], [] ]
+            for key, null_loc in have_null.items():
+                null_loc -= 1
+                if null_loc >= 0:
+                    blank_list[null_loc].append(key)
+            except_list.extend(blank_list)
+
+        if except_list and debug:
+            for cnt, excepts in enumerate(except_list):
+                if cnt == 0: # 미번역 단어
+                    text = "미번역된 단어 %d 개가 필터링되었습니다." % len(excepts)
+                elif cnt == 1: # 한글자 단어
+                    text = "한글자 단어 %d 개가 필터링되었습니다." % len(excepts)
+                elif cnt == 2: # 원문 누락
+                    text = "번역문 대비 원문 %d 개가 공란입니다." % len(excepts)
+                elif cnt == 3: # 번역문 누락
+                    text = "원문 대비 번역문 %d 개가 공란입니다." % len(excepts)
+                if excepts: print(text)
+
+        return SRSFormat(srsdict, dataname), dupcheck, except_list
 
     def make_srsdict(self, srsname, encoding="UTF-8"):
         return SRSFile(srsname, encoding).make_dict()
