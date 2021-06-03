@@ -13,22 +13,21 @@ class SaveSetting:
     def __init__(self):
         self.sav_name = "setting.sav"
         self.set_list = []
+        self.sav_ver = 1.1
 
     def create(self):
-        print(
-            "처리할 구상을 넣을 폴더에는 ERB는 이식할 것만 넣어주시고,\n",
-            "CSV 폴더는 되도록 통째로, ERH 파일은 대상 에라 안의 것을 되도록 모두 넣어주세요.",
-        )
-        orig_dir, *_ = CustomInput("원본 에라").input_option(0b001)
-        trans_dir, *_ = CustomInput("번역본 에라").input_option(0b001)
-        orig_csv = BringFiles(orig_dir).search_csvdict(MenuPreset().encode())
-        trans_csv = BringFiles(trans_dir).search_csvdict(MenuPreset().encode())
-        self.set_list = [orig_dir, trans_dir, orig_csv, trans_csv]
+        o_dir, *_ = CustomInput("원본 에라").input_option(0b001)
+        o_encoding = MenuPreset().encode()
+        t_dir, *_ = CustomInput("번역본 에라").input_option(0b001)
+        t_encoding = MenuPreset().encode()
+        f_csvinfo = BringFiles(o_dir).search_csvdict(o_encoding)
+        t_csvinfo = BringFiles(t_dir).search_csvdict(t_encoding)
+        self.set_list = [o_dir, t_dir, f_csvinfo, t_csvinfo, o_encoding, t_encoding]
 
     def save(self):
         if not os.path.isfile(self.sav_name):
             savfile = open(self.sav_name, "xb")
-            pickle.dump(self.set_list, savfile, pickle.HIGHEST_PROTOCOL)
+            pickle.dump((self.set_list, self.sav_ver), savfile, pickle.HIGHEST_PROTOCOL)
         else:
             print("설정 파일이 이미 존재하므로 저장하지 않습니다.")
             return None
@@ -36,7 +35,11 @@ class SaveSetting:
     def load(self):
         if os.path.isfile(self.sav_name):
             self.savfile = open(self.sav_name, "rb")
-            self.set_list = pickle.load(self.savfile)
+            loaded = pickle.load(self.savfile)
+            if isinstance(loaded, tuple):
+                self.set_list, _ = loaded
+            else:
+                self.set_list = loaded
         elif [x for x in os.listdir("./") if x.endswith(".sav")]:
             print("설정 파일이 너무 많습니다. 하나만 남겨주세요.")
         else:
@@ -51,7 +54,7 @@ class AnalyzeFiles:
         self.encode_type = encode_type
         self.dim_dict = dict()
 
-    def anal_erbs(self, double_csv_infodict=None, mod=None):
+    def anal_erbs(self, double_csv_infodict=None, mod=0b111):
         """ERB 파일 분석 함수. double_csv_infodict은 (원본, 번역본) 형태의 튜플이어야 함.
         mod 설정정보
             bit 0 : 함수, bit 1 : CSV변수, bit 2: DIM변수
@@ -59,10 +62,8 @@ class AnalyzeFiles:
         erb_files = self.birngfiles.search_filelist(".ERB")
         used_func_list = set(("LOCAL", "LOCALS"))
         def_func_list = set(("LOCAL", "LOCALS"))
-        if mod == None: # mod 미설정시 전부 처리
-            mod = 0b111
 
-        if mod & 0b10:
+        if mod & 0b010:
             if not double_csv_infodict:
                 raise NotImplementedError("필요한 csvinfo 데이터가 입력되지 않았습니다.")
             try:
@@ -79,29 +80,32 @@ class AnalyzeFiles:
         for erbname in erb_files:
             with open(erbname, "r", encoding=self.encode_type) as erbfile:
                 lines = erbfile.readlines()
-                for line in lines:
-                    line.strip()
-                    if line.startswith(";"):
-                        continue
-                    words = line.split()
-                    if not words:
-                        continue
-                    if mod & 0b10:
-                        result = vfinder.find_csvfnc_line(line)
-                        if result:
-                            csv_varlist.extend(result)
-                    if mod & 0b1 and words[0] in ("TRYCALLFORM", "TRYCCALLFORM", "TRYCALL", "CALLFORM", "CALLF", "CALL"):
+            # line당 여건 체크
+            for line in lines:
+                line.strip()
+                if line.startswith(";"): # Comment
+                    continue
+                words = line.split()
+                if not words:
+                    continue
+                if mod & 0b001: # Function
+                    head = words[0]
+                    if mod & 0b001 and head in ("TRYCALLFORM", "TRYCCALLFORM", "TRYCALL", "CALLFORM", "CALLF", "CALL"):
                         words.pop(0)
                         funcname = " ".join(words).split("(")[0]
                         try:
                             int(funcname)
                         except ValueError:
                             used_func_list.add(funcname)
-                    elif mod & 0b1 and words[0].startswith("@") and not words[0].startswith("\\@"):
-                        funcname = words[0].split("(")[0].replace("@", "")
+                    elif mod & 0b001 and head.startswith("@"):
+                        funcname = head.replace("@", "").split("(")[0].split(",")[0]
                         def_func_list.add(funcname)
-                    elif mod & 0b100 and words[0].startswith("#DIM"):
-                        self.dim_dict.update(handle_dim.dim_search(line))  # TODO DIM 분석필요
+                if mod & 0b010: # CSV Vars
+                    result = vfinder.find_csvfnc_line(line)
+                    if result:
+                        csv_varlist.extend(result)
+                if mod & 0b100 and words[0].startswith("#DIM"): # DIM Vars
+                    self.dim_dict.update(handle_dim.dim_search(line))  # TODO DIM 분석필요
 
         for used_func in list(used_func_list):
             if used_func in def_func_list:
@@ -194,13 +198,23 @@ def compare_csvvar(csv_dict, used_list, dim_dict=dict()):
     return not_checked
 
 
-def wrapping(dirname, csv_info, encode_type, diff_csvinfo):
-    analyze = AnalyzeFiles(BringFiles(dirname), encode_type)
+def wrapping(dirname, f_csvinfo, encode_type, t_csvinfo, target_dir):
+    """simple_converter용 정리 함수
+        Arguments
+            dirname: 구상 출처 에라 위치
+            f_csvinfo: 구상 출처 에라 CSV정보
+            encode_type: 구상 출처 에라 인코딩 정보
+            t_csvinfo: 이식 대상 에라 CSV정보
+            target_dir: 이식할 구상 위치
+    """
+    # 주어진 데이터를 체크
+    analyze = AnalyzeFiles(BringFiles(target_dir), encode_type)
     analyze.anal_erhs()
-    used_funcs, used_csvvars, *compare_set = analyze.anal_erbs((csv_info, diff_csvinfo))
-    index_csvvars = compare_csvvar(diff_csvinfo, *compare_set)
+    used_funcs, used_csvvars, *compare_set = analyze.anal_erbs((f_csvinfo, t_csvinfo))
+
+    index_csvvars = compare_csvvar(t_csvinfo, *compare_set)
     report = PrintReport()
-    report.basic_info(dirname, "외부함수 %d 개" % len(used_funcs), "미확인된 외부함수: ")
+    report.basic_info(target_dir, "외부함수 %d 개" % len(used_funcs), "미확인된 외부함수: ")
     report.listed_info(used_funcs)
     report.basic_info(
         "사용된 변수 %d 개\n누락 CSV변수: %d 개\n누락 목록: " % (len(used_csvvars), len(index_csvvars))
@@ -211,7 +225,7 @@ def wrapping(dirname, csv_info, encode_type, diff_csvinfo):
     report.listed_info(compare_set[1])
     report.basic_info("\n" + "=" * 8)
 
-    wrap_print = PrintERB(dirname, encode_type, csv_info)
+    wrap_print = PrintERB(target_dir, encode_type, f_csvinfo)
     result_infodict = wrap_print.printing()
     for filename, erblines in result_infodict.dict_main.items():
         with open(filename, "w", encoding="utf-8-sig") as erb:
@@ -227,7 +241,7 @@ if __name__ == "__main__":
         "해당 경우 누락된 함수에서 오류를 발생시킬 수 있습니다.\n\n",
     )
     config = SaveSetting()
-    orig_dir, trans_dir, orig_csv, trans_csv = config.load()
+    o_dir, t_dir, f_csvinfo, t_csvinfo, o_encod, t_encod = config.load()
     config.save()
 
     while True:
@@ -236,13 +250,18 @@ if __name__ == "__main__":
             "\n한 번 실행한 적이 있는 경우, setting.sav 파일에 선택한 폴더, CSV 데이터 등이 저장됩니다.\n",
             "다른 폴더를 사용하거나 CSV 파일에 변동이 있었던 경우 해당 파일을 지우고 다시 구동해주세요.\n",
             "=" * 8,
-            "\n[0] 일어본구상 번역본이식\n[1] 번역본구상 일어본이식",
+            "\n[0] 일어본구상 번역본이식\n[1] 번역본구상 일어본이식\n",
         )
         choose = input("실행할 작업을 선택해주세요. : ")
         if choose == "0":
-            wrapping(orig_dir, orig_csv, "cp932", trans_csv)
-            break
+            chosen = [o_dir, f_csvinfo, o_encod, t_csvinfo]
         elif choose == "1":
-            wrapping(trans_dir, trans_csv, "UTF-8-sig", orig_csv)
-            break
+            chosen = [t_dir, t_csvinfo, t_encod, f_csvinfo]
+        else:
+            print("올바른 입력이 아닙니다")
+            continue
+        print("이식할 구상이 있는 폴더를 입력하세요.")
+        target_dir = input("* 에라 전체 폴더 선택시 문제가 발생할 수 있습니다.: ")
+        wrapping(*chosen, target_dir)
+        break
     input("아무 키나 눌러 종료...")
