@@ -720,7 +720,7 @@ class ERBVFinder:
             3: csv에서 인식되는 형태로 출력 (대명사 제외)
             4: (index 변환 사용시) erb 내 index 변환 행태로 출력
         """
-        result_list:list[list[str]] = []
+        result_list:list[str] = []
         if not comp_list:
             return result_list
 
@@ -742,7 +742,8 @@ class ERBVFinder:
                 o_context = t_context = context
             else:
                 raise NotImplementedError("잘못된 context 타입: " + str(type(context)))
-
+            
+            res_index = 0
             for i in range(3):
                 temp_opt = opt_no & (2 ** i)
                 if temp_opt & 0b0001:
@@ -753,7 +754,10 @@ class ERBVFinder:
                     head, cont = orighead, t_context
                 if pnoun and temp_opt ^ 0b0100:
                     cont = pnoun + ":" + cont
-                result_list[i].append("{}:{}".format(head, cont))
+                if temp_opt:
+                    result_list[res_index].append("{}:{}".format(head, cont))
+                    res_index += 1
+    
         return result_list
 
 
