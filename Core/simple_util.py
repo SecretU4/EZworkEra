@@ -9,7 +9,7 @@ class BringFiles:
         self.dirname = dirname
 
     def search_csvdict(self, encode_type):
-        csv_filelist = FileFilter(0).files_ext(self.dirname, ".CSV")
+        csv_filelist = FileFilter(1).files_ext(self.dirname, ".CSV")
         CSVinfodict = CSVFunc().import_all_CSV(0b10, csv_filelist, encode_type)
         return CSVinfodict
 
