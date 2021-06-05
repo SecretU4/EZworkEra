@@ -25,7 +25,7 @@ class ERBLoad(LoadFile):
         opt bit 1 : 참이면 startswith인 경우에만 결과에 포함
         """
         self.make_erblines()
-        self.targeted_list = []
+        targeted_list = []
         skip_switch = 0
         for line in self.lines:
             if skip_switch == 1:
@@ -44,9 +44,9 @@ class ERBLoad(LoadFile):
                     if target in line:
                         if opt & 0b1 and not line.strip().startswith(target):
                             continue
-                        self.targeted_list.append(line)
+                        targeted_list.append(line)
                         break
-        return self.targeted_list
+        return targeted_list
 
 
 class ERBWrite(LoadFile):
@@ -857,6 +857,23 @@ class ERBBlkFinder:
                 self.block_maker()
 
 
+class DataBaseERB:
+    def collect_adj(self, lines:list[str], tag:str, adj_opt:bool = False) -> list[str]:
+        result_list = []
+        for line in lines:
+            line = line.replace(tag, "")
+            if adj_opt:
+                line = line.strip()
+                line = line.replace('"',"")
+                line = line.replace(r"\/", "/")
+                words = line.split("/")
+            else:
+                words = [line,]
+            result_list.extend(DataFilter().dup_filter(words))
+
+        return DataFilter().dup_filter(result_list)
+
+
 class ERBFunc:
 
     func_log = LogPreset("ERBwork")
@@ -1086,3 +1103,27 @@ class ERBFunc:
         print("번역본 erb의 디렉토리를 지정해주세요.")
         t_blkdata = ERBBlkFinder()
         # TODO 이름만 다른 파일 비교 가능하게 - CompareErb.csv 활용
+
+    def db_erb_finder(self, erb_files=None, encode_type=None):
+        """데이터베이스형 ERB 자료 추출 함수"""
+        print("되도록 필요한 파일만 있는 폴더를 만든 후 그곳에서 진행해주세요.")
+        if not erb_files or not encode_type:
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
+        while True:
+            tag = input("필요한 데이터 형식의 앞말을 붙여넣어주세요.: ")
+            adj_yn = MenuPreset().yesno(
+                "AAA/BBB/CCC 꼴의 데이터인 경우, 각 요소별 분할이 가능합니다.",
+                "분할을 시도하시겠습니까?")
+            adj_res = "Yes" if adj_yn else "No"
+            if MenuPreset().yesno("tag: %s, 분할 시도: %s가 맞습니까?" % (tag, adj_res)):
+                if MenuPreset().yesno("작업을 취소할까요?"):
+                    return None
+                break
+
+        result_infodict = InfoDict(2)
+        for erbname in erb_files:
+            erb_load = ERBLoad(erbname, encode_type)
+            erblines = erb_load.make_erblines()
+            result_infodict.add_dict(erbname, DataBaseERB().collect_adj(erblines, tag, adj_yn))
+
+        return result_infodict
