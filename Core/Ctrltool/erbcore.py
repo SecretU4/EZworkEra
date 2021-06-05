@@ -1106,7 +1106,10 @@ class ERBFunc:
 
     def db_erb_finder(self, erb_files=None, encode_type=None):
         """데이터베이스형 ERB 자료 추출 함수"""
-        print("되도록 필요한 파일만 있는 폴더를 만든 후 그곳에서 진행해주세요.")
+        print("되도록 필요한 파일만 있는 폴더를 만든 후 그곳에서 진행해주세요.",
+        "추후 복수의 파일을 비교하고자 하는 경우, 각 파일의 파일명은 같아야 합니다.",
+        sep="\n"
+        )
         if not erb_files or not encode_type:
             erb_files, encode_type = CustomInput("ERB").get_filelist()
         while True:
