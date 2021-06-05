@@ -397,7 +397,7 @@ class SRSFormat:
         self.srs_type = srs_type
         self.db_ver = 1.0
 
-    def srstype_format(self):
+    def _srstype_format(self):
         """srs_type 1:simplesrs 2:srs"""
         if self.srs_type == 1:
             fmtdata = {
@@ -433,12 +433,12 @@ class SRSFormat:
         return head + '\n'
 
     def print_comment(self, sentence):
-        return self.srstype_format()["com"].replace("comment", sentence)
+        return self._srstype_format()["com"].replace("comment", sentence)
 
     def print_srs(self, h_opt=0, title=False):
         """문자열 포함 list 형태로 srsdict 데이터를 변환"""
         result_lines = []
-        fmtdata = self.srstype_format()
+        fmtdata = self._srstype_format()
 
         if fmtdata["head"] and h_opt:
             result_lines.append(self.set_head(h_opt))
