@@ -8,77 +8,76 @@ from usefile import CustomInput, MenuPreset
 from util import DataFilter
 from Ctrltool.erbcore import ERBRemodel, ERBVFinder
 from Ctrltool.erhcore import HandleDIM, ERHFunc
+from Ctrltool.srshandler import SRSFunc
 
 
 class SaveSetting:
     def __init__(self):
         self.sav_name = "setting.sav"
-        self.set_list = []
-        self.sav_ver = 1.1
+        self.set_dict = {"sav_ver":1.1}
 
     def create(self):
-        o_dir, *_ = CustomInput("원본 에라").input_option(0b001)
-        o_encoding = MenuPreset().encode()
-        t_dir, *_ = CustomInput("번역본 에라").input_option(0b001)
-        t_encoding = MenuPreset().encode()
-        f_csvinfo = BringFiles(o_dir).search_csvdict(o_encoding)
-        t_csvinfo = BringFiles(t_dir).search_csvdict(t_encoding)
-        self.set_list = [o_dir, t_dir, f_csvinfo, t_csvinfo, o_encoding, t_encoding]
+        dir_ori, *_ = CustomInput("원본 에라").input_option(0b001)
+        enc_ori:str = MenuPreset().encode()
+        self.set_dict["csv_A"] = BringFiles(dir_ori).search_csvdict(enc_ori)
+        self.set_dict["dir_A"] = dir_ori
+        self.set_dict["enc_A"] = enc_ori
+        dir_tns, *_ = CustomInput("번역본 에라").input_option(0b001)
+        enc_tns:str = MenuPreset().encode()
+        self.set_dict["csv_B"] = BringFiles(dir_tns).search_csvdict(enc_tns)
+        self.set_dict["dir_B"] = dir_tns
+        self.set_dict["enc_B"] = enc_tns
+        return self.set_dict
 
-    def save(self):
+    def save(self, data):
         if not os.path.isfile(self.sav_name):
             savfile = open(self.sav_name, "xb")
-            pickle.dump((self.set_list, self.sav_ver), savfile, pickle.HIGHEST_PROTOCOL)
+            pickle.dump(data, savfile, pickle.HIGHEST_PROTOCOL)
         else:
             print("설정 파일이 이미 존재하므로 저장하지 않습니다.")
-            return None
+        return data
 
-    def load(self) -> list:
+    def load(self) -> dict:
         if os.path.isfile(self.sav_name):
             self.savfile = open(self.sav_name, "rb")
-            loaded = pickle.load(self.savfile)
-            if isinstance(loaded, tuple):
-                self.set_list, _ = loaded
-            else:
-                self.set_list = loaded
+            data = pickle.load(self.savfile)
         elif [x for x in os.listdir("./") if x.endswith(".sav")]:
-            print("설정 파일이 너무 많습니다. 하나만 남겨주세요.")
+            raise FileExistsError("설정 파일이 너무 많습니다. 하나만 남겨주세요.")
         else:
             print("설정 파일이 없습니다. 설정을 새롭게 작성합니다.")
-            self.create()
-        return self.set_list
+            data = self.create()
+        
+        return self.save(data)
 
 
 class AnalyzeFiles:
-    def __init__(self, bringfiles, encode_type):
+    def __init__(self, bringfiles:BringFiles, encode_type:str):
         self.bring = bringfiles
         self.encode_type = encode_type
-        self.dim_dict = dict()
-        self.srs_dict = dict()
+        self.dim_dict: dict[str, list[str]] = dict()
 
-    def anal_erbs(self, from_csvinfo, mod=0b111):
+    def anal_erbs(self, mod: int = 0b111):
         """ERB 파일 분석 함수.
 
         mod 설정정보
             bit 0 : 함수, bit 1 : CSV변수, bit 2: DIM변수
         """
-        erb_files = self.bring.search_filelist(".ERB")
-        used_csvvar = []
-        index_csvvar = []
+        self.erb_infdict = InfoDict(1)
+        for erb in self.bring.search_filelist(".ERB"):
+            with open(erb, "r", encoding=self.encode_type) as erbfile:
+                self.erb_infdict.add_dict(erb, erbfile.readlines())
+        self.anal_erhs()
 
         if mod & 0b001: # Function 처리
             def_funcinfo = FuncInfo()
             use_funcinfo = FuncInfo()
             mis_funcs = []
         if mod & 0b010: # CSV Var 처리
-            vfinder = ERBVFinder(from_csvinfo)
             csv_varlist = []
         if mod & 0b100: # DIM Var 처리
             handle_dim = HandleDIM()
 
-        for erbname in erb_files:
-            with open(erbname, "r", encoding=self.encode_type) as erbfile:
-                lines = erbfile.readlines()
+        for erbname, lines in self.erb_infdict.dict_main.items():
             # line당 여건 체크
             for line in lines:
                 line.strip()
@@ -100,51 +99,88 @@ class AnalyzeFiles:
                         funcname = head.replace("@", "").split("(")[0].split(",")[0]
                         def_funcinfo.add_dict(funcname, [funcname,], erbname)
                 if mod & 0b010: # CSV Vars
-                    result = vfinder.find_csvfnc_line(line)
+                    result = self.vfinder.find_csvfnc_line(line)
                     if result:
                         csv_varlist.extend(result)
                 if mod & 0b100 and words[0].startswith("#DIM"): # DIM Vars
                     self.dim_dict.update(handle_dim.dim_search(line))  # TODO DIM 분석필요
 
+        # 결과물 처리 부분
+        used_csvvar = []
+        index_csvvar = []
         if mod & 0b001: # Function
             for used_func in use_funcinfo.func_dict:
                 if not def_funcinfo.func_dict.get(used_func):
                     mis_funcs.append(used_func)
         if mod & 0b010: # CSV Vars
-            changed_csvvar = vfinder.change_var_index(csv_varlist, 1)
+            changed_csvvar = self.vfinder.change_var_index(csv_varlist, 1)
             changed_csvvar = DataFilter().dup_filter(changed_csvvar)
-            used_csvvar, index_csvvar = vfinder.print_csvfnc(changed_csvvar, 0b1100)
+            used_csvvar, index_csvvar = self.vfinder.print_csvfnc(changed_csvvar, 0b1100)
+            index_csvvar = self.compare_csvvar(index_csvvar)
 
-        return mis_funcs, used_csvvar, index_csvvar, self.dim_dict
+        return mis_funcs, used_csvvar, index_csvvar
 
-    def anal_erhs(self) -> dict:
+    def anal_erhs(self) -> dict[str, list[str]]:
+        """분석할 ERB의 기반 ERH를 분석해 그 결과값을 dict형태로 반환함"""
         erh_files = self.bring.search_filelist(".ERH")
+        if not erh_files: # 주어진 구상 폴더 내에 ERH 파일이 없음
+            return {}
         _, temp_dimdict = ERHFunc().analyze_erh(erh_files, self.encode_type)
         self.dim_dict.update(temp_dimdict)
         return temp_dimdict
     
     def anal_csvs(self, f_csvinfo: InfoDict, t_csvinfo: InfoDict) -> dict:
-        """csvinfo를 통한 유사 srsdict 생성 함수"""
-        return self.srs_dict
+        self.vfinder = ERBVFinder(f_csvinfo)
+        self.t_vfinder = ERBVFinder(t_csvinfo)
+        srs_dict, *_ = SRSFunc().build_srsdict(f_csvinfo, t_csvinfo)
+        return srs_dict
+
+    def compare_csvvar(self, used_list: list[str]):
+        """index 기반 사용 변수 list를 받아 처리되지 않은 list 반환"""
+        not_checked = used_list.copy()
+
+        for var in used_list:
+            is_dim = False
+            csvname, *vardata = var.split(":")
+            var_context = vardata[-1]
+
+            if self.t_vfinder.extra_dict.get(csvname): # csvname != 일반적 filename
+                csvname: str = self.t_vfinder.extra_dict[csvname]
+
+            csv_filename: str = self.t_vfinder.csv_fnames.get(csvname)
+            if csv_filename:
+                if self.dim_dict.get(var_context):  # dim_dict 에서 찾을 수 있는 var_context인 경우
+                    var_context = self.dim_dict[var_context][0] # 일단 1차원만 상정
+                    is_dim = True
+
+                if self.t_vfinder.csv_infodict.dict_main[csv_filename].get(var_context): # 해당 var_context가 목록에 존재하는 경우
+                    trans_var = var
+                elif is_dim:
+                    vardata[-1] = var_context
+                    trans_var = csvname + ":" + ":".join(vardata)
+                else:
+                    continue
+
+                try:
+                    not_checked.pop(not_checked.index(trans_var))
+                except ValueError:
+                    pass
+
+        return not_checked
 
 
 class PrintERB:
-    def __init__(self, dirname, encode_type, csv_infodict):
-        self.erb_files = BringFiles(dirname).search_filelist(".ERB")
+    def __init__(self, erb_info:InfoDict, encode_type:str, csv_info:InfoDict):
+        self.erb_info = erb_info
         self.encode_type = encode_type
-        self.csv_infodict = csv_infodict
+        self.csv_infodict = csv_info
 
-    def printing(self):
+    def printing(self, srs_dict:dict = dict()):
         result_infodict = InfoDict(1)
-        for filename in self.erb_files:
-            replaced_lines = ERBRemodel(
-                filename, self.encode_type
-                ).replace_csvvars(self.csv_infodict, 1)
+        for filename, lines in self.erb_info.dict_main.items():
+            replaced_lines = ERBRemodel(lines).replace_csvvars(self.csv_infodict, 1, srs_dict)
             result_infodict.add_dict(filename, replaced_lines)
         return result_infodict
-
-    def zname(self):  # TODO 추후 추가예정
-        pass
 
 
 class PrintReport:
@@ -166,54 +202,24 @@ class PrintReport:
             opened.write(result + "\n")
 
 
-def compare_csvvar(csv_dict, used_list, dim_dict=dict()):
-    not_checked = used_list.copy()
-    vfinder = ERBVFinder(csv_dict)
-    csvname_dict = vfinder.csv_fnames
-    extra_csvs = vfinder.extra_dict
-
-    for var in used_list:
-        is_dim = 0
-        csvname, *vardata = var.split(":")
-        var_context = vardata[-1]
-
-        if csvname in list(extra_csvs.keys()):
-            csvname = extra_csvs[csvname]
-
-        if csvname in list(csvname_dict.keys()):
-            csv_filename = csvname_dict[csvname]
-            if dim_dict.get(var_context):  # dim_dict은 전역변수 정의 목록임. 명칭과 해당값 있음
-                var_context = dim_dict[var_context][0]
-                is_dim = 1
-            if csv_dict.dict_main[csv_filename].get(var_context):
-                not_checked.pop(not_checked.index(var))
-            elif is_dim:
-                vardata[-1] = var_context
-                trans_var = csvname + ":" + ":".join(vardata)
-                try:
-                    not_checked.pop(not_checked.index(trans_var))
-                except ValueError:
-                    pass
-
-    return not_checked
-
-
-def wrapping(dirname, f_csvinfo, encode_type, t_csvinfo, target_dir):
+def wrapping(set_dict:dict, tag_no:int, target_dir:str):
     """simple_converter용 정리 함수
         Arguments
-            dirname: 구상 출처 에라 위치
             f_csvinfo: 구상 출처 에라 CSV정보
             encode_type: 구상 출처 에라 인코딩 정보
             t_csvinfo: 이식 대상 에라 CSV정보
             target_dir: 이식할 구상 위치
     """
     # 주어진 데이터를 체크
-    analyze = AnalyzeFiles(BringFiles(target_dir), encode_type)
-    analyze.anal_csvs(f_csvinfo, t_csvinfo)
-    analyze.anal_erhs()
-    miss_funcs, used_csvvars, *compare_set = analyze.anal_erbs(f_csvinfo)
+    tag_dict = {0:"A", 1:"B", "A":"B", "B":"A"}
+    from_tag = tag_dict.get(tag_no)
+    if not from_tag:
+        NotImplementedError("잘못된 태그: {}".format(tag_no))
 
-    index_csvvars = compare_csvvar(t_csvinfo, *compare_set)
+    analyze = AnalyzeFiles(BringFiles(target_dir), set_dict["enc_"+from_tag])
+    srsdict = analyze.anal_csvs(set_dict["csv_"+from_tag], set_dict["csv_"+tag_dict[from_tag]])
+    miss_funcs, used_csvvars, index_csvvars = analyze.anal_erbs()
+
     report = PrintReport()
     report.basic_info(target_dir, "외부함수 %d 개" % len(miss_funcs), "미확인된 외부함수: ")
     report.listed_info(miss_funcs)
@@ -223,12 +229,15 @@ def wrapping(dirname, f_csvinfo, encode_type, t_csvinfo, target_dir):
     report.listed_info(index_csvvars)
     report.basic_info("\n" + "-" * 8)
     report.basic_info("이하 확인된 DIM 변수 초기값 목록: ")
-    report.listed_info(compare_set[1])
+    report.listed_info(analyze.dim_dict)
     report.basic_info("\n" + "=" * 8)
 
-    wrap_print = PrintERB(target_dir, encode_type, f_csvinfo)
-    result_infodict = wrap_print.printing()
+    wrap_print = PrintERB(analyze.erb_infdict, set_dict["enc_"+from_tag], set_dict["csv_"+from_tag])
+    result_infodict = wrap_print.printing(srsdict)
     for filename, erblines in result_infodict.dict_main.items():
+        name_words = filename.split(".")
+        name_words[-2] += "_conv"
+        filename = ".".join(name_words)
         with open(filename, "w", encoding="utf-8-sig") as erb:
             erb.writelines(erblines)
     print(report.txtfile, "확인바람.")
@@ -236,14 +245,17 @@ def wrapping(dirname, f_csvinfo, encode_type, t_csvinfo, target_dir):
 
 # 이하 구동부
 if __name__ == "__main__":
+    version_str = "v2.0"
     print(
-        "일어본/번역본 간 동일한 기능을 하는 ERB 이름이 (번역 등 이유로) 차이가 있는 경우,\n",
-        "중복되는 기능을 하는 파일을 수동으로 처리해주셔야 합니다.\n",
-        "해당 경우 누락된 함수에서 오류를 발생시킬 수 있습니다.\n\n",
+        "=" * 8,
+        "일어본/번역본 간 동일한 기능을 하는 ERB 이름이 (번역 등 이유로) 차이가 있는 경우,",
+        "중복되는 기능을 하는 파일을 수동으로 처리해주셔야 합니다.",
+        "해당 경우 누락된 함수에서 오류를 발생시킬 수 있습니다.",
+        "현재 버전: " + version_str,
+        "=" * 8, sep="\n"
     )
     config = SaveSetting()
-    o_dir, t_dir, f_csvinfo, t_csvinfo, o_encod, t_encod = config.load()
-    config.save()
+    set_dict = config.load()
 
     while True:
         print(
@@ -254,15 +266,12 @@ if __name__ == "__main__":
             "\n[0] 일어본구상 번역본이식\n[1] 번역본구상 일어본이식\n",
         )
         choose = input("실행할 작업을 선택해주세요. : ")
-        if choose == "0":
-            chosen = [o_dir, f_csvinfo, o_encod, t_csvinfo]
-        elif choose == "1":
-            chosen = [t_dir, t_csvinfo, t_encod, f_csvinfo]
-        else:
+        if choose not in ("0", "1"):
             print("올바른 입력이 아닙니다")
             continue
-        print("이식할 구상이 있는 폴더를 입력하세요.")
-        target_dir = input("* 에라 전체 폴더 선택시 문제가 발생할 수 있습니다.: ")
-        wrapping(*chosen, target_dir)
+        choose = int(choose)
         break
+    print("이식할 구상이 있는 폴더를 입력하세요.")
+    target_dir = input("* 에라 전체 폴더 선택시 문제가 발생할 수 있습니다.: ")
+    wrapping(set_dict, choose, target_dir)
     input("아무 키나 눌러 종료...")
