@@ -316,7 +316,7 @@ class ExportSRS(ExportData):
                     error_lines.append(srsfmt.print_comment(line))
         # 실제 srs 작성부
         if lines:
-            if error_lines and opt_no & 0b10000:
+            if error_lines and opt_no & 0b100000: # srs 내 제외사항 기록
                 error_code |= 0b010
                 lines.extend(error_lines)
             self.__output_txt(lines, True)
@@ -355,7 +355,7 @@ class ExportSRS(ExportData):
             else:
                 print("공란인 데이터가 있습니다. 다시 시도해주세요.")
 
-        if srs_opt & 0b10000: # srs 내 제외사항 기록
+        if srs_opt & 0b100000: # srs 내 제외사항 기록
             exp_opt_dict = {
                 1:"미번역 단어",
                 2:"한글자 단어",
@@ -492,7 +492,8 @@ class ResultFunc:
                 2: "짧은 단어(1글자) 제외",
                 3: "CSV 표적화 기능(ERB 내 CSV 변수만 변환할 수 있음)",
                 4: "CSV 표적화 기능(Chara CSV 내 NAME, CALLNAME만)",
-                5: "srs 파일에 제외항목 기록"
+                5: '필터용 글자 추가 (", /)',
+                6: "srs 파일에 제외항목 기록"
                 }
             srs_option = MenuPreset().select_mod(
                 optimize_mod_dict, 0b1, "활성화할 기능을 선택해주세요.\n  * CSV 표적화는 하나만 선택해주세요.")

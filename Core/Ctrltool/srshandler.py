@@ -142,6 +142,10 @@ class SRSEditor:
                     result_dict["名前,%s"% key] = "名前,%s"% value
                     key = "呼び名," + key
                     value = "呼び名," + value
+                elif opt_no & 0b10000: # db 태그용 추가
+                    result_dict[key+"/"] = value+"/"
+                    key = '"%s"'% key
+                    value = '"%s"'% value
 
             result_dict[key] = value
 
@@ -175,8 +179,8 @@ class SRSMaker:
                         have_null[t_key] = 1
                     elif t_key not in keys_2:
                         have_null[t_key] = 2
-                    elif isrepeat and isinstance(data_1[t_key], dict): # 재귀중 value에서 dict 또 발견
-                        dat, h_nul = self._check_datatype(data_1[t_key], data_2[t_key], "dict 안 dict ", True)
+                    elif isrepeat and isinstance(data_1[t_key], (dict, list, tuple)): # 재귀중 value에서 또 발견
+                        dat, h_nul = self._check_datatype(data_1[t_key], data_2[t_key], "dict 안 data ", True)
                         result.extend(dat)
                         have_null.update(h_nul)
                     else:
@@ -209,7 +213,7 @@ class SRSMaker:
 
 
 class SRSFunc:
-    def merge_srs(self, files=None):
+    def merge_srs(self, files=None, encoding='UTF-8'):
         if not files:
             files, encoding = CustomInput("SIMPLESRS").get_filelist()
         srs_dict = SRSEditor().merge(*files, encoding=encoding)
@@ -229,12 +233,9 @@ class SRSFunc:
 
         return result
 
-    def make_srsfmt(self, key_dataset, val_dataset, dupcheck, dataname="", adv_opt=0, debug=False):
+    def make_srsfmt(self, key_dataset, val_dataset, dupcheck=DupItemCheck(), dataname="", adv_opt=0, debug=False):
         """주어진 데이터셋(str list)을 바탕으로 SRSFormat 및 DupItemCheck 객체 반환"""
         text = dataname + " 내에서 " if dataname else ""
-
-        if len(key_dataset) != len(val_dataset):
-            print("%s특정 자료의 개수가 같지 않아 올바른 동작을 보장할 수 없습니다." % text)
 
         srsdict, have_null, dup_caseset, dupcheck = SRSMaker((key_dataset, val_dataset)).make_srsdict(dupcheck, text)
 
@@ -244,7 +245,8 @@ class SRSFunc:
 
         srsdict, except_list = SRSEditor().advanced_filter(srsdict, adv_opt)
 
-        dup_caseset.remove(0)
+        if dup_caseset:
+            dup_caseset.remove(0)
         if dupcheck and dupcheck.dup_dict and debug:
             print("%s중복된 케이스들이 발견되었습니다. 코드: " % dataname, dup_caseset)
 
