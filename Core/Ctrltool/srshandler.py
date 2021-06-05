@@ -1,6 +1,6 @@
 # simplesrs, srs 관련 처리 모듈
 
-from customdb import SheetInfo, SRSFormat
+from customdb import InfoDict, SheetInfo, SRSFormat
 from usefile import CustomInput, FileFilter, LoadFile, MenuPreset
 from util import DataFilter, DupItemCheck
 
@@ -149,44 +149,57 @@ class SRSEditor:
 
 
 class SRSMaker:
-    """주어진 자료를 dict형으로 변환해 srs화하기 쉽게 해줌"""
-    def __init__(self, data):
+    """주어진 복수의 자료를 dict형으로 변환해 srs화하기 쉽게 해줌"""
+    def __init__(self, data:tuple):
+        if len(data) != 2:
+            raise IndexError("데이터 갯수가 올바르지 않습니다")
         self.data = data
+
+    def _check_datatype(self, data_1, data_2, text: str ="") -> list(tuple):
+        result: list(tuple) = []
+        have_null = {}
+        if type(data_1) == type(data_2):
+            if isinstance(data_1, InfoDict):
+                a_dict:dict = data_1.dict_main
+                b_dict:dict = data_2.dict_main
+                sep_name = FileFilter(0).sep_filename
+                datadict_a = {sep_name(key): val for key, val in a_dict.items()}
+                datadict_b = {sep_name(key): val for key, val in b_dict.items()}
+                result, have_null = self._check_datatype(datadict_a, datadict_b, "InfoDict 내부 ")
+            elif isinstance(data_1, dict):
+                keys_1 = list(data_1.keys())
+                keys_2 = list(data_2.keys())
+                total_keys = DataFilter().dup_filter(keys_1 + keys_2)
+                for t_key in total_keys:
+                    if t_key not in keys_1:
+                        have_null[t_key] = 1
+                    elif t_key not in keys_2:
+                        have_null[t_key] = 2
+                    else:
+                        result.append( (data_1[t_key], data_2[t_key]) )
+            elif isinstance(data_1, (list,tuple)):
+                if len(data_1) != len(data_2):
+                    print("두 자료의 길이가 일치하지 않습니다. 일부 자료가 누락되었습니다.")
+                f_strip = DataFilter().strip_filter
+                result = list(zip(f_strip(data_1), f_strip(data_2)))
+            else:
+                raise NotImplementedError("지원하지 않는 자료형: " + type(data_1))
+        else:
+            raise TypeError("%s두 데이터의 자료형이 같지 않습니다." % text)
+
+        return result, have_null
 
     def make_srsdict(self, dupcheck=None, text=""):
         srsdict = {}
-        have_null = {}
         dup_caseset = set()
+        key_vals, have_null = self._check_datatype(*self.data, text)
 
-        if len(self.data) != 2:
-            raise IndexError("데이터 갯수가 올바르지 않습니다")
-        data_a, data_b = self.data
-        
-        if type(data_a) == type(data_b):
-            key_vals = []
-            if isinstance(data_a, dict): # CSV 변수목록 or FuncInfo
-                k_data_keys = list(data_a.keys())
-                v_data_keys = list(data_b.keys())
-                total_keys = DataFilter().dup_filter(k_data_keys + v_data_keys)
-                for t_key in total_keys:
-                    if t_key not in k_data_keys:
-                        have_null[t_key] = 1
-                    elif t_key not in v_data_keys:
-                        have_null[t_key] = 2
-                    else:
-                        key_vals.append( (data_a[t_key], data_b[t_key]) )
-            elif isinstance(data_a, list):                
-                key_vals = zip(DataFilter().strip_filter(data_a), DataFilter().strip_filter(data_b))
-
-            if key_vals:
-                for key, value in key_vals:
-                    if dupcheck:
-                        dup_case = dupcheck.check(key, value)
-                        dupcheck.after(key, value)
-                        dup_caseset.add(dup_case)
-                    srsdict[key] = value
-        else:
-            raise TypeError("%s두 데이터의 자료형이 같지 않습니다." % text)
+        for key, value in key_vals:
+            if dupcheck:
+                dup_case = dupcheck.check(key, value)
+                dupcheck.after(key, value)
+                dup_caseset.add(dup_case)
+            srsdict[key] = value
 
         return srsdict, have_null, dup_caseset, dupcheck
 
@@ -228,7 +241,7 @@ class SRSFunc:
         srsdict, except_list = SRSEditor().advanced_filter(srsdict, adv_opt)
 
         dup_caseset.remove(0)
-        if dupcheck.dup_dict and debug:
+        if dupcheck and dupcheck.dup_dict and debug:
             print("%s중복된 케이스들이 발견되었습니다. 코드: " % dataname, dup_caseset)
 
         if have_null:
@@ -255,5 +268,8 @@ class SRSFunc:
 
         return SRSFormat(srsdict, dataname), dupcheck, except_list
 
-    def make_srsdict(self, srsname, encoding="UTF-8"):
+    def exist_srsdict(self, srsname, encoding="UTF-8"):
         return SRSFile(srsname, encoding).make_dict()
+
+    def build_srsdict(self, data_fm, data_to):
+        return SRSMaker((data_fm, data_to)).make_srsdict()
