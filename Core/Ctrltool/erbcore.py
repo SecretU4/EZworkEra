@@ -353,12 +353,13 @@ class ERBWrite(LoadFile):
         return self.erb_translated_list
 
 
-class ERBRemodel(ERBLoad):
+class ERBRemodel:
     """이미 존재하는 ERB 파일의 내용 수정을 위한 클래스"""
 
-    def __init__(self, NameDir, EncodeType):
-        super().__init__(NameDir, EncodeType)
-        self.make_erblines()
+    debug_log = LogPreset(2)
+
+    def __init__(self, lines:list[str]):
+        self.lines = lines
 
     express_dict = {
         "W":"\\t",
@@ -724,7 +725,7 @@ class ERBVFinder:
         if not comp_list:
             return result_list
 
-        for i in range(3):
+        for i in range(4):
             if opt_no & (2 ** i):
                 result_list.append(list())
 
@@ -744,7 +745,7 @@ class ERBVFinder:
                 raise NotImplementedError("잘못된 context 타입: " + str(type(context)))
             
             res_index = 0
-            for i in range(3):
+            for i in range(4):
                 temp_opt = opt_no & (2 ** i)
                 if temp_opt & 0b0001:
                     head, cont = orighead, o_context
@@ -953,7 +954,8 @@ class ERBFunc:
         print("ERB내 index 변환작업을 시작합니다.")
 
         for filename in erb_files:
-            replaced_lines = ERBRemodel(filename, encode_type).replace_csvvars(
+            erblines = ERBLoad(filename, encode_type).make_erblines()
+            replaced_lines = ERBRemodel(erblines).replace_csvvars(
                 csv_infodict, mod_num
             )
             self.result_infodict.add_dict(filename, replaced_lines)
@@ -999,7 +1001,8 @@ class ERBFunc:
         file_count_check.how_much_there()
 
         for filename in erb_files:
-            optmized_lines = ERBRemodel(filename, encode_type).memory_optimize()
+            erblines = ERBLoad(filename, encode_type).make_erblines()
+            optmized_lines = ERBRemodel(erblines).memory_optimize()
             self.result_infodict.add_dict(filename, optmized_lines)
             file_count_check.how_much_done()
 
