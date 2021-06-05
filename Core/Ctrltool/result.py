@@ -375,8 +375,11 @@ class ExportSRS(ExportData):
 
         # 데이터가 InfoDict형이라면 데이터 목록 호출
         if isinstance(orig_data, InfoDict) and isinstance(trans_data, InfoDict):
-            orig_infokeys = list(orig_data.dict_main.keys())
-            trans_infokeys = list(trans_data.dict_main.keys())
+            sep_name = FileFilter(0).sep_filename
+            orig_data = {sep_name(key): val for key, val in orig_data.dict_main.items()}
+            trans_data = {sep_name(key): val for key, val in trans_data.dict_main.items()}
+            orig_infokeys = list(orig_data.keys())
+            trans_infokeys = list(trans_data.keys())
             flags |= 0b010000 # isInfoDict
         else:
             orig_infokeys = [o_dataset[0]]
@@ -386,25 +389,25 @@ class ExportSRS(ExportData):
         if not os.path.isfile(self.res_filename):
             print("SRS 파일을 새로 작성합니다.")
             flags |= 0b100000 # isFirst
-            wordwrap_yn = False
-            if flags & 0b010000: # isInfoDict
-                for dictname in orig_infokeys:
-                    if "chara" in dictname.lower() or "name" in dictname.lower():
-                        print("이름 관련 파일명이 감지되었습니다.")
-                        wordwrap_yn = MenuPreset().yesno(
-                            "입력받은 데이터 전체를 정확한 단어 단위로만 변환하도록 조정할까요?"
-                        )
-                        break
-            h_opt = 0b1011 if wordwrap_yn else 0b1010
+            srs_headdict ={
+                1:"[-WORDWRAP-]",
+                2:"[-TRIM-]",
+                3:"[-REGEX-]",
+                4:"[-SORT-]"
+            }
+            h_opt = MenuPreset().select_mod(srs_headdict, 0b1010,
+                "srs에 사용할 필터를 선택해주세요.\nREGEX와 SORT 옵션은 동시 사용이 불가합니다")
             dup_chk = DupItemCheck()
         else:
-            _, dup_chk = SRSFunc().make_srsdict(self.res_filename)
+            _, dup_chk = SRSFunc().exist_srsdict(self.res_filename)
 
         print("SRS 입력을 시작합니다...")
         for num in range(len(orig_infokeys)):
             try:
                 self.orig_key = orig_infokeys[num]
                 self.trans_key = trans_infokeys[num]
+                if isinstance(orig_data, dict) and isinstance(trans_data, dict):
+                    self.trans_key = self.orig_key
             except IndexError as error:
                 comment = "두 자료의 항목 수 또는 행이 같지 않습니다."
                 self.log_file.write_error_log(error, self.orig_key, comment)
@@ -418,21 +421,8 @@ class ExportSRS(ExportData):
             else:
                 keyname = FileFilter().sep_filename(self.orig_key)
 
-            if (keyname != "단독파일" and keyname.lower() != 
-                FileFilter().sep_filename(self.trans_key).lower()
-                ): # orig_key와 trans_key가 일치하지 않을때
-                self.trans_key = FileFilter().search_filename_wordwrap(
-                    trans_infokeys, keyname.split()
-                )
-                if self.trans_key == None:
-                    failed_count += 1
-                    self.log_file.write_log("키워드: {} 불일치 존재.\n\n".format(keyname))
-                    continue
-
-                self.log_file.write_log("{}번째부터 순서 불일치로 추가탐색 진행함.\n".format(num))
-
-            if flags & 0b010000: # isInfoDict
-                target_couple = orig_data.dict_main.get(self.orig_key), trans_data.dict_main.get(self.trans_key)
+            if isinstance(orig_data, dict) and isinstance(trans_data, dict):
+                target_couple = orig_data.get(self.orig_key), trans_data.get(self.trans_key)
             elif isinstance(orig_data, FuncInfo) and isinstance(trans_data, FuncInfo):
                 # TODO 함수별 또는 파일별 나눠 분류 가능하도록
                 target_couple = orig_data.func_dict, trans_data.func_dict
