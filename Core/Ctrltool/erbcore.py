@@ -858,20 +858,40 @@ class ERBBlkFinder:
 
 
 class DataBaseERB:
-    def collect_adj(self, lines:list[str], tag:str, adj_opt:bool = False) -> list[str]:
+    def collect_adj(self, lines:list[str], tag:str, adj_opt:bool = False, is_case:bool = False):
         result_list = []
+        case_flag = False
         for line in lines:
-            line = line.replace(tag, "")
-            if adj_opt:
+            if is_case:
+                if "ENDSELECT" in line:
+                    case_flag = False
+                    continue
+                elif "SELECTCASE" in line:
+                    case_flag = True
+                    continue
+                elif line.strip().startswith("CASE"):
+                    for word in line.split()[1:]:
+                        word = word.replace(",", "")
+                        if word.isdecimal():
+                            case_num = int(word)
+                            continue
+                    continue
+            if tag in line:                
                 line = line.strip()
-                line = line.replace('"',"")
-                line = line.replace(r"\/", "/")
-                words = line.split("/")
-            else:
-                words = [line,]
-            result_list.extend(DataFilter().dup_filter(words))
-
-        return DataFilter().dup_filter(result_list)
+                line = line.replace(tag, "")
+                if adj_opt:
+                    line = line.replace('"',"")
+                    line = line.replace(r"\/", "/")
+                    words = line.split("/")
+                else:
+                    words = [line,]
+                if is_case and case_flag:
+                    result_list.append((case_num, words))
+                elif not is_case:
+                    result_list.extend(words)
+        if is_case and result_list:
+            result_list = dict(result_list)
+        return result_list
 
 
 class ERBFunc:
@@ -1104,7 +1124,7 @@ class ERBFunc:
         t_blkdata = ERBBlkFinder()
         # TODO 이름만 다른 파일 비교 가능하게 - CompareErb.csv 활용
 
-    def db_erb_finder(self, erb_files=None, encode_type=None):
+    def db_erb_finder(self, erb_files=None, encode_type=None, tag=None):
         """데이터베이스형 ERB 자료 추출 함수"""
         print("되도록 필요한 파일만 있는 폴더를 만든 후 그곳에서 진행해주세요.",
         "추후 복수의 파일을 비교하고자 하는 경우, 각 파일의 파일명은 같아야 합니다.",
@@ -1113,20 +1133,25 @@ class ERBFunc:
         if not erb_files or not encode_type:
             erb_files, encode_type = CustomInput("ERB").get_filelist()
         while True:
-            tag = input("필요한 데이터 형식의 앞말을 붙여넣어주세요.: ")
+            if not tag:
+                tag = input("필요한 데이터 형식의 앞말을 붙여넣어주세요.: ")
             adj_yn = MenuPreset().yesno(
                 "AAA/BBB/CCC 꼴의 데이터인 경우, 각 요소별 분할이 가능합니다.",
                 "분할을 시도하시겠습니까?")
+            case_yn = MenuPreset().yesno(
+                "CASE XXX ~ tag AAA 꼴의 데이터인 경우 CASE를 활용한 좀 더 정확한 계산이 가능합니다.",
+                "해당 작업을 시도하시겠습니까?")
             adj_res = "Yes" if adj_yn else "No"
-            if MenuPreset().yesno("tag: %s, 분할 시도: %s가 맞습니까?" % (tag, adj_res)):
+            case_res = "Yes" if case_yn else "No"
+            if not MenuPreset().yesno("tag: %s, 분할 시도: %s, CASE 사용: %s가 맞습니까?" % (tag, adj_res, case_res)):
                 if MenuPreset().yesno("작업을 취소할까요?"):
                     return None
-                break
+                continue
+            break
 
-        result_infodict = InfoDict(2)
         for erbname in erb_files:
             erb_load = ERBLoad(erbname, encode_type)
             erblines = erb_load.make_erblines()
-            result_infodict.add_dict(erbname, DataBaseERB().collect_adj(erblines, tag, adj_yn))
+            self.result_infodict.add_dict(erbname, DataBaseERB().collect_adj(erblines, tag, adj_yn, case_yn))
 
-        return result_infodict
+        return self.result_infodict
