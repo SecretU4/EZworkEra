@@ -155,7 +155,7 @@ class SRSMaker:
             raise IndexError("데이터 갯수가 올바르지 않습니다")
         self.data = data
 
-    def _check_datatype(self, data_1, data_2, text: str ="") -> list(tuple):
+    def _check_datatype(self, data_1, data_2, text: str ="", isrepeat=False):
         result: list(tuple) = []
         have_null = {}
         if type(data_1) == type(data_2):
@@ -165,7 +165,7 @@ class SRSMaker:
                 sep_name = FileFilter(0).sep_filename
                 datadict_a = {sep_name(key): val for key, val in a_dict.items()}
                 datadict_b = {sep_name(key): val for key, val in b_dict.items()}
-                result, have_null = self._check_datatype(datadict_a, datadict_b, "InfoDict 내부 ")
+                result, have_null = self._check_datatype(datadict_a, datadict_b, "InfoDict 내부 ", True)
             elif isinstance(data_1, dict):
                 keys_1 = list(data_1.keys())
                 keys_2 = list(data_2.keys())
@@ -175,6 +175,10 @@ class SRSMaker:
                         have_null[t_key] = 1
                     elif t_key not in keys_2:
                         have_null[t_key] = 2
+                    elif isrepeat and isinstance(data_1[t_key], dict): # 재귀중 value에서 dict 또 발견
+                        dat, h_nul = self._check_datatype(data_1[t_key], data_2[t_key], "dict 안 dict ", True)
+                        result.extend(dat)
+                        have_null.update(h_nul)
                     else:
                         result.append( (data_1[t_key], data_2[t_key]) )
             elif isinstance(data_1, (list,tuple)):
