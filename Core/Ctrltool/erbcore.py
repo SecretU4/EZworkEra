@@ -368,11 +368,11 @@ class ERBRemodel:
     save_str_var = "LOCALS:85"
     re_single_sent = re.compile('@"(.+)"\n$')
 
-    def replace_csvvars(self, csv_infodict, mod_num=0):
+    def replace_csvvars(self, csv_infodict, mod_num=0, srs_dict: dict = dict()):
         vfinder = ERBVFinder(csv_infodict)
-        replaced_context_lines = []
+        result_lines:list[str] = []
         for line_count, line in enumerate(self.lines):
-            change_check = 0
+            change_check = False
             line = line.strip()
             if not line.startswith(";"):
                 find_list = vfinder.find_csvfnc_line(line)
@@ -383,38 +383,45 @@ class ERBRemodel:
                         orig_fnc = orig_fncs[no]
                         comp_fnc = comp_fncs[no]
                         if orig_fnc != comp_fnc:
-                            line = line.replace(orig_fnc, comp_fnc)
-                            change_check = 1
-            replaced_context_lines.append(line + "\n")
+                            o_context = rep_list[no][1][0]
+                            if srs_dict.get(o_context):
+                                line = line.replace(o_context, srs_dict[o_context])
+                            else:
+                                line = line.replace(orig_fnc, comp_fnc)
+                            change_check = True
+            result_lines.append(line + "\n")
             if change_check:
                 self.debug_log.write_log(str(line_count + 1) + "행 index 변수 변환됨\n")
 
         self.debug_log.end_log("index 변수변환")
-        return replaced_context_lines
+        return result_lines
 
-    def __check_print_line(self, line, def_list, sp_list):
-        if "PRINT" in line:
-            temp_split = line.strip().split()
-            header = temp_split.pop(0)
-            context = " ".join(temp_split)
+    def _check_print_line(self, line:str):
+        """PRINT구문의 체크 함수"""
+        print_pat = re.compile("PRINT(V|S|FORM|FORMS|)(C|LC|)(K|D|)(L|W|)")
+        pat_result = print_pat.match(line)
+        if pat_result:
+            print_head = pat_result.group()
+            print_sp = pat_result.group(1)
+            context = " ".join(line.split()[1:])
             endword = ""
-            if header in def_list or header in sp_list:
+            if print_head or print_sp:
                 for key in self.express_dict:
-                    if key in header:
+                    if key in print_head:
                         endword = self.express_dict[key]
                         break
-                if header in sp_list:
-                    if "PRINTS" in header:
+                if print_sp:
+                    if "PRINTS" in print_head:
                         context = "%{0}%".format(context)
-                    elif "PRINTV" in header:
+                    elif "PRINTV" in print_head:
                         context = "\{%s\}" % context
                     else:
-                        raise NotImplementedError(header)
+                        raise NotImplementedError(print_head)
                 
                 return '@"%s%s" + \n' % (context, endword)
-        return 0
+        return ""
 
-    def __after_printcheck(self, target_lines, count):
+    def __after_printcheck(self, target_lines:list[str], count:int):
         target_lines[-1] = target_lines[-1].replace(" + \n", "\n")
         if count == 1: # PRINT 출력문이 1줄짜리일 때
             for counting in range(1, count + 1):
@@ -438,31 +445,93 @@ class ERBRemodel:
         return target_lines
 
     def memory_optimize(self):
-        print_list = ["PRINT", "PRINTL", "PRINTW", "PRINTFORM", "PRINTFORML", "PRINTFORMW"]
-        sp_print_list = ["PRINTS", "PRINTSL", "PRINTSW", "PRINTV", "PRINTVL", "PRINTVS"]
-        replaced_context_lines = []
+        result_lines = []
         count_print = 0
         for line in self.lines:
-            result_line = self.__check_print_line(line, print_list, sp_print_list)
+            result_line = self._check_print_line(line)
             if result_line:
                 if not count_print:
-                    replaced_context_lines.append("{\n")
-                    replaced_context_lines.append("%s '=\n" % self.save_str_var)
+                    result_lines.append("{\n")
+                    result_lines.append("%s '=\n" % self.save_str_var)
                 count_print += 1
             else:
                 result_line = line
                 if count_print:
-                    replaced_context_lines = self.__after_printcheck(replaced_context_lines, count_print)
+                    result_lines = self.__after_printcheck(result_lines, count_print)
 
                 count_print = 0
             result_line = result_line.replace("\r\n", "\n")
-            replaced_context_lines.append(result_line)
+            result_lines.append(result_line)
 
-        if '" + \n' in replaced_context_lines[-1]: # PRINT 출력문으로 파일이 끝날 때 처리
-            replaced_context_lines = self.__after_printcheck(replaced_context_lines, count_print)
+        if '" + \n' in result_lines[-1]: # PRINT 출력문으로 파일이 끝날 때 처리
+            result_lines = self.__after_printcheck(result_lines, count_print)
 
-        return replaced_context_lines
-                
+        return result_lines
+
+    def replace_zname(self, lines:list[str], rem_flag=False, z_dict:dict = dict()):
+        """zname 관련 변수 변환 함수
+        rem_flag : True 이면 zname 추가, False면 zname 삭제
+        z_dict는 #DEFINE 기반 zname.erh 딕셔너리 상정
+        """
+        rep_dict = {}
+        pat_str = "(조사처리|조사만처리)\\(([\\S]+), (\"(\\D+)\"|'(\\D+)')\\)"
+        if z_dict:
+            pnoun_dict = {}
+            zname_dict = {}
+            for vname, val in z_dict:
+                for match in re.compile(pat_str).finditer(val):
+                    pnoun_dict[vname] = match.group(2)
+                    zname_dict[match.group(4)] = ""
+        else:
+            pnoun_dict = {
+                "ARG":"CALLNAME:ARG",
+                "마스터":"CALLNAME:MASTER",
+                "조교자":"CALLNAME:PLAYER",
+                "타겟":"CALLNAME:TARGET",
+                "조수":"CALLNAME:ASSI"
+            }
+            zname_dict = {
+                "이며":"で", "며":"で", "이고":"も", "고":"も",
+                "이라":"で", "라":"で", "이다":"だ", "다":"だ",
+                "이였":"だっ", "였":"だっ", "이여":"で", "여":"で", 
+                "이야":"は", "야":"は",  "이나":"", "나":"",
+                "이면":"なら", "면":"なら",
+                "은":"は", "는":"は", "이":"が", "가":"が",
+                "을":"を", "를":"を", "과":"と", "와":"と",
+                "으로":"に", "로":"に", "랑":"と", "이랑":"と",
+                }
+
+        for pnoun, pnoun_o in pnoun_dict.items():
+            for zname, zname_o in zname_dict.items():
+                key = "%{}{}%".format(pnoun, zname)
+                rep_dict[key] = "%{}%{}".format(pnoun_o, zname_o)
+
+        pat_search = "%([^%]+)%"
+        if rem_flag: # zname 추가
+            rep_dict = {val:key for key, val in rep_dict.items()}
+            pat_search += "(\\D)"
+        else: # zname 제거
+            pat_zname = '|'.join(zname_dict.keys())
+            re_zfunc = re.compile(
+                "%{}%".format(pat_str).replace("\\D+", pat_zname)
+                )
+        result:list[str] = []
+        for line in lines:
+            if not rem_flag:
+                zfunc_iter = re_zfunc.finditer(line)
+                for zfunc in zfunc_iter: # 조사처리/조사처리만 함수 제거
+                    exist_zfnc = zfunc.group()
+                    orig_var = zfunc.group(2)
+                    line = line.replace(exist_zfnc, "%{}%".format(orig_var))
+            for strs in re.compile(pat_search).finditer(line):
+                context = strs.group()
+                rep_str = rep_dict.get(context)
+                if rep_str:
+                    line = line.replace(context, rep_str)
+            result.append(line)
+
+        return result
+
 
 class ERBUtil:
     def indent_maker(self, metalineinfo):  # metaline을 들여쓰기된 lines로 만듦
@@ -721,7 +790,7 @@ class ERBVFinder:
             3: csv에서 인식되는 형태로 출력 (대명사 제외)
             4: (index 변환 사용시) erb 내 index 변환 행태로 출력
         """
-        result_list:list[str] = []
+        result_list:list[list[str]] = []
         if not comp_list:
             return result_list
 
