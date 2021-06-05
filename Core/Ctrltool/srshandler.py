@@ -209,7 +209,7 @@ class SRSMaker:
 
 
 class SRSFunc:
-    def merge_srs(self, files):
+    def merge_srs(self, files=None):
         if not files:
             files, encoding = CustomInput("SIMPLESRS").get_filelist()
         srs_dict = SRSEditor().merge(*files, encoding=encoding)
