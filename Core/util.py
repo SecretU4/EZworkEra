@@ -3,6 +3,7 @@
 Classes:
     CommonSent
     DataFilter
+    DupItemCheck
     KoreanSupport
 """
 # 사용 라이브러리
@@ -62,51 +63,114 @@ class DataFilter:
     """주어진 데이터를 처리하는 클래스
 
     Functions:
-        dup_filter(list)
+        dup_filter(data)
         erase_quote(data,quotechar)
+        strip_filter(data)
     """
 
-    def dup_filter(self, list_name):
+    def dup_filter(self, data: list):
         """list 내에서 중복되는 요소를 제거한 후 다시 list로 돌려줌."""
         dup_filtered = []
         set_filter = set()
-        for data in list_name:
-            if data not in set_filter:
-                dup_filtered.append(data)
-                set_filter.add(data)
+        for arg in data:
+            if arg not in set_filter:
+                dup_filtered.append(arg)
+                set_filter.add(arg)
         return dup_filtered
 
-    def erase_quote(self, dataname, quotechar=";"):
-        """입력받은 data(dict,list,str) 내 각 요소 중 quotechar 인자가 포함된 부분을 지움."""
-        if isinstance(dataname, dict) is True:
+    def erase_quote(self, data: str or dict or list, quotechar=";", opt: int=0):
+        """입력받은 data(str, dict, list) 내 각 요소 중 quotechar 인자가 포함된 부분을 지움.
+        
+        opt 0: 해당 요소 삭제 후 반환, 1:해당 요소 내 quotechar 뒤를 제거한 data 반환
+        """
+        if isinstance(data, str):
+            if quotechar not in data:
+                return data
+            elif opt == 1: # quotechar가 data 안에 있음
+                return data.split(quotechar)[0]
+        elif isinstance(data, dict):
             dict_erased = {}
-            for key in list(dataname.keys()):
-                if quotechar in key:
-                    continue
-                elif quotechar in dataname[key]:
-                    continue
-                else:
-                    dict_erased[key] = dataname[key]
+            for key, val in data.items():
+                if quotechar not in key and quotechar not in val:
+                    dict_erased[key] = val
+                elif opt == 1 and quotechar in val: # key에 quotechar가 있는 경우 제외
+                    dict_erased[key] = self.erase_quote(val, quotechar, 1)
             return dict_erased
-        elif isinstance(dataname, list) is True:
+        elif isinstance(data, list):
             list_erased = []
-            for data in dataname:
-                if quotechar in data:
-                    continue
-                else:
-                    list_erased.append(data)
+            for arg in data:
+                if quotechar not in arg:
+                    list_erased.append(arg)
+                elif opt == 1:
+                    arg = self.erase_quote(arg, quotechar, 1)
+                    list_erased.append(arg)
             return list_erased
-        elif isinstance(dataname, str) is True:
-            splited_data = dataname.split()
-            try:
-                if quotechar in splited_data[0]:
-                    return None
-                else:
-                    return dataname
-            except IndexError:
-                return None
         else:
-            raise NotImplementedError
+            raise TypeError
+        
+    def strip_filter(self, data: list):
+        """받은 list자료 내 요소에 strip처리 후 반환"""
+        result_list = []
+        error_flag = 0
+        for arg in data:
+            if not isinstance(arg, str):
+                result_list.append(arg)
+                error_flag |= 0b0001
+                continue
+
+            result_list.append(arg.strip())
+
+        if error_flag:
+            print("오류 코드: %d" % error_flag)
+        
+        return result_list
+            
+
+class DupItemCheck:
+    """dict 자료형 내 중복요소 확인.
+
+    1:key 2:value 3:key,value 둘다 있음
+
+    사용시 check 로 체크 후 after로 검사요소 추가.
+    dup_dict 여부로 중복 여부 확인
+    """
+    def __init__(self, main_dict={}, dup_dict={}):
+        self.main_dict = main_dict
+        self.dup_dict = dup_dict
+    
+    def check(self, key, value):
+        for arg in (key, value):
+            if key == value:
+                return -1
+    
+            if self.main_dict.get(arg):
+                dup_val = self.dup_dict.get(arg)
+                if not dup_val:
+                    self.dup_dict[arg] = self.main_dict[arg]
+                elif dup_val == 1 and arg == key:
+                    pass
+                elif dup_val == 2 and arg == value:
+                    pass
+                else:
+                    self.dup_dict[arg] = 3
+                return self.dup_dict[arg]
+
+        return 0
+
+    def after(self, key, value):
+        self.main_dict[key] = 1
+        self.main_dict[value] = 2
+
+    def bulkcheck(self, srs_data):
+        self.__init__()
+        for key, value in srs_data.items():
+            self.check(key, value)
+            self.after(key, value)
+
+        return self.dup_dict
+
+    def tot_dup(self):
+        return self.main_dict, self.dup_dict
 
 
 class KoreanSupport:

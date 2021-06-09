@@ -1,7 +1,7 @@
 # ERB 관련 모듈
 import re
 from customdb import ERBMetaInfo, InfoDict, SheetInfo
-from usefile import FileFilter, LoadFile, LogPreset, MenuPreset
+from usefile import CustomInput, FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import StatusNum
 from System.xmlhandling import ERBGrammarXML, SettingXML
@@ -25,7 +25,7 @@ class ERBLoad(LoadFile):
         opt bit 1 : 참이면 startswith인 경우에만 결과에 포함
         """
         self.make_erblines()
-        self.targeted_list = []
+        targeted_list = []
         skip_switch = 0
         for line in self.lines:
             if skip_switch == 1:
@@ -44,9 +44,9 @@ class ERBLoad(LoadFile):
                     if target in line:
                         if opt & 0b1 and not line.strip().startswith(target):
                             continue
-                        self.targeted_list.append(line)
+                        targeted_list.append(line)
                         break
-        return self.targeted_list
+        return targeted_list
 
 
 class ERBWrite(LoadFile):
@@ -353,12 +353,13 @@ class ERBWrite(LoadFile):
         return self.erb_translated_list
 
 
-class ERBRemodel(ERBLoad):
+class ERBRemodel:
     """이미 존재하는 ERB 파일의 내용 수정을 위한 클래스"""
 
-    def __init__(self, NameDir, EncodeType):
-        super().__init__(NameDir, EncodeType)
-        self.make_erblines()
+    debug_log = LogPreset(2)
+
+    def __init__(self, lines:list[str]):
+        self.lines = lines
 
     express_dict = {
         "W":"\\t",
@@ -367,54 +368,60 @@ class ERBRemodel(ERBLoad):
     save_str_var = "LOCALS:85"
     re_single_sent = re.compile('@"(.+)"\n$')
 
-    def replace_csvvars(self, csv_infodict, mod_num=0):
+    def replace_csvvars(self, csv_infodict, mod_num=0, srs_dict: dict = dict()):
         vfinder = ERBVFinder(csv_infodict)
-        replaced_context_lines = []
+        result_lines:list[str] = []
         for line_count, line in enumerate(self.lines):
-            change_check = 0
+            change_check = False
             line = line.strip()
             if not line.startswith(";"):
                 find_list = vfinder.find_csvfnc_line(line)
                 if find_list:
                     rep_list = vfinder.change_var_index(find_list, mod_num)
-                    orig_fncs = vfinder.print_csvfnc(rep_list)
-                    comp_fncs = vfinder.print_csvfnc(rep_list, 3)
+                    orig_fncs, comp_fncs = vfinder.print_csvfnc(rep_list, 0b1001)
                     for no in range(len(orig_fncs)):
                         orig_fnc = orig_fncs[no]
                         comp_fnc = comp_fncs[no]
                         if orig_fnc != comp_fnc:
-                            line = line.replace(orig_fnc, comp_fnc)
-                            change_check = 1
-            replaced_context_lines.append(line + "\n")
+                            o_context = rep_list[no][1][0]
+                            if srs_dict.get(o_context):
+                                line = line.replace(o_context, srs_dict[o_context])
+                            else:
+                                line = line.replace(orig_fnc, comp_fnc)
+                            change_check = True
+            result_lines.append(line + "\n")
             if change_check:
                 self.debug_log.write_log(str(line_count + 1) + "행 index 변수 변환됨\n")
 
         self.debug_log.end_log("index 변수변환")
-        return replaced_context_lines
+        return result_lines
 
-    def __check_print_line(self, line, def_list, sp_list):
-        if "PRINT" in line:
-            temp_split = line.strip().split()
-            header = temp_split.pop(0)
-            context = " ".join(temp_split)
+    def _check_print_line(self, line:str):
+        """PRINT구문의 체크 함수"""
+        print_pat = re.compile("PRINT(V|S|FORM|FORMS|)(C|LC|)(K|D|)(L|W|)")
+        pat_result = print_pat.match(line)
+        if pat_result:
+            print_head = pat_result.group()
+            print_sp = pat_result.group(1)
+            context = " ".join(line.split()[1:])
             endword = ""
-            if header in def_list or header in sp_list:
+            if print_head or print_sp:
                 for key in self.express_dict:
-                    if key in header:
+                    if key in print_head:
                         endword = self.express_dict[key]
                         break
-                if header in sp_list:
-                    if "PRINTS" in header:
+                if print_sp:
+                    if "PRINTS" in print_head:
                         context = "%{0}%".format(context)
-                    elif "PRINTV" in header:
+                    elif "PRINTV" in print_head:
                         context = "\{%s\}" % context
                     else:
-                        raise NotImplementedError(header)
+                        raise NotImplementedError(print_head)
                 
                 return '@"%s%s" + \n' % (context, endword)
-        return 0
+        return ""
 
-    def __after_printcheck(self, target_lines, count):
+    def __after_printcheck(self, target_lines:list[str], count:int):
         target_lines[-1] = target_lines[-1].replace(" + \n", "\n")
         if count == 1: # PRINT 출력문이 1줄짜리일 때
             for counting in range(1, count + 1):
@@ -438,31 +445,93 @@ class ERBRemodel(ERBLoad):
         return target_lines
 
     def memory_optimize(self):
-        print_list = ["PRINT", "PRINTL", "PRINTW", "PRINTFORM", "PRINTFORML", "PRINTFORMW"]
-        sp_print_list = ["PRINTS", "PRINTSL", "PRINTSW", "PRINTV", "PRINTVL", "PRINTVS"]
-        replaced_context_lines = []
+        result_lines = []
         count_print = 0
         for line in self.lines:
-            result_line = self.__check_print_line(line, print_list, sp_print_list)
+            result_line = self._check_print_line(line)
             if result_line:
                 if not count_print:
-                    replaced_context_lines.append("{\n")
-                    replaced_context_lines.append("%s '=\n" % self.save_str_var)
+                    result_lines.append("{\n")
+                    result_lines.append("%s '=\n" % self.save_str_var)
                 count_print += 1
             else:
                 result_line = line
                 if count_print:
-                    replaced_context_lines = self.__after_printcheck(replaced_context_lines, count_print)
+                    result_lines = self.__after_printcheck(result_lines, count_print)
 
                 count_print = 0
             result_line = result_line.replace("\r\n", "\n")
-            replaced_context_lines.append(result_line)
+            result_lines.append(result_line)
 
-        if '" + \n' in replaced_context_lines[-1]: # PRINT 출력문으로 파일이 끝날 때 처리
-            replaced_context_lines = self.__after_printcheck(replaced_context_lines, count_print)
+        if '" + \n' in result_lines[-1]: # PRINT 출력문으로 파일이 끝날 때 처리
+            result_lines = self.__after_printcheck(result_lines, count_print)
 
-        return replaced_context_lines
-                
+        return result_lines
+
+    def replace_zname(self, lines:list[str], rem_flag=False, z_dict:dict = dict()):
+        """zname 관련 변수 변환 함수
+        rem_flag : True 이면 zname 추가, False면 zname 삭제
+        z_dict는 #DEFINE 기반 zname.erh 딕셔너리 상정
+        """
+        rep_dict = {}
+        pat_str = "(조사처리|조사만처리)\\(([\\S]+), (\"(\\D+)\"|'(\\D+)')\\)"
+        if z_dict:
+            pnoun_dict = {}
+            zname_dict = {}
+            for vname, val in z_dict:
+                for match in re.compile(pat_str).finditer(val):
+                    pnoun_dict[vname] = match.group(2)
+                    zname_dict[match.group(4)] = ""
+        else:
+            pnoun_dict = {
+                "ARG":"CALLNAME:ARG",
+                "마스터":"CALLNAME:MASTER",
+                "조교자":"CALLNAME:PLAYER",
+                "타겟":"CALLNAME:TARGET",
+                "조수":"CALLNAME:ASSI"
+            }
+            zname_dict = {
+                "이며":"で", "며":"で", "이고":"も", "고":"も",
+                "이라":"で", "라":"で", "이다":"だ", "다":"だ",
+                "이였":"だっ", "였":"だっ", "이여":"で", "여":"で", 
+                "이야":"は", "야":"は",  "이나":"", "나":"",
+                "이면":"なら", "면":"なら",
+                "은":"は", "는":"は", "이":"が", "가":"が",
+                "을":"を", "를":"を", "과":"と", "와":"と",
+                "으로":"に", "로":"に", "랑":"と", "이랑":"と",
+                }
+
+        for pnoun, pnoun_o in pnoun_dict.items():
+            for zname, zname_o in zname_dict.items():
+                key = "%{}{}%".format(pnoun, zname)
+                rep_dict[key] = "%{}%{}".format(pnoun_o, zname_o)
+
+        pat_search = "%([^%]+)%"
+        if rem_flag: # zname 추가
+            rep_dict = {val:key for key, val in rep_dict.items()}
+            pat_search += "(\\D)"
+        else: # zname 제거
+            pat_zname = '|'.join(zname_dict.keys())
+            re_zfunc = re.compile(
+                "%{}%".format(pat_str).replace("\\D+", pat_zname)
+                )
+        result:list[str] = []
+        for line in lines:
+            if not rem_flag:
+                zfunc_iter = re_zfunc.finditer(line)
+                for zfunc in zfunc_iter: # 조사처리/조사처리만 함수 제거
+                    exist_zfnc = zfunc.group()
+                    orig_var = zfunc.group(2)
+                    line = line.replace(exist_zfnc, "%{}%".format(orig_var))
+            for strs in re.compile(pat_search).finditer(line):
+                context = strs.group()
+                rep_str = rep_dict.get(context)
+                if rep_str:
+                    line = line.replace(context, rep_str)
+            result.append(line)
+
+        return result
+
 
 class ERBUtil:
     def indent_maker(self, metalineinfo):  # metaline을 들여쓰기된 lines로 만듦
@@ -631,7 +700,7 @@ class ERBVFinder:
     log_set은 LogPreset 을 요구함
     """
 
-    except_dict = {
+    extra_dict = {
         "UP": "JUEL",
         "DOWN": "JUEL",
         "PARAM": "PALAM",
@@ -642,7 +711,7 @@ class ERBVFinder:
     context_filter = r":([^\s,\)=\+\-]+)"
     # target_list = ['TARGET','PLAYER','MASTER','ASSI'] #TODO 차원지원 필요함
 
-    def __init__(self, csvdict, log_set=None):
+    def __init__(self, csvdict :InfoDict or list, log_set=None):
         if isinstance(csvdict, InfoDict):
             self.csv_infodict = csvdict
             self.csv_fnames = dict()
@@ -654,12 +723,12 @@ class ERBVFinder:
             self.csv_head = csvdict
         else:
             raise TypeError
-        csv_all_head = self.csv_head + list(self.except_dict.keys())
+        csv_all_head = self.csv_head + list(self.extra_dict.keys())
         re_varshead = "({})".format("|".join(csv_all_head))
         self.csvvar_re = re.compile(re_varshead + self.context_filter)
         self.log_set = log_set
 
-    def find_csvfnc_line(self, line):
+    def find_csvfnc_line(self, line: str) -> list[tuple]:
         """해당하는 결과물이 있을 시 [(csv명,변수내용,ERB상 함수명,대명사)] 로 출력함.
         이외는 None 리턴"""
         if line.startswith(";"):
@@ -679,62 +748,56 @@ class ERBVFinder:
             else:
                 var_pnoun = None
                 var_context_t = var_context
-            if self.except_dict.get(var_head):
-                var_head_t = self.except_dict[var_head]
+            if self.extra_dict.get(var_head):
+                var_head_t = self.extra_dict[var_head]
             else:
                 var_head_t = var_head
             find_result.append((var_head_t, var_context_t, var_head, var_pnoun))
-        if find_result:
-            return find_result
-        else:
-            return None
+        return find_result
 
-    def change_var_index(self, found_result, mod_num=0):
+    def change_var_index(self, found_result: list[tuple], mod_num: int = 0):
         """find_csvfnc_line의 결과값을 받아 context을 변환한 후 다시 리스트 리턴.
 
         mod_num 0 : 숫자 > 단어, mod_num 1 : 단어 > 숫자
         """
-        index_count = 0
-        if self.csv_infodict.db_ver > 1.2:
-            reversed_dict = self.csv_infodict.make_reverse()
-        else:
-            reversed_dict = None
-        for result in found_result:
-            if result:
-                var_head, var_context, orig_head, p_noun = result
-                int_checker = list(filter(str.isdecimal, var_context))
-                if (mod_num == 0 and int_checker) or (
-                    mod_num == 1 and int_checker != list(var_context)
+        reversed_dict = self.csv_infodict.make_reverse() if self.csv_infodict.db_ver > 1.2 else None
+
+        for res_cnt, result in enumerate(found_result):
+            var_head, var_context, orig_head, p_noun = result
+            int_checker = list(filter(str.isdecimal, var_context))
+            if (mod_num == 0 and int_checker) or (mod_num == 1 and
+                int_checker != list(var_context)
                 ):
-                    try:
-                        csv_filename = self.csv_fnames[var_head]
-                        context_t = self.csv_infodict.dict_main[csv_filename].get(var_context)
-                        if not context_t and reversed_dict:
-                            context_t = reversed_dict[csv_filename].get(var_context)
-                        found_result[index_count] = (
-                            var_head,
-                            (var_context, context_t),
-                            orig_head,
-                            p_noun,
-                        )
-                    except KeyError:
-                        if self.log_set:
-                            self.log_set.write_error_log(KeyError, orig_head)
-            index_count += 1
+                try:
+                    csv_filename = self.csv_fnames[var_head]
+                    context_t = self.csv_infodict.dict_main[csv_filename].get(var_context)
+                    if not context_t and reversed_dict:
+                        context_t = reversed_dict[csv_filename].get(var_context)
+                    found_result[res_cnt] = (var_head, (var_context, context_t),
+                        orig_head, p_noun)
+                except KeyError:
+                    if self.log_set:
+                        self.log_set.write_error_log(KeyError, orig_head)
+
         return found_result
 
-    def print_csvfnc(self, comp_list, opt_no=0):
-        """line에서 추출된 erb내 변수 리스트를 다시 결합한 목록 리턴
+    def print_csvfnc(self, comp_list: list[tuple], opt_no: int=0b0001):
+        """line에서 추출된 erb내 변수 리스트를 다시 결합한 목록 리턴, 복수 가능
 
-        opt_no
-            0: 디폴트. erb 내 원래 형태로 출력
-            1: csv에서 인식되는 형태로 출력 (대명사 포함)
-            2: csv에서 인식되는 형태로 출력 (대명사 제외)
-            3: (index 변환 사용시) erb 내 index 변환 행태로 출력
+        opt_no bit
+            1: 디폴트. erb 내 원래 형태로 출력
+            2: csv에서 인식되는 형태로 출력 (대명사 포함)
+            3: csv에서 인식되는 형태로 출력 (대명사 제외)
+            4: (index 변환 사용시) erb 내 index 변환 행태로 출력
         """
-        result_list = []
+        result_list:list[list[str]] = []
         if not comp_list:
-            return None
+            return result_list
+
+        for i in range(4):
+            if opt_no & (2 ** i):
+                result_list.append(list())
+
         for fncinfo in comp_list:
             csvhead, context, orighead, pnoun = fncinfo
             if isinstance(context, tuple):
@@ -748,16 +811,23 @@ class ERBVFinder:
             elif isinstance(context, str):
                 o_context = t_context = context
             else:
-                raise TypeError
-            if opt_no == 0:
-                head, cont = orighead, o_context
-            elif opt_no in (1, 2):
-                head, cont = csvhead, o_context
-            elif opt_no == 3:
-                head, cont = orighead, t_context
-            if pnoun and opt_no in (0, 1, 3):
-                cont = pnoun + ":" + cont
-            result_list.append("{}:{}".format(head, cont))
+                raise NotImplementedError("잘못된 context 타입: " + str(type(context)))
+            
+            res_index = 0
+            for i in range(4):
+                temp_opt = opt_no & (2 ** i)
+                if temp_opt & 0b0001:
+                    head, cont = orighead, o_context
+                elif temp_opt & 0b0010 or temp_opt & 0b0100:
+                    head, cont = csvhead, o_context
+                else: # temp_opt & 0b1000
+                    head, cont = orighead, t_context
+                if pnoun and temp_opt ^ 0b0100:
+                    cont = pnoun + ":" + cont
+                if temp_opt:
+                    result_list[res_index].append("{}:{}".format(head, cont))
+                    res_index += 1
+    
         return result_list
 
 
@@ -766,7 +836,7 @@ class ERBBlkFinder:
 
     def __init__(self):
         self.block_data = InfoDict(1)  # {filename:{index:(func,(code_block))}}
-        self.files, self.encode_type = FileFilter(1).get_filelist("ERB")
+        self.files, self.encode_type = CustomInput("ERB").get_filelist()
 
     def block_maker(self):
         for filename in self.files:
@@ -787,6 +857,43 @@ class ERBBlkFinder:
                 self.block_maker()
 
 
+class DataBaseERB:
+    def collect_adj(self, lines:list[str], tag:str, adj_opt:bool = False, is_case:bool = False):
+        result_list = []
+        case_flag = False
+        for line in lines:
+            if is_case:
+                if "ENDSELECT" in line:
+                    case_flag = False
+                    continue
+                elif "SELECTCASE" in line:
+                    case_flag = True
+                    continue
+                elif line.strip().startswith("CASE"):
+                    for word in line.split()[1:]:
+                        word = word.replace(",", "")
+                        if word.isdecimal():
+                            case_num = int(word)
+                            continue
+                    continue
+            if tag in line:                
+                line = line.strip()
+                line = line.replace(tag, "")
+                if adj_opt:
+                    line = line.replace('"',"")
+                    line = line.replace(r"\/", "/")
+                    words = line.split("/")
+                else:
+                    words = [line,]
+                if is_case and case_flag:
+                    result_list.append((case_num, words))
+                elif not is_case:
+                    result_list.extend(words)
+        if is_case and result_list:
+            result_list = dict(result_list)
+        return result_list
+
+
 class ERBFunc:
 
     func_log = LogPreset("ERBwork")
@@ -801,7 +908,7 @@ class ERBFunc:
         """
         print("PRINT/DATAFORM 구문의 추출을 시작합니다.")
         if not erb_files or not encode_type:
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
         file_count_check = StatusNum(erb_files, "파일")
         file_count_check.how_much_there()
         result_sheet = SheetInfo()
@@ -852,7 +959,7 @@ class ERBFunc:
         """
         print("ERB 파일에서 사용된 CSV 변수목록을 추출합니다.")
         if not erb_files or not encode_type:
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
         csvvar_list = ERBUtil().csv_infodict_maker()
         if csvvar_list == None:
             try:
@@ -900,7 +1007,7 @@ class ERBFunc:
     def remodel_indent(self, metainfo_option_num=0, metalineinfo=None):
         if metalineinfo == None:
             print("들여쓰기를 자동 교정하는 유틸리티입니다.")
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
             file_count_check = StatusNum(erb_files, "파일")
             file_count_check.how_much_there()
 
@@ -925,7 +1032,7 @@ class ERBFunc:
         return result_dataset
 
     def translate_txt_to_erb(self, era_type, csvvar_dict):
-        txt_files, encode_type = FileFilter().get_filelist("TXT")
+        txt_files, encode_type = CustomInput("TXT").get_filelist()
         file_count_check = StatusNum(txt_files, "파일")
         file_count_check.how_much_there()
         chara_num = input("작성하실 캐릭터의 번호를 입력해주세요. : ")
@@ -946,14 +1053,15 @@ class ERBFunc:
     def replace_num_or_name(self, mod_num=0, erb_files=None, encode_type=None):
         """0:숫자 > 변수, 1: 변수 > 숫자"""
         if not erb_files or not encode_type:
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
         file_count_check = StatusNum(erb_files, "ERB 파일")
         file_count_check.how_much_there()
         csv_infodict = ERBUtil().csv_infodict_maker(mod_num + 1, self.func_log)
         print("ERB내 index 변환작업을 시작합니다.")
 
         for filename in erb_files:
-            replaced_lines = ERBRemodel(filename, encode_type).replace_csvvars(
+            erblines = ERBLoad(filename, encode_type).make_erblines()
+            replaced_lines = ERBRemodel(erblines).replace_csvvars(
                 csv_infodict, mod_num
             )
             self.result_infodict.add_dict(filename, replaced_lines)
@@ -967,7 +1075,7 @@ class ERBFunc:
         mod_dict = {1:"중첩 PRNTDATA 변환"}
         if metalineinfo == None:
             print("불완전한 수식을 교정해주는 유틸리티입니다.")
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
             file_count_check = StatusNum(erb_files, "파일")
             file_count_check.how_much_there()
             mod_no = MenuPreset().select_mod(mod_dict)
@@ -994,12 +1102,13 @@ class ERBFunc:
     def memory_optimizer(self, erb_files=None, encode_type=None):
         print("현재 기능이 완성되지 않았습니다. 되도록 백업 후 이용해주시고, 구상 파일에만 사용해주세요.")
         if not erb_files or not encode_type:
-            erb_files, encode_type = FileFilter().get_filelist("ERB")
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
         file_count_check = StatusNum(erb_files, "파일")
         file_count_check.how_much_there()
 
         for filename in erb_files:
-            optmized_lines = ERBRemodel(filename, encode_type).memory_optimize()
+            erblines = ERBLoad(filename, encode_type).make_erblines()
+            optmized_lines = ERBRemodel(erblines).memory_optimize()
             self.result_infodict.add_dict(filename, optmized_lines)
             file_count_check.how_much_done()
 
@@ -1014,3 +1123,35 @@ class ERBFunc:
         print("번역본 erb의 디렉토리를 지정해주세요.")
         t_blkdata = ERBBlkFinder()
         # TODO 이름만 다른 파일 비교 가능하게 - CompareErb.csv 활용
+
+    def db_erb_finder(self, erb_files=None, encode_type=None, tag=None):
+        """데이터베이스형 ERB 자료 추출 함수"""
+        print("되도록 필요한 파일만 있는 폴더를 만든 후 그곳에서 진행해주세요.",
+        "추후 복수의 파일을 비교하고자 하는 경우, 각 파일의 파일명은 같아야 합니다.",
+        sep="\n"
+        )
+        if not erb_files or not encode_type:
+            erb_files, encode_type = CustomInput("ERB").get_filelist()
+        while True:
+            if not tag:
+                tag = input("필요한 데이터 형식의 앞말을 붙여넣어주세요.: ")
+            adj_yn = MenuPreset().yesno(
+                "AAA/BBB/CCC 꼴의 데이터인 경우, 각 요소별 분할이 가능합니다.",
+                "분할을 시도하시겠습니까?")
+            case_yn = MenuPreset().yesno(
+                "CASE XXX ~ tag AAA 꼴의 데이터인 경우 CASE를 활용한 좀 더 정확한 계산이 가능합니다.",
+                "해당 작업을 시도하시겠습니까?")
+            adj_res = "Yes" if adj_yn else "No"
+            case_res = "Yes" if case_yn else "No"
+            if not MenuPreset().yesno("tag: %s, 분할 시도: %s, CASE 사용: %s가 맞습니까?" % (tag, adj_res, case_res)):
+                if MenuPreset().yesno("작업을 취소할까요?"):
+                    return None
+                continue
+            break
+
+        for erbname in erb_files:
+            erb_load = ERBLoad(erbname, encode_type)
+            erblines = erb_load.make_erblines()
+            self.result_infodict.add_dict(erbname, DataBaseERB().collect_adj(erblines, tag, adj_yn, case_yn))
+
+        return self.result_infodict

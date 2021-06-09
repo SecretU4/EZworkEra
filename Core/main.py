@@ -1,7 +1,8 @@
 # EmuEra용 번역 파일 처리/합병 툴
 # 사용되는 라이브러리
 from util import CommonSent
-from Ctrltool import CSVFunc, ERBFunc, ResultFunc, EXTFunc, CrawlFunc
+from Ctrltool import CrawlFunc, CSVFunc, ERBFunc, EXTFunc, SRSFunc
+from Ctrltool.result import ResultFunc
 from usefile import MenuPreset
 from System.interface import Menu
 from System.xmlhandling import SettingXML
@@ -21,7 +22,7 @@ menu_main.title("EZworkEra - Develop utility for EmuEra base game")
 
 last_work = None
 last_work_name = None
-version_no = "v4.0.0"
+version_no = "v4.1.0"
 
 def run_main():
     global last_work
@@ -90,6 +91,7 @@ def run_main():
                 0: "이전으로",
                 1: "ERB 내 CSV 변수 추출",
                 2: "구상추출",
+                3: "ERB형 데이터베이스 추출"
             }
             menu_anal_erb = Menu(menu_dict_anal_erb)
             menu_anal_erb.title("ERB 파일 분석 메뉴입니다.")
@@ -111,6 +113,9 @@ def run_main():
                 ext_print_opt = MenuPreset().select_mod(ext_print_mod_dict)
                 last_work = ERBFunc().extract_printfunc(opt=ext_print_opt)
                 sav_datatype = "sheetinfo"
+            elif no_erbmenu == 3:
+                last_work = ERBFunc().db_erb_finder()
+                sav_datatype = "erblines"
 
             if last_work != None:
                 MenuPreset().shall_save_data(last_work, sav_datatype)
@@ -179,7 +184,8 @@ def run_main():
             menu_dict_other_data = {
                 0: "이전으로",
                 1: "UserDic.json srs화",
-                2: "웹 게시글 txt화"
+                2: "웹 게시글 txt화",
+                3: "srs 병합",
             }
             menu_other_data = Menu(menu_dict_other_data)
             menu_other_data.title("에라 파일과 관련성이 적은 데이터의 처리 메뉴입니다.")
@@ -190,16 +196,20 @@ def run_main():
 
             last_work_name = menu_other_data.selected_menu
 
-            if last_work_name == "UserDic.json srs화":
-                last_work = EXTFunc().userdict_to_srs()
+            if "srs" in last_work_name:
+                if last_work_name == "UserDic.json srs화":
+                    last_work = EXTFunc().userdict_to_srs()
+                elif last_work_name == "srs 병합":
+                    last_work = SRSFunc().merge_srs()
+
                 if not last_work:
                     input("작업한 내용이 없습니다.")
                     continue
-
-                if MenuPreset().yesno("바로 srs화를 진행할까요?"):
+                elif MenuPreset().yesno("바로 srs화를 진행할까요?"):
                     ResultFunc().make_result(last_work_name, last_work, 2)
                 else:
                     input("저장된 infodict 데이터를 기반으로 '결과물 srs화'를 해주셔야 srs화가 되니 참고해주세요.")
+
             elif last_work_name == "웹 게시글 txt화":
                 last_work = CrawlFunc().crawl_text()
                 if last_work == None:

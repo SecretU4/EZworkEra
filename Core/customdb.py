@@ -5,6 +5,7 @@ Classes:
     ERBMetaInfo
     FuncInfo
     SheetInfo
+    SRSFormat
 """
 
 
@@ -386,3 +387,67 @@ class SheetInfo:
             
         target_sheet.append(target_data)
         self.sheetdict.update({sheetname:target_sheet})
+
+
+class SRSFormat:
+    """SRS 형식의 데이터 관리와 관련된 클래스"""
+    def __init__(self, srsdict, dataname="ONLYSRS", srs_type=1):
+        self.srsdict = srsdict
+        self.dataname = dataname
+        self.srs_type = srs_type
+        self.db_ver = 1.0
+
+    def _srstype_format(self):
+        """srs_type 1:simplesrs 2:srs"""
+        if self.srs_type == 1:
+            fmtdata = {
+                "pat":"$1#\n$2#\n\n",
+                "head":True,
+                "com":";comment\n\n"
+            }
+        elif self.srs_type == 2:
+            fmtdata = {
+                "pat":"[Search]\n$1#\n[Replace]\n$2#\n",               
+                "head":False,
+                "com":";comment\n"
+            }
+        else:
+            raise NotImplementedError("지원하는 형식이 아닙니다")
+
+        return fmtdata
+
+    def set_head(self, h_opt):
+        # TRIM:앞뒤공백 제거, SORT:긴 순서/알파벳 정렬, WORDWRAP:정확히 단어 단위일때만 치환
+        head = ""
+        if h_opt & 0b0001:
+            head += "[-WORDWRAP-]"
+        if h_opt & 0b0010:
+            head += "[-TRIM-]"
+        if h_opt & 0b0100:
+            head += "[-REGEX-]"
+        if h_opt & 0b1000:
+            head += "[-SORT-]"
+        if (h_opt & 0b1000) and (h_opt & 0b0100):
+            raise TypeError("REGEX와 SORT 옵션은 동시 사용이 불가합니다")
+
+        return head + '\n'
+
+    def print_comment(self, sentence):
+        return self._srstype_format()["com"].replace("comment", sentence)
+
+    def print_srs(self, h_opt=0, title=False):
+        """문자열 포함 list 형태로 srsdict 데이터를 변환"""
+        result_lines = []
+        fmtdata = self._srstype_format()
+
+        if fmtdata["head"] and h_opt:
+            result_lines.append(self.set_head(h_opt))
+
+        if title:
+            result_lines.append(self.print_comment("from: " +self.dataname))
+
+        for key, value in self.srsdict.items():
+            line = fmtdata["pat"].replace("$1#", key).replace("$2#", value)
+            result_lines.append(line)
+
+        return result_lines
