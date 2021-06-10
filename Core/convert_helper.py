@@ -28,6 +28,7 @@ from PySide2.QtCore import QCoreApplication, QThread, Signal, Slot
 from simple_util import BringFiles
 # import debugpy
 
+version_no ="v1.4"
 
 def result_maker(filename, dir_from):
     filename = "Result" + filename.replace(dir_from, "")
@@ -50,9 +51,14 @@ class ImageConvert:
     """Image 포멧 변경 기능 클래스. 동적 이미지 미지원"""
 
     def __init__(self, file_path, opt_array=[0, 0], dir_from=None):
-        self.filename, self.orig_ext = os.path.splitext(file_path)
+        self.filename, _ = os.path.splitext(file_path)
         self.file_path = file_path
-        self.opened_image = Image.open(file_path).convert("RGB")
+        img = Image.open(file_path)
+        self.img_rgb = img.convert("RGB")
+        if img.format in ("GIF", "PNG", "WEBP"): # format support Alpha
+            self.opened_image = img.convert("RGBA")
+        else:
+            self.opened_image = self.img_rgb
         self.make_backup = opt_array[1]
         self.dir_from = dir_from
 
@@ -64,7 +70,10 @@ class ImageConvert:
                 os.remove(self.file_path)
             else:
                 print("ERROR - NOFILE to DELETE")
-        self.opened_image.save(self.filename + "." + dest_fmt, dest_fmt)
+        try:
+            self.opened_image.save(self.filename + "." + dest_fmt, dest_fmt)
+        except OSError: # format not support Alpha
+            self.img_rgb.save(self.filename + "." + dest_fmt, dest_fmt)
 
 
 class TXTConverter:
@@ -398,6 +407,7 @@ class MyThread(QThread):
 
 
 if __name__ == "__main__":
+    print("version: " + version_no)
     running_app = QApplication(sys.argv)
     gui_window = MainWindow()
     gui_window.show()
