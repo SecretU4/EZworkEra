@@ -1,7 +1,7 @@
 """Simple file encoding & image format converter"""
 if __name__ == "__main__":
     from PySide2.QtCore import QCoreApplication
-    QCoreApplication.setLibraryPaths([r"E:\ProgramData\Anaconda3\envs\ezworkera\Lib\site-packages\PySide2\plugins"]) # Write your QT_PLUGIN_PATH
+    QCoreApplication.setLibraryPaths([r"Core\dll"]) # Write your QT_PLUGIN_PATH
 
 import sys
 import os
@@ -28,7 +28,7 @@ from PySide2.QtCore import QCoreApplication, QThread, Signal, Slot
 from simple_util import BringFiles
 # import debugpy
 
-version_no ="v1.4"
+version_no ="v1.4.1"
 
 def result_maker(filename, dir_from):
     filename = "Result" + filename.replace(dir_from, "")
