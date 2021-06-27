@@ -402,15 +402,14 @@ class ERBRemodel:
         pat_result = print_pat.match(line)
         if pat_result:
             print_head = pat_result.group()
-            print_sp = pat_result.group(1)
+            print_type = pat_result.group(1)
+            print_br = pat_result.group(4)
             context = " ".join(line.split()[1:])
             endword = ""
-            if print_head or print_sp:
-                for key in self.express_dict:
-                    if key in print_head:
-                        endword = self.express_dict[key]
-                        break
-                if print_sp:
+            if print_head:
+                if print_br:
+                    endword = self.express_dict[print_br]
+                if print_type:
                     if "PRINTS" in print_head:
                         context = "%{0}%".format(context)
                     elif "PRINTV" in print_head:
