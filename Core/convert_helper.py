@@ -1,7 +1,7 @@
 """Simple file encoding & image format converter"""
 if __name__ == "__main__":
     from PySide2.QtCore import QCoreApplication
-    QCoreApplication.setLibraryPaths([r"Core\dll"]) # Write your QT_PLUGIN_PATH
+    QCoreApplication.setLibraryPaths([r"dll"])
 
 import sys
 import os
