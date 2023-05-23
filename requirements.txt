@@ -17,7 +17,7 @@ PyQt5==5.15.0
 PyQt5-sip==12.8.0
 qtconsole==4.7.4
 QtPy==1.9.0
-requests==2.25.1
+requests==2.31.0
 six>=1.15.0
 soupsieve==2.2
 toml>=0.10.1
