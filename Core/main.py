@@ -22,7 +22,7 @@ menu_main.title("EZworkEra - Develop utility for EmuEra base game")
 
 last_work = None
 last_work_name = None
-version_no = "v4.1.0"
+version_no = "v4.1.1"
 
 def run_main():
     global last_work

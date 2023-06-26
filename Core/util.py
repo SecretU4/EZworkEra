@@ -8,7 +8,6 @@ Classes:
 """
 # 사용 라이브러리
 import os
-import pickle
 import time
 
 # 클래스 목록

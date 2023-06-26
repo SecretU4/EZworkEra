@@ -365,7 +365,6 @@ class ERBRemodel:
         "W":"\\t",
         "L":"\\n"
     }
-    save_str_var = "LOCALS:85"
     re_single_sent = re.compile('@"(.+)"\n$')
 
     def replace_csvvars(self, csv_infodict, mod_num=0, srs_dict: dict = dict()):
@@ -402,15 +401,14 @@ class ERBRemodel:
         pat_result = print_pat.match(line)
         if pat_result:
             print_head = pat_result.group()
-            print_sp = pat_result.group(1)
+            print_type = pat_result.group(1)
+            print_br = pat_result.group(4)
             context = " ".join(line.split()[1:])
             endword = ""
-            if print_head or print_sp:
-                for key in self.express_dict:
-                    if key in print_head:
-                        endword = self.express_dict[key]
-                        break
-                if print_sp:
+            if print_head:
+                if print_br:
+                    endword = self.express_dict[print_br]
+                if print_type:
                     if "PRINTS" in print_head:
                         context = "%{0}%".format(context)
                     elif "PRINTV" in print_head:
@@ -421,9 +419,10 @@ class ERBRemodel:
                 return '@"%s%s" + \n' % (context, endword)
         return ""
 
-    def __after_printcheck(self, target_lines:list[str], count:int):
+    def __after_printcheck(self, target_lines:list[str], count:int, str_var):
+        # 변환시킨 출력문의 후처리 함수
         target_lines[-1] = target_lines[-1].replace(" + \n", "\n")
-        if count == 1: # PRINT 출력문이 1줄짜리일 때
+        if count >= 1 and count <= 5: # PRINT 출력문이 1~5줄짜리일 때
             for counting in range(1, count + 1):
                 print_tail = ""
                 temp_line = target_lines[-1 * counting]
@@ -437,34 +436,37 @@ class ERBRemodel:
                 context = self.re_single_sent.match(temp_line).group(1)
                 temp_line = "PRINTFORM%s %s\n" % (print_tail, context)
                 target_lines[-1 * counting] = temp_line
-            target_lines.pop(-(count + 1)) # "%s '=\n" % self.save_str_var
+            target_lines.pop(-(count + 1)) # "%s '=\n" % str_var
             target_lines.pop(-(count + 1)) # "{\n"
         else:
             target_lines.append("}\n")
-            target_lines.append("CALL PRINTER, %s\n" % self.save_str_var)
+            target_lines.append("CALL PRINTER, %s\n" % str_var)
         return target_lines
 
     def memory_optimize(self):
+        '''PRINTER 아이디어 기반 ERB 출력문 최적화'''
+        str_var = "LOCALS:85" # 변경 가능
         result_lines = []
         count_print = 0
+
         for line in self.lines:
             result_line = self._check_print_line(line)
             if result_line:
                 if not count_print:
                     result_lines.append("{\n")
-                    result_lines.append("%s '=\n" % self.save_str_var)
+                    result_lines.append("%s '=\n" % str_var)
                 count_print += 1
             else:
                 result_line = line
                 if count_print:
-                    result_lines = self.__after_printcheck(result_lines, count_print)
-
+                    result_lines = self.__after_printcheck(result_lines, count_print, str_var)
                 count_print = 0
+
             result_line = result_line.replace("\r\n", "\n")
             result_lines.append(result_line)
 
         if '" + \n' in result_lines[-1]: # PRINT 출력문으로 파일이 끝날 때 처리
-            result_lines = self.__after_printcheck(result_lines, count_print)
+            result_lines = self.__after_printcheck(result_lines, count_print, str_var)
 
         return result_lines
 

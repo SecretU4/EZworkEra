@@ -46,7 +46,7 @@ class ExportData:
         self.res_filename = ""
         self.encoding = "UTF-8"
 
-    def __multi_data_input(self, data_count=2):
+    def _multi_data_input(self, data_count=2):
         """입력받는 데이터가 2개인 경우 사용. sav 디랙토리의 저장 파일을 불러옴."""
         result_input = []
         if self.target_data:
@@ -339,7 +339,7 @@ class ExportSRS(ExportData):
         failed_count = 0
         self.log_file.workclass = "SRSWrite"
         while True:
-            dataset = self.__multi_data_input()
+            dataset = self._multi_data_input()
             print("처음 선택한 두 데이터만으로 진행합니다.\n")
             print("SRS 자료 입력시 첫번째를 원문, 두번째를 번역문으로 인식합니다.\n")
             o_dataset, t_dataset = self.__data_type_check(*dataset, max_data=2)

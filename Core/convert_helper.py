@@ -1,12 +1,10 @@
 """Simple file encoding & image format converter"""
 if __name__ == "__main__":
     from PySide2.QtCore import QCoreApplication
-    QCoreApplication.setLibraryPaths([r"E:\ProgramData\Anaconda3\envs\ezworkera\Lib\site-packages\PySide2\plugins"]) # Write your QT_PLUGIN_PATH
+    QCoreApplication.setLibraryPaths([r"dll"])
 
 import sys
 import os
-import chardet
-from PIL import Image
 from PySide2.QtWidgets import (
     QApplication,
     QWidget,
@@ -25,95 +23,11 @@ from PySide2.QtWidgets import (
 )
 from PySide2.QtGui import QIcon
 from PySide2.QtCore import QCoreApplication, QThread, Signal, Slot
+from convhelpcore import *
 from simple_util import BringFiles
 # import debugpy
 
-
-def result_maker(filename, dir_from):
-    filename = "Result" + filename.replace(dir_from, "")
-    result_dir = os.path.dirname(filename)
-    if not os.path.isdir(result_dir):
-        dir_names = result_dir.split("\\")
-        for depth in range(len(dir_names)):
-            dir_make = "\\".join(dir_names[: depth + 1])
-            if os.path.isdir(dir_make):
-                continue
-            os.mkdir(dir_make)
-    return filename
-
-
-encode_dict = {"Shift-JIS": "cp932", "UTF-8 with BOM": "utf-8-sig",
-    "Korean-Windows": "cp949", "UTF-16 LE":"utf-16-le"}
-
-
-class ImageConvert:
-    """Image 포멧 변경 기능 클래스. 동적 이미지 미지원"""
-
-    def __init__(self, file_path, opt_array=[0, 0], dir_from=None):
-        self.filename, self.orig_ext = os.path.splitext(file_path)
-        self.file_path = file_path
-        self.opened_image = Image.open(file_path).convert("RGB")
-        self.make_backup = opt_array[1]
-        self.dir_from = dir_from
-
-    def convert_image(self, dest_fmt):
-        if self.make_backup and self.dir_from:
-            self.filename = result_maker(self.filename, self.dir_from)
-        else:
-            if os.path.isfile(self.file_path):
-                os.remove(self.file_path)
-            else:
-                print("ERROR - NOFILE to DELETE")
-        self.opened_image.save(self.filename + "." + dest_fmt, dest_fmt)
-
-
-class TXTConverter:
-    def __init__(
-        self, filename, target_encode, orig_imgext="", to_imgext="", opt_array=[0, 0], dir_from=None
-    ):
-        self.filename = filename
-        self.opened_file = open(filename, "rb")
-        self.encode_to = target_encode
-        self.orig_imgext = orig_imgext
-        self.to_imgext = to_imgext
-        self.change_ext_inTXT = opt_array[0]
-        self.get_backup = opt_array[1]
-        self.dir_from = dir_from
-
-    def encoding_check(self):
-        detect_result = chardet.detect(self.opened_file.read())
-        return detect_result["encoding"]
-
-    def change_encoding(self, encode_to):
-        bulk_data = None
-        while bulk_data == None:
-            for encode in encode_dict.values():
-                bulk_data = self.try_open(encode)
-                if isinstance(bulk_data, str):
-                    break
-            if bulk_data == None:
-                encode = self.encoding_check()
-                bulk_data = self.try_open(encode)
-        if self.orig_imgext and self.change_ext_inTXT:
-            bulk_data = bulk_data.replace(self.orig_imgext, self.to_imgext)
-
-        if self.get_backup and self.dir_from:
-            dest_filename = result_maker(self.filename, self.dir_from)
-        else:
-            dest_filename = self.filename
-        with open(dest_filename, "w", encoding=encode_to) as dest:
-            dest.write(bulk_data)
-
-    def try_open(self, encoding):
-        try:
-            with open(self.filename, "r", encoding=encoding) as origin:
-                bulk_data = origin.read()
-            return bulk_data
-        except UnicodeDecodeError:
-            return None
-
-    def run(self):
-        self.change_encoding(self.encode_to)
+version_no ="v1.4.1"
 
 
 class MainWidget(QWidget):
@@ -398,6 +312,7 @@ class MyThread(QThread):
 
 
 if __name__ == "__main__":
+    print("version: " + version_no)
     running_app = QApplication(sys.argv)
     gui_window = MainWindow()
     gui_window.show()
