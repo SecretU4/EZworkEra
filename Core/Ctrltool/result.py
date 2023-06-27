@@ -63,7 +63,7 @@ class ExportData:
             inputed_count += 1
         return tuple(result_input)
 
-    def __data_type_check(self, *data_names, max_data=0):
+    def _data_type_check(self, *data_names, max_data=0):
         """입력받은 데이터 체크 후 인터페이스 선택 후 tuple 요소로 된 list 출력
         
         max_data = 입력받을 수 있는 최대 데이터 수. 0이면 한도 없음
@@ -160,7 +160,7 @@ class ExportData:
                 self.target_name = print_data.selected_name
         else:
             print("이번 구동 중 실행된 {} 자료를 {}화 합니다.".format(self.target_name, filetype))
-        target_data = self.__data_type_check(self.target_data)  # ((자료명,알수 없는 자료형),...)
+        target_data = self._data_type_check(self.target_data)  # ((자료명,알수 없는 자료형),...)
         menu_dict_sel_dest = {0: "원본 위치에 저장", 1: "결과물 폴더에 저장"}
         menu_sel_dest = Menu(menu_dict_sel_dest)
         menu_sel_dest.title(
@@ -242,7 +242,7 @@ class ExportData:
         if not xlsxname:
             xlsxname = "basic_sheet"
 
-        _, data = self.__data_type_check(self.target_data, max_data=1)[0] # 최대 1개만
+        _, data = self._data_type_check(self.target_data, max_data=1)[0] # 최대 1개만
         if not isinstance(data, SheetInfo):
             print("차트화 기능은 현재 특정 기능에서만 지원합니다. 다른 처리방법을 시도해주세요.")
             return False
@@ -342,7 +342,7 @@ class ExportSRS(ExportData):
             dataset = self._multi_data_input()
             print("처음 선택한 두 데이터만으로 진행합니다.\n")
             print("SRS 자료 입력시 첫번째를 원문, 두번째를 번역문으로 인식합니다.\n")
-            o_dataset, t_dataset = self.__data_type_check(*dataset, max_data=2)
+            o_dataset, t_dataset = self._data_type_check(*dataset, max_data=2)
             orig_data, trans_data = o_dataset[1], t_dataset[1]
             if orig_data and trans_data:
                 if MenuPreset().yesno(
