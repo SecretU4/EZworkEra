@@ -859,6 +859,142 @@ class ERBBlkFinder:
                 self.block_maker()
 
 
+class LicenceFinder:
+    """TW형 라이센스 파일 분석 클래스. txt, erb 대응"""
+    lic_head = {
+        "+----+-----------------------------------+":30,
+        "+--------------------------------------+":30,
+        "Copyright":15
+    }
+    txt_case = {
+        "単体での再アップロード":1, "단체에의 재업로드":1, "단체[單体]에서의 재업 로드":1,
+        "本体への同梱・口上まとめへの収録":2, "본체의 동봉·구상 정리에 수록":2, "본체에의 동고·말통계에의 수록":2,
+        "口上の加筆":3, "현 구상에 가필하는 행위":3, "말의 가필":3,
+        "口上の改変・その他改変":4, "현 구상의 편집, 혹은 기타 개편":4, "말의 개변·그 외 개변":4,
+        "他の口上での利用":5, "타 구상에서의 이용":5, "다른 말에서의 이용":5,
+        "他のeraバリアントでの利用":6, "타 era 개조판에서의 이용":6, "다른 era 바리안트에서의 이용":6,
+        "era以外への流用":7, "era이외 환경에서의 유용":7, "era 이외에의 유용":7,
+        "翻訳・他言語版バリアントへの流用":8, "번역, 기타 언어 판으로의 유용":8, "번역·발설어판 바리안트에의 유용":8,
+        "商用利用・金銭のやり取りを伴う利用":9, "상업적 행위 및 금전적 이익을 위한 이용":9, "상용 이용·금전의 교환을 수반하는 이용":9,
+        "二次創作":10, "2차 창작":10
+    }
+    erb_case = {
+        "【오자·탈자 수정】":2, "【誤字・脱字修正】":2,
+        "【분기 조건·erb 구문에 관한 수정】":2, "【分岐条件・erb構文に関する修正】":2,
+        "【본체 Ver·Rev 변경 대응】":2, "【本体Ver・Rev変更対応】":2,
+        "【플래그의 관리·수정】":2, "【フラグの管理・修正】":2,
+
+        "【미기입 부위 가필】":3, "【未記入部位加筆】":3,
+        "【랜덤 분기 가필】":3, "【ランダム分岐加筆】":3,
+        "【기입필 부위 가필】":3, "【記入済部位加筆】":3,
+        "【기입필 부위 삭제】":4, "【記入済部位削除】":4,
+        "【기입필 부위 코멘트 아웃】":4, "【記入済部位コメントアウト】":4
+    }
+    txt_chk = {"○":1, "〇":1, "△":-1, "×":2}
+    lic_stat_1 = {1:"가능",2:"불가",-1:"확인요"}
+    lic_stat_2 = {1:"○",2:"X",-1:"△",0:"※"}
+
+    def find_rawdata(self, lines):
+        bulk = []
+        for cnt, line in enumerate(lines):
+            for key in self.lic_head.keys():
+                if line.find(key) != -1:
+                    bulk = lines[cnt : (cnt + self.lic_head[key])]
+                    cont_flag = 1
+                    break
+            if cont_flag:
+                break
+
+        return bulk
+
+    def proc_txtdata(self, lines):
+        result = {}
+        for line in lines:
+            for ki in self.txt_case.keys():
+                if ki in line:
+                    for chk_key in self.txt_chk.keys():
+                        if chk_key in line:
+                            result[self.txt_case[ki]] = self.txt_chk[chk_key]
+                            break
+                    break
+
+    def proc_erbdata(self, lines):
+        ki_count = {}
+        result = {}
+        for line in lines:
+            for ki in self.erb_case.keys():
+                if ki in line:
+                    if ki_count.get(self.erb_case[ki]):
+                        ki_count[self.erb_case[ki]] += 1
+                    else:
+                        ki_count[self.erb_case[ki]] = 1
+
+            if ki_count:
+                for case in ki_count.keys():
+                    case_res = -1
+                    if case == 2:
+                        if ki_count[case] == 4:
+                            case_res = 1
+                        elif ki_count[case] == 0:
+                            case_res = 2
+                    elif case == 3:
+                        if ki_count[case] == 3:
+                            case_res = 1
+                        elif ki_count[case] == 0:
+                            case_res = 2
+                    elif case == 4:
+                        if ki_count[case] == 2:
+                            case_res = 1
+                        elif ki_count[case] == 0:
+                            case_res = 2
+
+                    result[case] = case_res
+
+    def post_procdata(self, filename, data, opt=0): #TODO 추후 result.py 등으로 이관
+        result = []
+
+        if opt == 0: # DOCUMENT
+            for ki in data:
+                text = ""
+                if ki == 1: text = "재업로드: "
+                elif ki == 2: text = "본체 동봉: "
+                elif ki == 3: text = "구상 가필: "
+                elif ki == 4: text = "구상 개변: "
+                elif ki == 5: text = "타구상 활용: "
+                elif ki == 6: text = "타era 활용: "
+                elif ki == 7: text = "era 이외 활용: "
+                elif ki == 8: text = "번역: "
+                elif ki == 9: text = "상업적 이용: "
+                elif ki == 10: text = "2차 창작: "
+
+                if text:
+                    result.append(text + self.lic_stat_1[data[ki]] + "\n")
+        else: # WIKI
+            dir_name = filename.split("\\")[-2]
+            dir_set = dir_name.split(" ")
+            c_no =  dir_set.pop(0)
+            c_name = " ".join(dir_set)
+
+            r_txt = "|| {} || {} ||  ||  ||".format(c_no, c_name)
+            cal_data = [0,0,0,0]
+            for ki in data:
+                if ki == 3: # 가필
+                    cal_data[2] = data[ki]
+                elif ki == 4: # 개변
+                    cal_data[1] = data[ki]
+                    cal_data[3] = data[ki]
+                elif ki == 8: # 번역
+                    cal_data[0] = data[ki]
+
+            for c_data in cal_data:
+                r_txt += " {} ||".format(self.lic_stat_2[c_data])
+
+            r_txt += "  ||\n"
+            result.append(r_txt)
+
+        return result
+
+
 class DataBaseERB:
     def collect_adj(self, lines:list[str], tag:str, adj_opt:bool = False, is_case:bool = False):
         result_list = []
@@ -1155,5 +1291,27 @@ class ERBFunc:
             erb_load = ERBLoad(erbname, encode_type)
             erblines = erb_load.make_erblines()
             self.result_infodict.add_dict(erbname, DataBaseERB().collect_adj(erblines, tag, adj_yn, case_yn))
+
+        return self.result_infodict
+
+    def licence_checker(self, files=None, encode_type=None):
+        """TW형 라이센스 파일 분석 함수. txt, erb 대응"""
+        if not files or not encode_type:
+            files, encode_type = CustomInput("라이센스").get_filelist()
+        doc_yn = MenuPreset().yesno("데이터를 문서화하여 저장하시겠습니까?")
+
+        for filename in files:
+            lines = ERBLoad(filename, encode_type).make_erblines()
+            finder = LicenceFinder()
+            bulk = finder.find_rawdata(lines)
+            if "TXT" in filename.upper():
+                file_data = finder.proc_txtdata(bulk)
+            else:
+                file_data = finder.proc_erbdata(bulk)
+
+            if doc_yn:
+                file_data = finder.post_procdata(filename, file_data)
+
+            self.result_infodict.add_dict(filename, file_data)
 
         return self.result_infodict
