@@ -1,11 +1,8 @@
 """Simple file encoding & image format converter"""
-if __name__ == "__main__":
-    from PySide2.QtCore import QCoreApplication
-    QCoreApplication.setLibraryPaths([r"dll"])
 
 import sys
 import os
-from PySide2.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication,
     QWidget,
     QPushButton,
@@ -21,13 +18,13 @@ from PySide2.QtWidgets import (
     QMainWindow,
     QMessageBox,
 )
-from PySide2.QtGui import QIcon
-from PySide2.QtCore import QCoreApplication, QThread, Signal, Slot
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import QCoreApplication, QThread, Signal, Slot
 from convhelpcore import *
 from simple_util import BringFiles
 # import debugpy
 
-version_no ="v1.4.1"
+version_no ="v1.5.0"
 
 
 class MainWidget(QWidget):
@@ -102,10 +99,13 @@ class MainWidget(QWidget):
         self.change_txt_yn = QCheckBox("Change image ext in CSV/ERB", self)
         self.change_txt_yn.toggle()
         self.change_txt_yn.clicked.connect(self.option_set)
+        self.grab_txt_yn = QCheckBox("Also convert .TXT encoding", self)
+        self.grab_txt_yn.clicked.connect(self.option_set)
         self.backup_yn = QCheckBox("Place files in Result directory", self)
         self.backup_yn.clicked.connect(self.option_set)
 
         option_layout.addWidget(self.change_txt_yn)
+        option_layout.addWidget(self.grab_txt_yn)
         option_layout.addWidget(self.backup_yn)
         option_groupbox.setLayout(option_layout)
         func_layout.addWidget(option_groupbox)
@@ -145,6 +145,7 @@ class MainWidget(QWidget):
         self.option_array[1] = self.backup_yn.checkState()
         self.option_array[2] = self.encode_groupbox.isChecked()
         self.option_array[3] = self.fmt_groupbox.isChecked()
+        self.option_array[4] = self.grab_txt_yn.checkState()
         return self.option_array
 
     def run_process(self):
@@ -267,7 +268,10 @@ class MyThread(QThread):
         target_encode, target_fmt_from, target_fmt_to, selected_dir = self.target_array
         print("Args loaded")
         imgfiles = BringFiles(selected_dir).search_filelist(target_fmt_from)
-        txtfiles = BringFiles(selected_dir).search_filelist(".ERB", ".ERH", ".CSV")
+        txt_exts = [".ERB", ".ERH", ".CSV"]
+        if self.func_array[4]:
+            txt_exts.append(".TXT")
+        txtfiles = BringFiles(selected_dir).search_filelist(*txt_exts)
         imgfiles_len = len(imgfiles)
         txtfiles_len = len(txtfiles)
         print("Filees listed")
