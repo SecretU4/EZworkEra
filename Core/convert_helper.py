@@ -1,11 +1,8 @@
 """Simple file encoding & image format converter"""
-if __name__ == "__main__":
-    from PySide2.QtCore import QCoreApplication
-    QCoreApplication.setLibraryPaths([r"dll"])
 
 import sys
 import os
-from PySide2.QtWidgets import (
+from PySide6.QtWidgets import (
     QApplication,
     QWidget,
     QPushButton,
@@ -21,13 +18,13 @@ from PySide2.QtWidgets import (
     QMainWindow,
     QMessageBox,
 )
-from PySide2.QtGui import QIcon
-from PySide2.QtCore import QCoreApplication, QThread, Signal, Slot
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import QCoreApplication, QThread, Signal, Slot
 from convhelpcore import *
 from simple_util import BringFiles
 # import debugpy
 
-version_no ="v1.4.1"
+version_no ="v1.5.0"
 
 
 class MainWidget(QWidget):
