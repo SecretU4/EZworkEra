@@ -4,7 +4,7 @@ from customdb import ERBMetaInfo, InfoDict, SheetInfo
 from usefile import CustomInput, FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import StatusNum
-from System.xmlhandling import ERBGrammarXML, SettingXML
+from System.xmlhandling import ERBGrammarXML, SettingXML, EraLicenceXML
 from .erbblock import CheckStack
 from . import CSVFunc
 
@@ -859,6 +859,112 @@ class ERBBlkFinder:
                 self.block_maker()
 
 
+class LicenceFinder:
+    """TW형 라이센스 파일 분석 클래스. txt, erb 대응"""
+    txt_chk = {"○":1, "〇":1, "△":-1, "×":2}
+    lic_stat_1 = {1:"가능",2:"불가",-1:"확인요"}
+    lic_stat_2 = {1:"○",2:"X",-1:"△",0:"※"}
+
+    def __init__(self, eratype="TW"):
+        self.xml_dict = EraLicenceXML()
+        self.xml_dict.templet_dict(eratype)
+
+    def find_rawdata(self, lines):
+        lic_head = self.xml_dict.lic_head
+        cont_flag = 0
+        bulk = []
+        for cnt, line in enumerate(lines):
+            for key in lic_head.keys():
+                if line.find(key) != -1:
+                    bulk = lines[cnt : (cnt + int(lic_head[key]))]
+                    cont_flag = 1
+                    break
+            if cont_flag:
+                break
+
+        return bulk
+
+    def proc_txtdata(self, lines):
+        txt_case = self.xml_dict.txt_case
+        result = {}
+        for line in lines:
+            for ki in txt_case.keys():
+                if ki in line:
+                    for chk_key in self.txt_chk.keys():
+                        if chk_key in line:
+                            result[txt_case[ki]] = self.txt_chk[chk_key]
+                            break
+                    break
+        return result
+
+    def proc_erbdata(self, lines):
+        erb_case = self.xml_dict.erb_case
+        ki_count = {}
+        result = {}
+        for line in lines:
+            for ki in erb_case.keys():
+                if ki in line:
+                    if ki_count.get(erb_case[ki]):
+                        ki_count[erb_case[ki]] += 1
+                    else:
+                        ki_count[erb_case[ki]] = 1
+
+            if ki_count:
+                for case in ki_count.keys():
+                    case_res = -1
+                    if case == 2:
+                        if ki_count[case] == 4:
+                            case_res = 1
+                        elif ki_count[case] == 0:
+                            case_res = 2
+                    elif case == 3:
+                        if ki_count[case] == 3:
+                            case_res = 1
+                        elif ki_count[case] == 0:
+                            case_res = 2
+                    elif case == 4:
+                        if ki_count[case] == 2:
+                            case_res = 1
+                        elif ki_count[case] == 0:
+                            case_res = 2
+
+                    result[case] = case_res
+        return result
+
+    def post_procdata(self, filename, data, opt=0): #TODO 추후 result.py 등으로 이관
+        label_dict = self.xml_dict.label_dict
+        result = []
+
+        if opt == 0: # DOCUMENT
+            for ki in data:
+                text = "{}: ".format(label_dict[ki])
+                result.append(text + self.lic_stat_1[data[ki]] + "\n")
+        else: # WIKI
+            dir_name = filename.split("\\")[-2]
+            dir_set = dir_name.split(" ")
+            c_no =  dir_set.pop(0)
+            c_name = " ".join(dir_set)
+
+            r_txt = "|| {} || {} ||  ||  ||".format(c_no, c_name)
+            cal_data = [0,0,0,0]
+            for ki in data:
+                if ki == "3": # 가필
+                    cal_data[2] = data[ki]
+                elif ki == "4": # 개변
+                    cal_data[1] = data[ki]
+                    cal_data[3] = data[ki]
+                elif ki == "8": # 번역
+                    cal_data[0] = data[ki]
+
+            for c_data in cal_data:
+                r_txt += " {} ||".format(self.lic_stat_2[c_data])
+
+            r_txt += "  ||\n"
+            result.append(r_txt)
+
+        return result
+
+
 class DataBaseERB:
     def collect_adj(self, lines:list[str], tag:str, adj_opt:bool = False, is_case:bool = False):
         result_list = []
@@ -1157,3 +1263,40 @@ class ERBFunc:
             self.result_infodict.add_dict(erbname, DataBaseERB().collect_adj(erblines, tag, adj_yn, case_yn))
 
         return self.result_infodict
+
+    def licence_checker(self, files=None, encode_type=None):
+        """TW형 라이센스 파일 분석 함수. txt, erb 대응"""
+        if not files or not encode_type:
+            files, encode_type = CustomInput("ERB").get_filelist()
+            files2, encode_type2 = CustomInput("TXT").get_filelist()
+            files.extend(files2)
+        doc_yn = MenuPreset().yesno("데이터를 문서화하여 저장하시겠습니까?")
+
+        for filename in files:
+            if "TXT" in filename.upper():
+                lines = ERBLoad(filename, encode_type2).make_erblines()
+            else:
+                lines = ERBLoad(filename, encode_type).make_erblines()
+            finder = LicenceFinder()
+            bulk = finder.find_rawdata(lines)
+            if "TXT" in filename.upper():
+                file_data = finder.proc_txtdata(bulk)
+            else:
+                file_data = finder.proc_erbdata(bulk)
+
+            if not file_data:
+                continue
+            elif doc_yn:
+                file_data = finder.post_procdata(filename, file_data)
+
+            self.result_infodict.add_dict(filename, file_data)
+
+        if doc_yn:
+            txtlines = []
+            for filename in self.result_infodict.dict_main:
+                f_label = "\\".join(filename.split("\\")[-2:])
+                txtlines.append(f_label + "\n")
+                txtlines.extend(self.result_infodict.dict_main[filename])
+            return txtlines
+        else:
+            return self.result_infodict

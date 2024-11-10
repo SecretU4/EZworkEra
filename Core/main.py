@@ -91,7 +91,8 @@ def run_main():
                 0: "이전으로",
                 1: "ERB 내 CSV 변수 추출",
                 2: "구상추출",
-                3: "ERB형 데이터베이스 추출"
+                3: "ERB형 데이터베이스 추출",
+                4: "구상 라이센스 분석"
             }
             menu_anal_erb = Menu(menu_dict_anal_erb)
             menu_anal_erb.title("ERB 파일 분석 메뉴입니다.")
@@ -116,6 +117,12 @@ def run_main():
             elif no_erbmenu == 3:
                 last_work = ERBFunc().db_erb_finder()
                 sav_datatype = "erblines"
+            elif no_erbmenu == 4:
+                last_work = ERBFunc().licence_checker()
+                if isinstance(last_work, list):
+                    sav_datatype = "txtlines" 
+                else:
+                    sav_datatype = "InfoDict"
 
             if last_work != None:
                 MenuPreset().shall_save_data(last_work, sav_datatype)
