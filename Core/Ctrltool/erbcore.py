@@ -412,7 +412,7 @@ class ERBRemodel:
                     if "PRINTS" in print_head:
                         context = "%{0}%".format(context)
                     elif "PRINTV" in print_head:
-                        context = "\{%s\}" % context
+                        context = "{%s}" % context
                     else:
                         raise NotImplementedError(print_head)
                 
@@ -713,7 +713,7 @@ class ERBVFinder:
     context_filter = r":([^\s,\)=\+\-]+)"
     # target_list = ['TARGET','PLAYER','MASTER','ASSI'] #TODO 차원지원 필요함
 
-    def __init__(self, csvdict :InfoDict or list, log_set=None):
+    def __init__(self, csvdict: InfoDict | list, log_set=None):
         if isinstance(csvdict, InfoDict):
             self.csv_infodict = csvdict
             self.csv_fnames = dict()
