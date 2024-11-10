@@ -132,7 +132,7 @@ class ExportData:
             )
         return tuple(final_list)  # ((tag,data),(tag,data))
 
-    def __output_txt(self, lines, add_flag=False):
+    def output_txt(self, lines, add_flag=False):
         txt_file = LoadFile(self.res_filename, self.encoding)
         opened = txt_file.addwrite() if add_flag else txt_file.readwrite()
         opened.writelines(lines)
@@ -223,7 +223,7 @@ class ExportData:
                     print("텍스트화 할 수 없는 데이터입니다. 옵션을 바꿔 다시 시도해주세요.")
                     self.log_file.write_log("Can not write text by {}".format(type(context)))
             if result_lines:
-                self.__output_txt(result_lines)
+                self.output_txt(result_lines)
             numstat.how_much_done()
         self.log_file.sucessful_done()
         return True
@@ -319,7 +319,7 @@ class ExportSRS(ExportData):
             if error_lines and opt_no & 0b100000: # srs 내 제외사항 기록
                 error_code |= 0b010
                 lines.extend(error_lines)
-            self.__output_txt(lines, True)
+            self.output_txt(lines, True)
         else:
             error_code |= 0b100
             self.log_file.write_log("전체 중복 또는 오류로 인해 자료 전체 통과됨\n")
