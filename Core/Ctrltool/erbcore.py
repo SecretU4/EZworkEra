@@ -871,11 +871,12 @@ class LicenceFinder:
 
     def find_rawdata(self, lines):
         lic_head = self.xml_dict.lic_head
+        cont_flag = 0
         bulk = []
         for cnt, line in enumerate(lines):
             for key in lic_head.keys():
                 if line.find(key) != -1:
-                    bulk = lines[cnt : (cnt + lic_head[key])]
+                    bulk = lines[cnt : (cnt + int(lic_head[key]))]
                     cont_flag = 1
                     break
             if cont_flag:
@@ -894,6 +895,7 @@ class LicenceFinder:
                             result[txt_case[ki]] = self.txt_chk[chk_key]
                             break
                     break
+        return result
 
     def proc_erbdata(self, lines):
         erb_case = self.xml_dict.erb_case
@@ -927,6 +929,7 @@ class LicenceFinder:
                             case_res = 2
 
                     result[case] = case_res
+        return result
 
     def post_procdata(self, filename, data, opt=0): #TODO 추후 result.py 등으로 이관
         label_dict = self.xml_dict.label_dict
@@ -1264,11 +1267,16 @@ class ERBFunc:
     def licence_checker(self, files=None, encode_type=None):
         """TW형 라이센스 파일 분석 함수. txt, erb 대응"""
         if not files or not encode_type:
-            files, encode_type = CustomInput("라이센스").get_filelist()
+            files, encode_type = CustomInput("ERB").get_filelist()
+            files2, encode_type2 = CustomInput("TXT").get_filelist()
+            files.extend(files2)
         doc_yn = MenuPreset().yesno("데이터를 문서화하여 저장하시겠습니까?")
 
         for filename in files:
-            lines = ERBLoad(filename, encode_type).make_erblines()
+            if "TXT" in filename.upper():
+                lines = ERBLoad(filename, encode_type2).make_erblines()
+            else:
+                lines = ERBLoad(filename, encode_type).make_erblines()
             finder = LicenceFinder()
             bulk = finder.find_rawdata(lines)
             if "TXT" in filename.upper():
@@ -1276,9 +1284,19 @@ class ERBFunc:
             else:
                 file_data = finder.proc_erbdata(bulk)
 
-            if doc_yn:
+            if not file_data:
+                continue
+            elif doc_yn:
                 file_data = finder.post_procdata(filename, file_data)
 
             self.result_infodict.add_dict(filename, file_data)
 
-        return self.result_infodict
+        if doc_yn:
+            txtlines = []
+            for filename in self.result_infodict.dict_main:
+                f_label = "\\".join(filename.split("\\")[-2:])
+                txtlines.append(f_label + "\n")
+                txtlines.extend(self.result_infodict.dict_main[filename])
+            return txtlines
+        else:
+            return self.result_infodict
