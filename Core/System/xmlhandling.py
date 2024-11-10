@@ -6,7 +6,7 @@ Classes:
     SettingXML
 """
 import xml.etree.ElementTree as ET
-from util import DataFilter
+# from util import DataFilter
 
 
 class ImportXML:
@@ -61,6 +61,12 @@ class ImportXML:
             else:
                 attrib_list.append(tag.attrib[keyword])
         return attrib_list
+
+    def create_dict(self, tags_list):
+        result_dict = {}
+        for tag in tags_list:
+            result_dict[tag.attrib["key"]] = tag.attrib["val"]
+        return result_dict
 
 
 class ERBGrammarXML(ImportXML):
@@ -199,6 +205,25 @@ class VFinderFilterXML(ImportXML):
     # TODO ERBVFinder용 문법 파일 추가
     pass
 
+class EraLicenceXML(ImportXML):
+    def __init__(self, filename="EraLicenceFinder.xml"):
+        super().__init__(filename)
+        self.label_dict = self.create_dict(self.find_all_tags("item",self.xmlroot.find("label_dict")))
+
+    def templet_dict(self, eratype):
+        templets = self.find_all_tags("temp",self.xmlroot.find("licence_templets"),1)
+        for templet in templets:
+            if templet.attrib["eratype"] != eratype:
+                continue
+            dicts = self.find_all_tags("dict", templet)
+            for data in dicts:
+                if data.attrib["name"] == "lic_head":
+                    self.lic_head = self.create_dict(self.find_all_tags("item",data))
+                elif data.attrib["name"] == "txt_case":
+                    self.txt_case = self.create_dict(self.find_all_tags("item",data))
+                elif data.attrib["name"] == "erb_case":
+                    self.erb_case = self.create_dict(self.find_all_tags("item",data))
+            break
 
 if __name__ == "__main__":
     pass

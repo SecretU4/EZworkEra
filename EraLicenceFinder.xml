@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<root>
+    <label_dict>
+        <item key="1" val="재업로드">
+        </item>
+        <item key="2" val="본체 동봉">
+        </item>
+        <item key="3" val="구상 가필">
+        </item>
+        <item key="4" val="구상 개변">
+        </item>
+        <item key="5" val="타구상 활용">
+        </item>
+        <item key="6" val="타era 활용">
+        </item>
+        <item key="7" val="era 이외 활용">
+        </item>
+        <item key="8" val="번역">
+        </item>
+        <item key="9" val="상업적 이용">
+        </item>
+        <item key="10" val="2차 창작">
+        </item>
+    </label_dict>
+    <licence_templets>
+        <temp eratype="TW">
+            <dict name="lic_head">
+                <item key="+----+-----------------------------------+" val="30">
+                </item>
+                <item key="+--------------------------------------+" val="30">
+                </item>
+                <item key="Copyright" val="15">
+                </item>
+            </dict>
+            <dict name="txt_case">
+                <item key="単体での再アップロード" val="1">
+                </item>
+                <item key="단체에의 재업로드" val="1">
+                </item>
+                <item key="단체[單体]에서의 재업 로드" val="1">
+                </item>
+                <item key="本体への同梱・口上まとめへの収録" val="2">
+                </item>
+                <item key="본체의 동봉·구상 정리에 수록" val="2">
+                </item>
+                <item key="본체에의 동고·말통계에의 수록" val="2">
+                </item>
+                <item key="口上の加筆" val="3">
+                </item>
+                <item key="현 구상에 가필하는 행위" val="3">
+                </item>
+                <item key="말의 가필" val="3">
+                </item>
+                <item key="口上の改変・その他改変" val="4">
+                </item>
+                <item key="현 구상의 편집, 혹은 기타 개편" val="4">
+                </item>
+                <item key="말의 개변·그 외 개변" val="4">
+                </item>
+                <item key="他の口上での利用" val="5">
+                </item>
+                <item key="타 구상에서의 이용" val="5">
+                </item>
+                <item key="다른 말에서의 이용" val="5">
+                </item>
+                <item key="他のeraバリアントでの利用" val="6">
+                </item>
+                <item key="타 era 개조판에서의 이용" val="6">
+                </item>
+                <item key="다른 era 바리안트에서의 이용" val="6">
+                </item>
+                <item key="era以外への流用" val="7">
+                </item>
+                <item key="era이외 환경에서의 유용" val="7">
+                </item>
+                <item key="era 이외에의 유용" val="7">
+                </item>
+                <item key="翻訳・他言語版バリアントへの流用" val="8">
+                </item>
+                <item key="번역, 기타 언어 판으로의 유용" val="8">
+                </item>
+                <item key="번역·발설어판 바리안트에의 유용" val="8">
+                </item>
+                <item key="商用利用・金銭のやり取りを伴う利用" val="9">
+                </item>
+                <item key="상업적 행위 및 금전적 이익을 위한 이용" val="9">
+                </item>
+                <item key="상용 이용·금전의 교환을 수반하는 이용" val="9">
+                </item>
+                <item key="二次創作" val="10">
+                </item>
+                <item key="2차 창작" val="10">
+                </item>
+            </dict>
+            <dict name="erb_case">
+                <item key="【誤字・脱字修正】" val="2">
+                </item>
+                <item key="【오자·탈자 수정】" val="2">
+                </item>
+                <item key="【分岐条件・erb構文に関する修正】" val="2">
+                </item>
+                <item key="【분기 조건·erb 구문에 관한 수정】" val="2">
+                </item>
+                <item key="【本体Ver・Rev変更対応】" val="2">
+                </item>
+                <item key="【본체 Ver·Rev 변경 대응】" val="2">
+                </item>
+                <item key="【フラグの管理・修正】" val="2">
+                </item>
+                <item key="【플래그의 관리·수정】" val="2">
+                </item>
+                <item key="【未記入部位加筆】" val="3">
+                </item>
+                <item key="【미기입 부위 가필】" val="3">
+                </item>
+                <item key="【ランダム分岐加筆】" val="3">
+                </item>
+                <item key="【랜덤 분기 가필】" val="3">
+                </item>
+                <item key="【記入済部位加筆】" val="3">
+                </item>
+                <item key="【기입필 부위 가필】" val="3">
+                </item>
+                <item key="【記入済部位削除】" val="4">
+                </item>
+                <item key="【기입필 부위 삭제】" val="4">
+                </item>
+                <item key="【記入済部位コメントアウト】" val="4">
+                </item>
+                <item key="【기입필 부위 코멘트 아웃】" val="4">
+                </item>
+            </dict>
+        </temp>
+    </licence_templets>
+</root>
