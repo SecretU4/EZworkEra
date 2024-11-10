@@ -7,7 +7,7 @@ class CheckStack:
 
     def code_checker(self, line):
         # 함수 관련문인지 아닌지 처리
-        """ 0항: 0=기타 1=IF 2=CASE 3=PRINTDATA\n1항: 0=단독 1=시작 2=중간 3=탈출\n2항: 비고
+        """ 0항: 0=기타 1=IF 2=CASE 3=PRINTDATA 4=반복문\n1항: 0=단독 1=시작 2=중간 3=탈출\n2항: 비고
         """
         if line.startswith("PRINT"):
             if line.startswith("PRINTDATA"):
@@ -47,12 +47,36 @@ class CheckStack:
             if line.startswith("DATAFORM"):
                 return (3, 0, 0)
             elif line.startswith("DATALIST"):
-                return (3, 2, 0)
+                return (3, 2, 1)
+            return (3, 0, 0)
+        # 반복문 처리
+        elif line.startswith("REPEAT"):
+            return (4, 1, 0)
+        elif line.startswith("WHILE"):
+            return (4, 1, 1)
+        elif line.startswith("FOR"):
+            return (4, 1, 2)
+        elif line.startswith("REND"):
+            return (4, 3, 0)
+        elif line.startswith("WEND"):
+            return (4, 3, 1)
+        elif line.startswith("NEXT"):
+            return (4, 3, 2)
+        elif line.startswith("BREAK"):
+            return (4, 2, 0)
+        elif line.startswith("CONTINUE"):
+            return (4, 2, 1)
         # 기타 처리
         elif line.startswith("@"):
             return (0, 1, 0)
-        elif line.startswith("$"):
+        elif line.startswith("$"): # GOTO LABEL
+            return (0, 1, 1)
+        elif line.startswith("GOTO"):
             return (0, 2, 0)
+        elif line.startswith("CALL"):
+            return (0, 2, 1)
+        elif line.startswith("BEGIN"):
+            return (0, 2, 2)
         elif line.startswith("RETURN"):  # RETURNF 도 인식함
             return (0, 3, 0)  # 함수 탈출자
         else:  # 일반문
