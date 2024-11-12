@@ -47,7 +47,7 @@ class CheckStack:
             if line.startswith("DATAFORM"):
                 return (3, 0, 0)
             elif line.startswith("DATALIST"):
-                return (3, 2, 1)
+                return (3, 1, 1)
             return (3, 0, 0)
         # 반복문 처리
         elif line.startswith("REPEAT"):
@@ -71,6 +71,10 @@ class CheckStack:
             return (0, 1, 0)
         elif line.startswith("$"): # GOTO LABEL
             return (0, 1, 1)
+        elif line.startswith("{"):
+            return (0, 1, 2)
+        elif line.startswith("}"):
+            return (0, 3, 2)
         elif line.startswith("GOTO"):
             return (0, 2, 0)
         elif line.startswith("CALL"):
@@ -88,6 +92,7 @@ class CheckStack:
         bef_line_cnt = 0
         sif_switch = 0
         skip_switch = 0  # ;주석문, SKIP문 대응
+        squash_switch = 0 # {} 대응 (한줄 나눠쓰기)
         start_stack = list()  # 코드 시작지점 index
         start_end_que = list()  # 코드 시작/끝 index
         crit_stack = list()  # 함수 시작지점 index
@@ -96,12 +101,14 @@ class CheckStack:
         for index_line in enumerate(self.bunch_code):
             line_cnt, line = index_line
             line = line.strip()
+            # 주석문 통과 선처리
             if line.startswith("[SKIPSTART]"):
                 skip_switch = 1
             elif line.startswith("[SKIPEND]"):
                 skip_switch = 0
             elif skip_switch == 1 or line.startswith(";"):
                 continue
+
             codetype, codeinfo, codeetc = self.code_checker(line)
             if line:
                 self.bulkdict[line_cnt] = line
@@ -111,6 +118,12 @@ class CheckStack:
                 start_index = start_stack.pop()
                 start_end_que.append((start_index, line_cnt))
                 sif_switch = 0
+            elif squash_switch:
+                if (codetype, codeinfo, codeetc) == (0, 3, 2): # }
+                    squash_index = start_stack.pop()
+                    start_end_que.append((squash_index, line_cnt))
+                    squash_switch = 0
+
             elif not codetype:
                 if not codeinfo:
                     pass
@@ -120,8 +133,11 @@ class CheckStack:
                         start_end_que.append((com_index, bef_line_cnt + 1))
                         self.bulkdict[bef_line_cnt + 1] = ""  # 원본 손상 가능성 존재
                     crit_stack.append(line_cnt)
-                elif (codeinfo, codeetc) == (2, 0):  # GOTO 시작점
-                    pass
+                elif (codeinfo, codeetc) == (1, 1):  # GOTO 시작점
+                    pass #TODO
+                elif (codeinfo, codeetc) == (1, 2): # {
+                    start_stack.append(line_cnt)
+                    squash_switch = 1
             elif codetype == 1:  # IF문
                 if codeinfo == 1:
                     start_stack.append(line_cnt)
@@ -141,6 +157,12 @@ class CheckStack:
                 if (codeinfo, codeetc) == (1, 0):
                     start_stack.append(line_cnt)
                 elif (codeinfo, codeetc) == (3, 0):
+                    start_index = start_stack.pop()
+                    start_end_que.append((start_index, line_cnt))
+            elif codetype == 4: # 반복문
+                if codeinfo == 1:
+                    start_stack.append(line_cnt)
+                elif codeinfo == 3:
                     start_index = start_stack.pop()
                     start_end_que.append((start_index, line_cnt))
             else:
