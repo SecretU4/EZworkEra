@@ -2,8 +2,12 @@
 
 
 class CheckStack:
-    def __init__(self, bunch_code):
-        self.bunch_code = bunch_code  # readlines 이용 리스트
+    '''파일 단위 ERB 파서'''
+    def __init__(self, data_label="ERBFile"):
+        self.funcs = dict()
+        self.gotos = dict()
+        self.func_indexs = dict()
+        self.data_label = data_label
 
     def code_checker(self, line):
         # 함수 관련문인지 아닌지 처리
@@ -85,114 +89,124 @@ class CheckStack:
             return (0, 3, 0)  # 함수 탈출자
         else:  # 일반문
             if line:
-                return (0, 0, 1)
+                return (0, 0, 2)
             return (None, None, None)  # 단순 빈줄 미처리
 
-    def line_divider(self):
-        bef_line_cnt = 0
-        sif_switch = 0
-        skip_switch = 0  # ;주석문, SKIP문 대응
-        squash_switch = 0 # {} 대응 (한줄 나눠쓰기)
-        start_stack = list()  # 코드 시작지점 index
-        start_end_que = list()  # 코드 시작/끝 index
-        crit_stack = list()  # 함수 시작지점 index
-        self.bulkdict = dict()  # {index:line} 또는 {index:block}
+    def organize_func(self, s_lines, s_indexs):
+        '''처리된 함수 마무리'''
+        head_index = s_indexs.pop()
+        funcname = s_lines.get(head_index)
+        temp_lines = []
+        backup = None
+        while len(s_lines):
+            item = s_lines.popitem()
+            if isinstance(item[1],str) and item[1].startswith("@"): # 함수 선언부
+                if len(s_lines): # 현재 처리중이 아닌 함수가 잡힌 경우
+                    backup = item
+                    continue
+            else:
+                temp_lines.insert(0, item[1])
 
-        for index_line in enumerate(self.bunch_code):
-            line_cnt, line = index_line
+        self.funcs[funcname] = temp_lines
+        self.func_indexs[funcname] = head_index
+        if backup:
+            s_lines[backup[0]] = backup[1]
+
+        if len(s_indexs): # 디버깅용
+            print("완성되지 않은 블럭이 있습니다.")
+            raise IndexError(s_indexs, self.data_label) # TODO 로그 파일 작성
+
+    def make_dict(self, lines):
+        is_sif, is_skip, is_squash, is_goto = 0, 0, 0, 0
+        stack_index = list() # len()을 code 깊이 체크용으로 사용
+        stack_lines = dict()
+
+        for cnt, line in enumerate(lines):
             line = line.strip()
             # 주석문 통과 선처리
             if line.startswith("[SKIPSTART]"):
-                skip_switch = 1
+                is_skip = 1
+                continue
             elif line.startswith("[SKIPEND]"):
-                skip_switch = 0
-            elif skip_switch == 1 or line.startswith(";"):
+                is_skip = 0
+                continue
+            elif is_skip == 1 or line.startswith(";"):
                 continue
 
             codetype, codeinfo, codeetc = self.code_checker(line)
             if line:
-                self.bulkdict[line_cnt] = line
-            if sif_switch:
-                if codetype == None:
-                    pass
-                start_index = start_stack.pop()
-                start_end_que.append((start_index, line_cnt))
-                sif_switch = 0
-            elif squash_switch:
-                if (codetype, codeinfo, codeetc) == (0, 3, 2): # }
-                    squash_index = start_stack.pop()
-                    start_end_que.append((squash_index, line_cnt))
-                    squash_switch = 0
+                stack_lines[cnt] = line
+            else: # 공란은 통과
+                continue
 
+            if is_squash:
+                if (codetype, codeinfo, codeetc) == (0, 3, 2): # }
+                    head_index = stack_index.pop()
+                    temp_lines = []
+                    for num in range(cnt - head_index):
+                        temp_lines.append(stack_lines.pop(cnt - num))
+                    stack_lines[head_index] = temp_lines
+                    is_squash = 0
+            elif is_sif:
+                head_index = stack_index.pop()
+                stack_lines[head_index] = [stack_lines[head_index], stack_lines.pop(cnt)]
+                is_sif = 0
             elif not codetype:
                 if not codeinfo:
-                    pass
+                    if codeetc == 2: # code_checker 에서 걸러지지 못한 line
+                        pass
+                elif (codeinfo, codeetc) == (3, 0): # RETURN
+                    if len(stack_index) == 1:
+                        self.organize_func(stack_lines, stack_index)
                 elif (codeinfo, codeetc) == (1, 0):  # 함수 선언문
-                    if crit_stack:  # RETURN으로 끝나지 않은 함수가 있을때
-                        com_index = crit_stack.pop()
-                        start_end_que.append((com_index, bef_line_cnt + 1))
-                        self.bulkdict[bef_line_cnt + 1] = ""  # 원본 손상 가능성 존재
-                    crit_stack.append(line_cnt)
+                    if stack_index:  # RETURN으로 끝나지 않은 함수가 있을때
+                        self.organize_func(stack_lines, stack_index)
+
+                    stack_index.append(cnt)
+                    is_goto = 0
                 elif (codeinfo, codeetc) == (1, 1):  # GOTO 시작점
+                    is_goto = len(stack_index)
                     pass #TODO
                 elif (codeinfo, codeetc) == (1, 2): # {
-                    start_stack.append(line_cnt)
-                    squash_switch = 1
-            elif codetype == 1:  # IF문
-                if codeinfo == 1:
-                    start_stack.append(line_cnt)
-                elif codeinfo == 3:
-                    start_index = start_stack.pop()
-                    start_end_que.append((start_index, line_cnt))
-                elif codeinfo == 0:
-                    start_stack.append(line_cnt)
-                    sif_switch = 1
-            elif codetype == 2:  # CASE문
-                if codeinfo == 1:
-                    start_stack.append(line_cnt)
-                elif codeinfo == 3:
-                    start_index = start_stack.pop()
-                    start_end_que.append((start_index, line_cnt))
-            elif codetype == 3:  # DATA문
-                if (codeinfo, codeetc) == (1, 0):
-                    start_stack.append(line_cnt)
-                elif (codeinfo, codeetc) == (3, 0):
-                    start_index = start_stack.pop()
-                    start_end_que.append((start_index, line_cnt))
-            elif codetype == 4: # 반복문
-                if codeinfo == 1:
-                    start_stack.append(line_cnt)
-                elif codeinfo == 3:
-                    start_index = start_stack.pop()
-                    start_end_que.append((start_index, line_cnt))
+                    stack_index.append(cnt)
+                    is_squash = 1
+                elif (codeinfo, codeetc) == (2, 0): # GOTO 호출
+                    self.gotos[cnt] = line.split(" ")[-1] # GOTO Label 이름
+                    if is_goto == len(stack_index):
+                        is_goto = 0
+
+            elif codeinfo == 0:
+                if codetype == 1: # SIF
+                    stack_index.append(cnt)
+                    is_sif = 1
+            elif codeinfo == 1: # 시작
+                stack_index.append(cnt)
+            elif codeinfo == 2:
+                pass #TODO
+            elif codeinfo == 3: # 탈출
+                if is_goto == len(stack_index):
+                    pass
+                start_index = stack_index.pop()
+                temp_lines = []
+                key = cnt
+                while key != start_index:
+                    key, val = stack_lines.popitem()
+                    temp_lines.insert(0, val)
+                stack_lines[start_index] = temp_lines
             else:
                 raise NotImplementedError(line)
-            bef_line_cnt = line_cnt
 
-        for checker in start_end_que:
-            if not isinstance(checker, tuple):
-                raise TypeError(checker)
-            block_temp = list()
-            keys = list(self.bulkdict.keys())
-            keys.sort()
-            start_index = keys.index(checker[0])
-            end_index = keys.index(checker[1])
-            index_targets = keys[start_index : end_index + 1]
-            for key in index_targets:
-                line = self.bulkdict.pop(key)
-                block_temp.append(line)
-            self.bulkdict[index_targets[0]] = tuple(block_temp)
+        if stack_index: # RETURN 없는 함수 정리
+            self.organize_func(stack_lines, stack_index)
 
-        if start_stack or crit_stack:
-            print("완성되지 않은 블럭이 있습니다.")  # TODO 로그 파일 작성
-        return self.bulkdict
+        return stack_lines # 디버깅용
 
 
 class sample_code:
     def __init__(self, target_filename=None):
         if not target_filename:
             target_filename = input("Input File Name : ")
-        self.open_gen = open(target_filename, "r", encoding="UTF-8")
+        self.open_gen = open(target_filename, "r", encoding="utf-8-sig")
 
     def gen_bulk(self):
         with self.open_gen:
@@ -202,5 +216,7 @@ class sample_code:
 
 if __name__ == "__main__":
     sample = sample_code()
-    tester = CheckStack(sample.gen_bulk())
-    print(tester.line_divider())
+    tester = CheckStack("test_file")
+    a = tester.make_dict(sample.gen_bulk())
+    print(tester.funcs)
+    input(a)

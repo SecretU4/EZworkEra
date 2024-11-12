@@ -837,14 +837,20 @@ class ERBBlkFinder:
     """디렉토리 대응 코드 블럭 인식 클래스"""
 
     def __init__(self):
-        self.block_data = InfoDict(1)  # {filename:{index:(func,(code_block))}}
+        self.block_data = InfoDict(1)  # {filename:{func:(code_block)}}
+        self.index_data = dict() # {func:(filename, index)}
         self.files, self.encode_type = CustomInput("ERB").get_filelist()
 
     def block_maker(self):
         for filename in self.files:
             opened_erbs = ERBLoad(filename, self.encode_type)
-            chk_stk = CheckStack(opened_erbs.make_erblines()).line_divider()
-            self.block_data.add_dict(filename, chk_stk)
+            stacker = CheckStack(filename)
+            stacker.make_dict(opened_erbs.make_erblines())
+            self.block_data.add_dict(filename, stacker.funcs)
+            for func, index in stacker.func_indexs.items():
+                if self.index_data.get(func):
+                    print("중복 함수 {} 발견. 덮어쓰기가 이루어집니다.".format(func))
+                self.index_data[func] = (filename, index)
         return self.block_data
 
     def block_checker(self):
