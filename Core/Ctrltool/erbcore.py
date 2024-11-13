@@ -1,6 +1,6 @@
 # ERB 관련 모듈
 import re
-from customdb import ERBMetaInfo, InfoDict, SheetInfo
+from customdb import ERBMetaInfo, FuncInfo, InfoDict, SheetInfo
 from usefile import CustomInput, FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import StatusNum
@@ -838,7 +838,7 @@ class ERBBlkFinder:
 
     def __init__(self):
         self.block_data = InfoDict(1)  # {filename:{func:(code_block)}}
-        self.index_data = dict() # {func:(filename, index)}
+        self.func_info = FuncInfo()
         self.files, self.encode_type = CustomInput("ERB").get_filelist()
 
     def block_maker(self):
@@ -846,11 +846,8 @@ class ERBBlkFinder:
             opened_erbs = ERBLoad(filename, self.encode_type)
             stacker = CheckStack(filename)
             stacker.check_lines(opened_erbs.make_erblines())
-            self.block_data.add_dict(filename, stacker.funcs)
-            for func, index in stacker.func_indexs.items():
-                if self.index_data.get(func):
-                    print("중복 함수 {} 발견. 덮어쓰기가 이루어집니다.".format(func))
-                self.index_data[func] = (filename, index)
+            self.func_info.update_dict(stacker.funcs)
+            self.block_data.add_dict(filename, stacker.funcs.func_dict)
         return self.block_data
 
     def block_checker(self):

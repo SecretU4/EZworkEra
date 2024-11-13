@@ -1,14 +1,16 @@
-"""EraBasic 코드 블럭 판별 모듈"""
+"""EraBasic 코드 블럭 판별 모듈
+Class
+    CheckStack
+"""
+from customdb import FuncInfo
 
 
 class CheckStack:
     '''파일 단위 ERB 파서'''
     def __init__(self, data_label="ERBFile"):
         self.data_label = data_label
-        self.funcs = dict()
+        self.funcs = FuncInfo()
         self.gotos = dict()
-        self.func_indexs = dict()
-        self.func_infos = dict()
 
     def code_checker(self, line):
         # 함수 관련문인지 아닌지 처리
@@ -108,8 +110,7 @@ class CheckStack:
             else:
                 temp_lines.insert(0, item[1])
 
-        self.funcs[funcname] = temp_lines
-        self.func_indexs[funcname] = head_index
+        self.funcs.add_dict(funcname, temp_lines, self.data_label, head_index)
         if backup:
             s_lines[backup[0]] = backup[1]
 
@@ -219,5 +220,5 @@ if __name__ == "__main__":
     sample = sample_code()
     tester = CheckStack("test_file")
     a = tester.check_lines(sample.gen_bulk())
-    print(tester.funcs)
+    print(tester.funcs.func_dict)
     input(a)
