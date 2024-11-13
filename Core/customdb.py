@@ -315,8 +315,12 @@ class FuncInfo:
         self.db_ver = 1.1
         self.file_func_dict = dict()
         self.func_dict = dict()
+        self.func_index_dict = dict()
 
-    def add_dict(self, funcname, data, filename=None):
+    def add_dict(self, funcname, data, filename=None, index=-1):
+        """Function dict 추가 함수\nindex는 filename이 있을때만 적용"""
+        if self.func_dict.get(function):
+            print("중복 함수: {}, 덮어쓰기 진행됨")
         self.func_dict[funcname] = data
 
         if filename:
@@ -331,12 +335,21 @@ class FuncInfo:
             else:
                 data_already = data
             self.file_func_dict[filename] = data_already
+            if index != -1:
+                self.func_index_dict[funcname] = [filename, index]
     
     def del_dict(self, target, opt):
-        if opt == 0b1: # func_dict
+        if opt & 0b1: # func_dict
             self.func_dict.pop(target)
-        if opt == 0b10: # file_func_dict
+        if opt & 0b10: # file_func_dict
             self.file_func_dict.pop(target)
+        if opt & 0b100: # func_index_dict
+            self.func_index_dict.pop(target)
+
+    def update_dict(self, target):
+        self.file_func_dict.update(target.file_func_dict)
+        self.func_dict.update(target.func_dict)
+        self.func_index_dict.update(target.func_index_dict)
 
     def is_key(self, funcname, opt=0):
         """opt=0 순정 key 비교 opt=1 funcname 분리비교\n있으면 val, 없으면 None 반환"""
