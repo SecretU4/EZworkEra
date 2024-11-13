@@ -300,6 +300,8 @@ class FuncInfo:
     
     Functions
         add_dict(funcname, data, [filename])
+        del_dict(target, [opt])
+        is_key(funcname, [opt])
     Variables
         func_dict
             함수별로 정리된 딕셔너리 자료형
@@ -310,7 +312,7 @@ class FuncInfo:
     """
 
     def __init__(self):
-        self.db_ver = 1.0
+        self.db_ver = 1.1
         self.file_func_dict = dict()
         self.func_dict = dict()
 
@@ -329,6 +331,23 @@ class FuncInfo:
             else:
                 data_already = data
             self.file_func_dict[filename] = data_already
+    
+    def del_dict(self, target, opt):
+        if opt == 0b1: # func_dict
+            self.func_dict.pop(target)
+        if opt == 0b10: # file_func_dict
+            self.file_func_dict.pop(target)
+
+    def is_key(self, funcname, opt=0):
+        """opt=0 순정 key 비교 opt=1 funcname 분리비교\n있으면 val, 없으면 None 반환"""
+        if opt:
+            target = funcname.split("(")[0]
+            orig_funcs = {}
+            for key in self.func_dict.keys():
+                orig_funcs[key.split("(")[0]] = key
+            return orig_funcs.get(target)
+        else:
+            return self.func_dict.get(funcname)
 
 
 class SheetInfo:
