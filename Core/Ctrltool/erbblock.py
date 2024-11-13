@@ -4,10 +4,11 @@
 class CheckStack:
     '''파일 단위 ERB 파서'''
     def __init__(self, data_label="ERBFile"):
+        self.data_label = data_label
         self.funcs = dict()
         self.gotos = dict()
         self.func_indexs = dict()
-        self.data_label = data_label
+        self.func_infos = dict()
 
     def code_checker(self, line):
         # 함수 관련문인지 아닌지 처리
@@ -92,7 +93,7 @@ class CheckStack:
                 return (0, 0, 2)
             return (None, None, None)  # 단순 빈줄 미처리
 
-    def organize_func(self, s_lines, s_indexs):
+    def warp_func(self, s_lines, s_indexs):
         '''처리된 함수 마무리'''
         head_index = s_indexs.pop()
         funcname = s_lines.get(head_index)
@@ -116,7 +117,7 @@ class CheckStack:
             print("완성되지 않은 블럭이 있습니다.")
             raise IndexError(s_indexs, self.data_label) # TODO 로그 파일 작성
 
-    def make_dict(self, lines):
+    def check_lines(self, lines):
         is_sif, is_skip, is_squash, is_goto = 0, 0, 0, 0
         stack_index = list() # len()을 code 깊이 체크용으로 사용
         stack_lines = dict()
@@ -157,10 +158,10 @@ class CheckStack:
                         pass
                 elif (codeinfo, codeetc) == (3, 0): # RETURN
                     if len(stack_index) == 1:
-                        self.organize_func(stack_lines, stack_index)
+                        self.warp_func(stack_lines, stack_index)
                 elif (codeinfo, codeetc) == (1, 0):  # 함수 선언문
                     if stack_index:  # RETURN으로 끝나지 않은 함수가 있을때
-                        self.organize_func(stack_lines, stack_index)
+                        self.warp_func(stack_lines, stack_index)
 
                     stack_index.append(cnt)
                     is_goto = 0
@@ -197,7 +198,7 @@ class CheckStack:
                 raise NotImplementedError(line)
 
         if stack_index: # RETURN 없는 함수 정리
-            self.organize_func(stack_lines, stack_index)
+            self.warp_func(stack_lines, stack_index)
 
         return stack_lines # 디버깅용
 
@@ -217,6 +218,6 @@ class sample_code:
 if __name__ == "__main__":
     sample = sample_code()
     tester = CheckStack("test_file")
-    a = tester.make_dict(sample.gen_bulk())
+    a = tester.check_lines(sample.gen_bulk())
     print(tester.funcs)
     input(a)

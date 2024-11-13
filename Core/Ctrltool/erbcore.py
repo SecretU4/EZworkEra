@@ -845,7 +845,7 @@ class ERBBlkFinder:
         for filename in self.files:
             opened_erbs = ERBLoad(filename, self.encode_type)
             stacker = CheckStack(filename)
-            stacker.make_dict(opened_erbs.make_erblines())
+            stacker.check_lines(opened_erbs.make_erblines())
             self.block_data.add_dict(filename, stacker.funcs)
             for func, index in stacker.func_indexs.items():
                 if self.index_data.get(func):
