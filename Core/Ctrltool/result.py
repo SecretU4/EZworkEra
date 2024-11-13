@@ -265,6 +265,8 @@ class ExportData:
             for context in main_data:
                 apnd_dict = dict()
                 for key, value in context.items():
+                    if isinstance(value, (list, tuple)):
+                        value = "".join(value)
                     apnd_dict[tags_dict[key]] = value
                 sheet.append(apnd_dict)
         xlsx_data.save("%s%s.xlsx" % (self.dest_dir, xlsxname))
