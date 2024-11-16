@@ -13,7 +13,7 @@ search_str = re.compile('"([^"]+)"')
 def erb_translate_check(erb_files=None, encode_type=None):
     if not erb_files or not encode_type:
         erb_files, encode_type = CustomInput("ERB").get_filelist()
-    func_dict = FuncInfo()
+    fnc_ifo = FuncInfo()
 
     for erb_file in erb_files:
         func_name = "N/A"
@@ -24,7 +24,7 @@ def erb_translate_check(erb_files=None, encode_type=None):
         for line in bulklines:
             line = line.strip()
             if line.startswith("@"):  # 함수문 시작지점
-                func_dict.add_dict(func_name, total_strs, erb_file)
+                fnc_ifo.add_row(func_name, total_strs, erb_file)
                 func_name = line.split("(")[0]
                 total_strs = []
             #     dim_dict = dict()
@@ -41,13 +41,13 @@ def erb_translate_check(erb_files=None, encode_type=None):
                         total_strs.append(string)
             else:
                 pass
-        func_dict.add_dict(func_name, total_strs, erb_file)  # 마지막 함수용
-    return func_dict
+        fnc_ifo.add_row(func_name, total_strs, erb_file)  # 마지막 함수용
+    return fnc_ifo
 
 
 with open("dimtest.log", "w", encoding="UTF-8") as log:
     funcinfo = erb_translate_check()
-    for key, value in funcinfo.func_dict.items():
+    for key, value in funcinfo.func_dict().items():
         if isinstance(value, dict):
             org = list(value.items())
         elif isinstance(value, list):

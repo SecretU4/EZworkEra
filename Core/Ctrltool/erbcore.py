@@ -846,7 +846,7 @@ class ERBBlkFinder:
             opened_erbs = ERBLoad(filename, self.encode_type)
             stacker = CheckStack(filename)
             stacker.check_lines(opened_erbs.make_erblines())
-            self.func_info.update_dict(stacker.funcs)
+            self.func_info.merge_df(stacker.funcs)
             self.block_data.add_dict(filename, stacker.funcs.func_dict)
         return self.block_data
 

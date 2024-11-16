@@ -91,7 +91,7 @@ class ExportData:
                     )
                     tagging_data = {"None": None}
             elif isinstance(data, FuncInfo):
-                tagging_data = {"ex: " + list(data.file_func_dict.keys())[0]: data}
+                tagging_data = {"ex: " + data.df["filename"][0]: data}
             elif isinstance(data, (dict, list, str, ERBMetaInfo, SheetInfo)):
                 tagging_data = {self.single_namedict[type(data)]: data}
             else:  # 자료형이 InfoDict, ERBMetaInfo, SheetInfo, dict, list 아님
@@ -208,7 +208,7 @@ class ExportData:
                 for key, value in list(context.items()):
                     result_lines.append("{}:{}\n".format(key, value))
             elif type(context) == FuncInfo:
-                for key, value in list(context.func_dict.items()):
+                for key, value in context.func_dict().items():
                     if isinstance(value, (str, int)):
                         value = value
                     result_lines.append("{}:{}".format(key, ",\n".join(value)))
@@ -421,13 +421,13 @@ class ExportSRS(ExportData):
             else:
                 keyname = FileFilter().sep_filename(self.orig_key)
 
-            if isinstance(orig_data, dict) and isinstance(trans_data, dict):
-                target_couple = orig_data.get(self.orig_key), trans_data.get(self.trans_key)
-            elif isinstance(orig_data, FuncInfo) and isinstance(trans_data, FuncInfo):
-                # TODO 함수별 또는 파일별 나눠 분류 가능하도록
-                target_couple = orig_data.func_dict, trans_data.func_dict
-            else:
-                target_couple = orig_data, trans_data
+            target_couple = orig_data, trans_data
+            if type(orig_data) == type(trans_data):
+                if isinstance(orig_data, dict):
+                    target_couple = orig_data.get(self.orig_key), trans_data.get(self.trans_key)
+                elif isinstance(orig_data, FuncInfo):
+                    # TODO 함수별 또는 파일별 나눠 분류 가능하도록
+                    target_couple = orig_data.func_dict(), trans_data.func_dict()
 
             multiwrite = self.__SRS_multi_write(*target_couple, keyname, flags, dup_chk, h_opt, srs_opt)
             if not multiwrite:

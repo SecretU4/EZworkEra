@@ -2,11 +2,13 @@
 
 Classes:
     InfoDict
+    DFInfo
     ERBMetaInfo
     FuncInfo
     SheetInfo
     SRSFormat
 """
+import pandas
 
 
 class InfoDict:
@@ -80,6 +82,40 @@ class InfoDict:
         if error_count:
             print("작업 도중 dict형이 아닌 자료형이 확인되었습니다.")
         return self.dict_name_reverse
+
+
+class DFInfo:
+    """pandas.DataFrame 활용 관련 데이터베이스 클래스. default index는 RangeIndex 고정을 상정함.
+
+    Functions
+        add_row(data)
+        del_row(label, key)
+        merge_df(dataframe)
+        show_dict(label)
+    Variables
+        df
+            DataFrame 본체
+    """
+    def __init__(self, labels=None, data=None):
+        self.df = pandas.DataFrame(data=data, columns=labels)
+    
+    def add_row(self, *data):
+        """맨 하단에 새로운 행 생성 함수"""
+        self.df.loc[len(self.df)] = data
+
+    def del_row(self, label, key):
+        """선택한 label 중 key 에 해당하는 행 삭제 함수"""
+        self.df = self.df.set_index(label).drop(key, axis=0)
+        self.df.reset_index(inplace=True)
+
+    def merge_df(self, dataframe, ing_index=True):
+        """두 DataFrame의 병합 함수"""
+        self.df = pandas.concat([self.df, dataframe], ignore_index=ing_index)
+        return self.df
+
+    def show_dict(self, label):
+        """해당 label 값 기반의 dict 반환 함수"""
+        return self.df.set_index(label).T.to_dict()
 
 
 class ERBMetaInfo:
@@ -295,72 +331,33 @@ class ERBMetaInfo:
         return lines
 
 
-class FuncInfo:
+class FuncInfo(DFInfo):
     """ERB의 정보를 함수별로 나누어 불러올 수 있는 자료형 클래스
     
     Functions
-        add_dict(funcname, data, [filename])
-        del_dict(target, [opt])
-        is_key(funcname, [opt])
+        add_row(funcname, data, [filename], [loc])
     Variables
-        func_dict
+        func_dict()
             함수별로 정리된 딕셔너리 자료형
-        file_func_dict
-            파일/함수별로 정리된 딕셔너리 자료형
         db_ver
             기록 양식 확인용 클래스 버전
     """
 
     def __init__(self):
+        super().__init__(labels=["funcname","filename","loc","o_funcname","code"])
+        self.df.astype({"loc":"int"})
         self.db_ver = 1.1
-        self.file_func_dict = dict()
-        self.func_dict = dict()
-        self.func_index_dict = dict()
 
-    def add_dict(self, funcname, data, filename=None, index=-1):
-        """Function dict 추가 함수\nindex는 filename이 있을때만 적용"""
-        if self.func_dict.get(function):
-            print("중복 함수: {}, 덮어쓰기 진행됨")
-        self.func_dict[funcname] = data
+    def func_dict(self):
+        return super().show_dict("funcname")
 
-        if filename:
-            data_already = self.file_func_dict.get(filename)
-            if type(data_already) == type(data):
-                if isinstance(data_already, dict):
-                    data_already.update(data)
-                elif isinstance(data_already, list):
-                    data_already.extend(data)
-                else:
-                    raise TypeError(type(data))
-            else:
-                data_already = data
-            self.file_func_dict[filename] = data_already
-            if index != -1:
-                self.func_index_dict[funcname] = [filename, index]
-    
-    def del_dict(self, target, opt):
-        if opt & 0b1: # func_dict
-            self.func_dict.pop(target)
-        if opt & 0b10: # file_func_dict
-            self.file_func_dict.pop(target)
-        if opt & 0b100: # func_index_dict
-            self.func_index_dict.pop(target)
-
-    def update_dict(self, target):
-        self.file_func_dict.update(target.file_func_dict)
-        self.func_dict.update(target.func_dict)
-        self.func_index_dict.update(target.func_index_dict)
-
-    def is_key(self, funcname, opt=0):
-        """opt=0 순정 key 비교 opt=1 funcname 분리비교\n있으면 val, 없으면 None 반환"""
-        if opt:
-            target = funcname.split("(")[0]
-            orig_funcs = {}
-            for key in self.func_dict.keys():
-                orig_funcs[key.split("(")[0]] = key
-            return orig_funcs.get(target)
-        else:
-            return self.func_dict.get(funcname)
+    def add_row(self, funcname, data, filename=None, loc=-1):
+        """Function dict 추가 함수"""
+        if len(self.df[self.df["funcname"] == funcname]):
+            print("중복 함수: {} 발견, 추후 처리 요망".format(funcname))
+        if loc == -1:
+            loc = None
+        super().add_row(funcname, filename, loc, funcname.split("(")[0], data)
 
 
 class SheetInfo:

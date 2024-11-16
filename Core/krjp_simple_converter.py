@@ -94,10 +94,10 @@ class AnalyzeFiles:
                         try:
                             int(funcname)
                         except ValueError:
-                            use_funcinfo.add_dict(funcname, [funcname,], erbname)
+                            use_funcinfo.add_row(funcname, [funcname,], erbname)
                     elif mod & 0b001 and head.startswith("@"):
                         funcname = head.replace("@", "").split("(")[0].split(",")[0]
-                        def_funcinfo.add_dict(funcname, [funcname,], erbname)
+                        def_funcinfo.add_row(funcname, [funcname,], erbname)
                 if mod & 0b010: # CSV Vars
                     result = self.vfinder.find_csvfnc_line(line)
                     if result:
@@ -109,8 +109,8 @@ class AnalyzeFiles:
         used_csvvar = []
         index_csvvar = []
         if mod & 0b001: # Function
-            for used_func in use_funcinfo.func_dict:
-                if not def_funcinfo.func_dict.get(used_func):
+            for used_func in use_funcinfo.func_dict():
+                if not def_funcinfo.func_dict().get(used_func):
                     mis_funcs.append(used_func)
         if mod & 0b010: # CSV Vars
             changed_csvvar = self.vfinder.change_var_index(csv_varlist, 1)

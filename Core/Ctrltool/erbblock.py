@@ -110,7 +110,7 @@ class CheckStack:
             else:
                 temp_lines.insert(0, item[1])
 
-        self.funcs.add_dict(funcname, temp_lines, self.data_label, head_index)
+        self.funcs.add_row(funcname, temp_lines, self.data_label, head_index)
         if backup:
             s_lines[backup[0]] = backup[1]
 
@@ -220,5 +220,5 @@ if __name__ == "__main__":
     sample = sample_code()
     tester = CheckStack("test_file")
     a = tester.check_lines(sample.gen_bulk())
-    print(tester.funcs.func_dict)
+    print(tester.funcs.func_dict())
     input(a)
