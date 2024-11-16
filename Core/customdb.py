@@ -344,7 +344,7 @@ class SheetInfo:
         self.sheetdict = dict()
         self.db_ver = 1.0
     
-    def add_sheet(self, sheetname="Main", datatags=None):
+    def add_sheet(self, sheetname="Main", datatags: list=None):
         """데이터 시트 추가 함수.
         sheetname : 시트의 이름, 기본값 Main
         datatags : 1열에 들어갈 데이터분류 태그 목록. 여기 없다면 기록되지 않음
@@ -427,7 +427,7 @@ class SRSFormat:
             head += "[-REGEX-]"
         if h_opt & 0b1000:
             head += "[-SORT-]"
-        if (h_opt & 0b1000) and (h_opt & 0b0100):
+        if h_opt & 0b1100 >= 0b1100:
             raise TypeError("REGEX와 SORT 옵션은 동시 사용이 불가합니다")
 
         return head + '\n'

@@ -205,12 +205,12 @@ class ExportData:
                 result_lines.append("{}에서 불러옴\n".format(self.target_name))
             context = que[que_key]
             if type(context) == dict:
-                for key, value in list(context.items()):
+                for key, value in context.items():
                     result_lines.append("{}:{}\n".format(key, value))
             elif type(context) == FuncInfo:
                 for key, value in list(context.func_dict.items()):
                     if isinstance(value, (str, int)):
-                        value = value
+                        value = [value,]
                     result_lines.append("{}:{}".format(key, ",\n".join(value)))
             elif option_num == 0:
                 result_lines.append("{}\n".format(context))
