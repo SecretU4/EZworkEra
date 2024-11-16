@@ -13,7 +13,7 @@ class InfoDict:
     """코드 내에서 각 자료명을 파일명으로 분류해야 하는 경우 사용하는 자료형 클래스
 
     Functions:
-        add_dict(dictname,data)
+        add(dictname,data)
         make_dictvals_list()
     Variables:
         dict_main
@@ -37,9 +37,9 @@ class InfoDict:
             elif dbname == 2:
                 dbname = "ERBMetaInfoDict"
         self.db_name = dbname
-        self.db_ver = 1.3
+        self.db_ver = 1.31
 
-    def add_dict(self, dictname, dataname):
+    def add(self, dictname, dataname):
         """클래스 내 자료형에 새로운 정보 추가."""
         self.dict_main[dictname] = dataname
 

@@ -844,7 +844,7 @@ class ERBBlkFinder:
         for filename in self.files:
             opened_erbs = ERBLoad(filename, self.encode_type)
             chk_stk = CheckStack(opened_erbs.make_erblines()).line_divider()
-            self.block_data.add_dict(filename, chk_stk)
+            self.block_data.add(filename, chk_stk)
         return self.block_data
 
     def block_checker(self):
@@ -1127,7 +1127,7 @@ class ERBFunc:
                 lines.insert(0, [0, 0, 0, ";{}에서 불러옴\n".format(filename)])
                 temp_metainfo = ERBMetaInfo()
                 temp_metainfo.linelist = lines
-                self.result_infodict.add_dict(filename, ERBUtil().indent_maker(temp_metainfo))
+                self.result_infodict.add(filename, ERBUtil().indent_maker(temp_metainfo))
                 file_count_check.how_much_done()
 
             result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:[들여쓰기 처리된 lines]}
@@ -1172,7 +1172,7 @@ class ERBFunc:
             replaced_lines = ERBRemodel(erblines).replace_csvvars(
                 csv_infodict, mod_num
             )
-            self.result_infodict.add_dict(filename, replaced_lines)
+            self.result_infodict.add(filename, replaced_lines)
             file_count_check.how_much_done()
 
         CommonSent.extract_finished()
@@ -1196,7 +1196,7 @@ class ERBFunc:
                 lines.insert(0, [0, 0, 0, ";{}에서 불러옴\n".format(filename)])
                 temp_metainfo = ERBMetaInfo()
                 temp_metainfo.linelist = lines
-                self.result_infodict.add_dict(filename, ERBUtil().grammar_corrector(temp_metainfo, mod_no))
+                self.result_infodict.add(filename, ERBUtil().grammar_corrector(temp_metainfo, mod_no))
                 file_count_check.how_much_done()
 
             result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:ERBMetaInfo 클래스 메소드}
@@ -1217,7 +1217,7 @@ class ERBFunc:
         for filename in erb_files:
             erblines = ERBLoad(filename, encode_type).make_erblines()
             optmized_lines = ERBRemodel(erblines).memory_optimize()
-            self.result_infodict.add_dict(filename, optmized_lines)
+            self.result_infodict.add(filename, optmized_lines)
             file_count_check.how_much_done()
 
         CommonSent.extract_finished()
@@ -1260,7 +1260,7 @@ class ERBFunc:
         for erbname in erb_files:
             erb_load = ERBLoad(erbname, encode_type)
             erblines = erb_load.make_erblines()
-            self.result_infodict.add_dict(erbname, DataBaseERB().collect_adj(erblines, tag, adj_yn, case_yn))
+            self.result_infodict.add(erbname, DataBaseERB().collect_adj(erblines, tag, adj_yn, case_yn))
 
         return self.result_infodict
 
@@ -1289,7 +1289,7 @@ class ERBFunc:
             elif doc_yn:
                 file_data = finder.post_procdata(filename, file_data)
 
-            self.result_infodict.add_dict(filename, file_data)
+            self.result_infodict.add(filename, file_data)
 
         if doc_yn:
             txtlines = []

@@ -135,7 +135,7 @@ class CSVFunc:
                 count_check.error_num += 1
                 continue
 
-            self.dic_assemble.add_dict(filename, csvdata_dict)
+            self.dic_assemble.add(filename, csvdata_dict)
             count_check.how_much_done()
 
         if count_check.error_num > 0:

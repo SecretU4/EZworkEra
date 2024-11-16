@@ -47,7 +47,7 @@ class CrawlFunc:
             print("크롤링된 데이터가 없습니다.")
         
         result_infodict = InfoDict("WebCrawl")
-        result_infodict.add_dict(target_url, result_data)
+        result_infodict.add(target_url, result_data)
         return result_infodict
 
 if __name__ == "__main__":

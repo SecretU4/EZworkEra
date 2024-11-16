@@ -65,7 +65,7 @@ class AnalyzeFiles:
         self.erb_infdict = InfoDict(1)
         for erb in self.bring.search_filelist(".ERB"):
             with open(erb, "r", encoding=self.encode_type) as erbfile:
-                self.erb_infdict.add_dict(erb, erbfile.readlines())
+                self.erb_infdict.add(erb, erbfile.readlines())
         self.anal_erhs()
 
         if mod & 0b001: # Function 처리
@@ -179,7 +179,7 @@ class PrintERB:
         result_infodict = InfoDict(1)
         for filename, lines in self.erb_info.dict_main.items():
             replaced_lines = ERBRemodel(lines).replace_csvvars(self.csv_infodict, 1, srs_dict)
-            result_infodict.add_dict(filename, replaced_lines)
+            result_infodict.add(filename, replaced_lines)
         return result_infodict
 
 
