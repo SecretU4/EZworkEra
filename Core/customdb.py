@@ -17,6 +17,7 @@ class InfoDict:
     Functions:
         add(dictname,data)
         make_dictvals_list()
+        make_reverse()
     Variables:
         dict_main
             클래스 내 기록된 dict형 자료. {dictname:data} 형식
@@ -31,13 +32,9 @@ class InfoDict:
         self.dict_main = {}
         self.dict_name_dictvals = {}
         self.dict_name_reverse = {}
-        if type(dbname) == int:
-            if dbname == 0:
-                dbname = "CSVInfoDict"
-            elif dbname == 1:
-                dbname = "ERBInfoDict"
-            elif dbname == 2:
-                dbname = "ERBMetaInfoDict"
+        dbname_dict = {0:"CSVInfoDict" ,1:"ERBInfoDict", 2:"ERBMetaInfoDict"}
+        if dbname_dict.get(dbname):
+            dbname = dbname_dict[dbname]
         self.db_name = dbname
         self.db_ver = 1.31
 
