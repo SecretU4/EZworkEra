@@ -969,7 +969,9 @@ class LicenceFinder:
 
 
 class DataBaseERB:
+    """TW의 OBJ형 템플릿 기반 ERB 데이터베이스 분석 클래스"""
     def collect_adj(self, lines:list[str], tag:str, adj_opt:bool = False, is_case:bool = False):
+        """lines 내 유효 값 존재시 dict 반환, 이외 빈 list"""
         result_list = []
         case_flag = False
         for line in lines:
