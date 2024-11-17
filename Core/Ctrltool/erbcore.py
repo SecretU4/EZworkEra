@@ -1,6 +1,6 @@
 # ERB 관련 모듈
 import re
-from customdb import ERBMetaInfo, InfoDict, SheetInfo
+from customdb import ERBMetaInfo, FuncInfo, InfoDict, SheetInfo
 from usefile import CustomInput, FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import StatusNum
@@ -837,14 +837,17 @@ class ERBBlkFinder:
     """디렉토리 대응 코드 블럭 인식 클래스"""
 
     def __init__(self):
-        self.block_data = InfoDict(1)  # {filename:{index:(func,(code_block))}}
+        self.block_data = InfoDict(1)  # {filename:{func:(code_block)}}
+        self.func_info = FuncInfo()
         self.files, self.encode_type = CustomInput("ERB").get_filelist()
 
     def block_maker(self):
         for filename in self.files:
             opened_erbs = ERBLoad(filename, self.encode_type)
-            chk_stk = CheckStack(opened_erbs.make_erblines()).line_divider()
-            self.block_data.add(filename, chk_stk)
+            stacker = CheckStack(filename)
+            stacker.check_lines(opened_erbs.make_erblines())
+            self.func_info.merge_df(stacker.funcs)
+            self.block_data.add(filename, stacker.funcs.func_dict)
         return self.block_data
 
     def block_checker(self):
