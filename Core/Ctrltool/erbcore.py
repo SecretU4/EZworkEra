@@ -419,7 +419,7 @@ class ERBRemodel:
                 return '@"%s%s" + \n' % (context, endword)
         return ""
 
-    def __after_printcheck(self, target_lines:list[str], count:int, str_var):
+    def _after_printcheck(self, target_lines:list[str], count:int, str_var):
         # 변환시킨 출력문의 후처리 함수
         target_lines[-1] = target_lines[-1].replace(" + \n", "\n")
         if count >= 1 and count <= 5: # PRINT 출력문이 1~5줄짜리일 때
@@ -459,14 +459,14 @@ class ERBRemodel:
             else:
                 result_line = line
                 if count_print:
-                    result_lines = self.__after_printcheck(result_lines, count_print, str_var)
+                    result_lines = self._after_printcheck(result_lines, count_print, str_var)
                 count_print = 0
 
             result_line = result_line.replace("\r\n", "\n")
             result_lines.append(result_line)
 
         if '" + \n' in result_lines[-1]: # PRINT 출력문으로 파일이 끝날 때 처리
-            result_lines = self.__after_printcheck(result_lines, count_print, str_var)
+            result_lines = self._after_printcheck(result_lines, count_print, str_var)
 
         return result_lines
 
