@@ -85,7 +85,7 @@ class ERHFunc:
                     continue
                 elif words[0].startswith("#DIM"):
                     temp_dimdict.update(clsdim.dim_search(line))
-            infodict.add_dict(erhname, temp_dimdict)
+            infodict.add(erhname, temp_dimdict)
 
         return infodict, clsdim.dim_dict
 

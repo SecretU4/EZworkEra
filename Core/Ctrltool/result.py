@@ -132,7 +132,7 @@ class ExportData:
             )
         return tuple(final_list)  # ((tag,data),(tag,data))
 
-    def __output_txt(self, lines, add_flag=False):
+    def output_txt(self, lines, add_flag=False):
         txt_file = LoadFile(self.res_filename, self.encoding)
         opened = txt_file.addwrite() if add_flag else txt_file.readwrite()
         opened.writelines(lines)
@@ -205,12 +205,12 @@ class ExportData:
                 result_lines.append("{}에서 불러옴\n".format(self.target_name))
             context = que[que_key]
             if type(context) == dict:
-                for key, value in list(context.items()):
+                for key, value in context.items():
                     result_lines.append("{}:{}\n".format(key, value))
             elif type(context) == FuncInfo:
                 for key, value in context.func_dict().items():
                     if isinstance(value, (str, int)):
-                        value = value
+                        value = [value,]
                     result_lines.append("{}:{}".format(key, ",\n".join(value)))
             elif option_num == 0:
                 result_lines.append("{}\n".format(context))
@@ -223,7 +223,7 @@ class ExportData:
                     print("텍스트화 할 수 없는 데이터입니다. 옵션을 바꿔 다시 시도해주세요.")
                     self.log_file.write_log("Can not write text by {}".format(type(context)))
             if result_lines:
-                self.__output_txt(result_lines)
+                self.output_txt(result_lines)
             numstat.how_much_done()
         self.log_file.sucessful_done()
         return True
@@ -265,6 +265,8 @@ class ExportData:
             for context in main_data:
                 apnd_dict = dict()
                 for key, value in context.items():
+                    if isinstance(value, (list, tuple)):
+                        value = "".join(value)
                     apnd_dict[tags_dict[key]] = value
                 sheet.append(apnd_dict)
         xlsx_data.save("%s%s.xlsx" % (self.dest_dir, xlsxname))
@@ -319,7 +321,7 @@ class ExportSRS(ExportData):
             if error_lines and opt_no & 0b100000: # srs 내 제외사항 기록
                 error_code |= 0b010
                 lines.extend(error_lines)
-            self.__output_txt(lines, True)
+            self.output_txt(lines, True)
         else:
             error_code |= 0b100
             self.log_file.write_log("전체 중복 또는 오류로 인해 자료 전체 통과됨\n")

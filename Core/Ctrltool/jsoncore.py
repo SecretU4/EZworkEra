@@ -25,8 +25,8 @@ class TransUserDict:
                 orig_dict[order_no] = key
                 trans_dict[order_no] = dictdata[key]
 
-            orig_words.add_dict("orig\\"+dict_name, orig_dict)
-            trans_words.add_dict("trans\\"+dict_name, trans_dict)
+            orig_words.add("orig\\"+dict_name, orig_dict)
+            trans_words.add("trans\\"+dict_name, trans_dict)
         return orig_words, trans_words
 
 

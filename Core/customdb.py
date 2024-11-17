@@ -15,7 +15,7 @@ class InfoDict:
     """코드 내에서 각 자료명을 파일명으로 분류해야 하는 경우 사용하는 자료형 클래스
 
     Functions:
-        add_dict(dictname,data)
+        add(dictname,data)
         make_dictvals_list()
     Variables:
         dict_main
@@ -39,9 +39,9 @@ class InfoDict:
             elif dbname == 2:
                 dbname = "ERBMetaInfoDict"
         self.db_name = dbname
-        self.db_ver = 1.3
+        self.db_ver = 1.31
 
-    def add_dict(self, dictname, dataname):
+    def add(self, dictname, dataname):
         """클래스 내 자료형에 새로운 정보 추가."""
         self.dict_main[dictname] = dataname
 
@@ -373,7 +373,7 @@ class SheetInfo:
         self.sheetdict = dict()
         self.db_ver = 1.0
     
-    def add_sheet(self, sheetname="Main", datatags=None):
+    def add_sheet(self, sheetname="Main", datatags: list=None):
         """데이터 시트 추가 함수.
         sheetname : 시트의 이름, 기본값 Main
         datatags : 1열에 들어갈 데이터분류 태그 목록. 여기 없다면 기록되지 않음
@@ -456,7 +456,7 @@ class SRSFormat:
             head += "[-REGEX-]"
         if h_opt & 0b1000:
             head += "[-SORT-]"
-        if (h_opt & 0b1000) and (h_opt & 0b0100):
+        if h_opt & 0b1100 >= 0b1100:
             raise TypeError("REGEX와 SORT 옵션은 동시 사용이 불가합니다")
 
         return head + '\n'
