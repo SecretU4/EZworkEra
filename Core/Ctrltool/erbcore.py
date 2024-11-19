@@ -710,8 +710,8 @@ class ERBVFinder:
         "UPBASE": "BASE",
         "DOWNBASE": "BASE",
     }
-    context_filter = r":([^\s,\)=\+\-]+)"
-    # target_list = ['TARGET','PLAYER','MASTER','ASSI'] #TODO 차원지원 필요함
+    word_filter = r"[一-龯ぁ-ゟ\u30a0-ヿ가-힣！-￮\w\d]+|\([^\)]*\)"
+    context_filter = r"({0}):({0})|({0})".format(word_filter)
 
     def __init__(self, csvdict: InfoDict | list, log_set=None):
         if isinstance(csvdict, InfoDict):
@@ -727,11 +727,11 @@ class ERBVFinder:
             raise TypeError
         csv_all_head = self.csv_head + list(self.extra_dict.keys())
         re_varshead = "({})".format("|".join(csv_all_head))
-        self.csvvar_re = re.compile(re_varshead + self.context_filter)
+        self.csvvar_re = re.compile(re_varshead + ":(?:{})".format(self.context_filter))
         self.log_set = log_set
 
     def find_csvfnc_line(self, line: str) -> list[tuple]:
-        """해당하는 결과물이 있을 시 [(csv명,변수내용,ERB상 함수명,대명사)] 로 출력함.
+        """해당하는 결과물이 있을 시 [(csv명,변수내용,ERB상 csv명,대명사)] 로 출력함.
         이외는 None 리턴"""
         if line.startswith(";"):
             return None
@@ -739,22 +739,14 @@ class ERBVFinder:
         line_search = self.csvvar_re.findall(line)  # [(var1,arg1),(var2,arg2)...]
         find_result = []
         for var_bulk in line_search:
-            var_head, var_context = var_bulk
+            var_head, var_pnoun, *var_context = var_bulk
             var_head = var_head.strip()
-            var_context = var_context.strip()
-            if ":" in var_context:
-                var_pnoun, _, *etc = var_context.split(":")
-                var_context_t = re.compile(self.context_filter).search(var_context).group(1)
-                if etc:
-                    print(var_bulk, "개발자에게 보고바람")
-            else:
-                var_pnoun = None
-                var_context_t = var_context
+            var_context = [x for x in var_context if x][0].strip()
             if self.extra_dict.get(var_head):
                 var_head_t = self.extra_dict[var_head]
             else:
                 var_head_t = var_head
-            find_result.append((var_head_t, var_context_t, var_head, var_pnoun))
+            find_result.append((var_head_t, var_context, var_head, var_pnoun))
         return find_result
 
     def change_var_index(self, found_result: list[tuple], mod_num: int = 0):
@@ -1099,7 +1091,7 @@ class ERBFunc:
             dup_res_list = DataFilter().dup_filter(file_results)
 
             for var_info in dup_res_list:
-                varhead, varname, _, _ = var_info
+                varhead, varname, *_ = var_info
                 context = vfinder.print_csvfnc([var_info,])[0]
                 if opt & 0b1:
                     sheet_name = varhead
