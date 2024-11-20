@@ -1,8 +1,9 @@
 """EraBasic 코드 블럭 판별 모듈
 Class
     CheckStack
+    MetaERB
 """
-from customdb import FuncInfo
+from customdb import ERBInfo, FuncInfo
 
 
 class CheckStack:
@@ -249,6 +250,234 @@ class CheckStack:
             self.warp_func(stack_lines, stack_index)
 
         return stack_lines # 디버깅용
+
+
+class MetaERB(CheckStack):
+    """ERB 파일 메타정보 처리 클래스.
+
+    Functions:
+        build_metalines(lines, mod_no)
+        fix_grammar(erbinfos, mod_no)
+    Variables:
+        data_label
+    """
+
+    def __init__(self, data_label="MetaERB"):
+        # mod_no bit 1= 0:전부 1: 기능관련만 bit 2= 0:전부 1:추가주석 제외
+        super().__init__(data_label)
+
+    def build_metalines(self, lines:list[str], mod_no=0b00):
+        # mod_no bit 1= 0:전부 1: 기능관련만 bit 2= 0:전부 1:추가주석 제외
+        is_sif, is_skip, is_squash, is_goto, is_datalist = 0, 0, 0, 0, 0
+        stack_indexs = {0:[], 1:[], 2:[], 3:[], 4:[]} # {codetype:[]}
+        total_lv = lambda x, i, c: sum([len(val) for val in x.values()]) + i + c
+        cur_case = 0 # codetype
+        case_count = dict() # {cnt:count}, if/case 공용
+        stack_lines = dict() # {cnt:line}
+        erb_infos = ERBInfo(lines)
+        
+        for cnt, line in enumerate(lines):
+            tmp_if, tmp_case = 0, 0 # 해당 line에만 한정된 lv 변화
+            blk_head, f_count = -1, 0 # blk_head: blk 종료시 시작 index 체크 f_count: 케이스 종료시 갯수 처리
+            line = line.strip()
+            # 주석문 통과 선처리
+            is_skip = self.skip_line(line, is_skip)
+            if is_skip >= 1:
+                continue
+            elif is_skip <= -1:
+                is_skip = 0
+                continue
+
+            checker = self.code_checker(line)
+            codetype, codeinfo, codeetc = checker
+            if line:
+                stack_lines[cnt] = line
+            else: # 공란은 통과
+                continue
+
+            if is_squash:
+                s_indexs = stack_indexs[codetype]
+                is_squash = self.warp_squash(checker, stack_lines, s_indexs, cnt)
+                stack_indexs[codetype] = s_indexs
+                if not is_squash:
+                    stack_indexs[codetype] = s_indexs
+            elif is_sif:
+                s_indexs = stack_indexs[1]
+                is_sif = self.warp_sif(stack_lines, s_indexs, cnt)
+                stack_indexs[1] = s_indexs
+                tmp_if += 1
+            elif codetype == 0:
+                if codeinfo == 0 and mod_no & 0b1: # PRINT, PRINTBUTTON
+                    continue
+                elif codeinfo == 1:
+                    if codeetc == 0 and stack_indexs[0]: # @(함수)
+                        if is_goto and len(stack_indexs[0]) == 2:
+                            is_goto = self.warp_goto(stack_lines, stack_indexs[0].pop(), cnt)
+                        self.warp_func(stack_lines, stack_indexs[0])
+                    elif codeetc == 1: # $(GOTO)
+                        if is_goto:
+                            self.warp_goto(stack_lines, stack_indexs[0].pop(), cnt)
+                        is_goto = total_lv(stack_indexs, tmp_if, tmp_case)
+                    elif codeetc == 2: # {
+                        is_squash = 1
+                    stack_indexs[codetype].append(cnt)
+                elif checker[1:] == (3, 0): # RETURN
+                    if is_goto >= total_lv(stack_indexs, tmp_if, tmp_case):
+                        is_goto = self.warp_goto(stack_lines, stack_indexs[0].pop(), cnt)
+            elif codeinfo == 1 and codetype in (1,2,3,4):
+                stack_indexs[codetype].append(cnt)
+                cur_case = codetype
+                if checker != (3, 1, 1):
+                    case_count[cnt] = 1 if codetype == 1 else 0
+                    tmp_if, tmp_case = (-1, 0) if codetype in (1, 4) else (0, -1)
+                else: # DATALIST
+                    case_count[stack_indexs[codetype][-2]] += 1
+                    is_datalist = 1
+            elif codeinfo == 3 and codetype in (1,2,3,4):
+                blk_head = stack_indexs[codetype].pop()
+                if not len(stack_indexs[codetype]):
+                    cur_case = 0
+                if checker == (3, 3, 1): # ENDLIST
+                    is_datalist = 0
+            elif codetype == 1: # IF문
+                tmp_if -= 1
+                if codeinfo == 2: # ELSEIF, ELSE
+                    case_count[stack_indexs[codetype][-1]] += 1
+                elif codeinfo == 0: # SIF
+                    stack_indexs[codetype].append(cnt)
+                    is_sif = 1
+            elif checker[:2] == (2, 2): # CASE, CASEELSE
+                case_count[stack_indexs[codetype][-1]] += 1
+                tmp_case -= 1
+            elif checker == (3, 0, 0): # DATA, DATAFORM
+                if not is_datalist: # DATALIST 안 구문이 아닐 때 
+                    case_count[stack_indexs[codetype][-1]] += 1
+                else:
+                    tmp_case += 1
+                if mod_no & 0b1: continue
+
+            if blk_head >= 0: # pop() 통한 블럭 종료 감지
+                if checker == (3, 3, 1): # ENDLIST
+                    f_count = 0
+                else:
+                    f_count = case_count.pop(blk_head) if isinstance(case_count.get(blk_head), int) else 0
+                    if mod_no & 0b10 and codetype != 4:
+                        line = line + " ;{}개의 케이스 존재".format(f_count)
+            else:
+                f_count = case_count.get(stack_indexs[cur_case][-1])
+                if f_count == None: f_count = 0
+
+            if is_goto >= total_lv(stack_indexs, tmp_if, tmp_case):
+                is_goto = self.warp_goto(stack_lines, stack_indexs[0].pop(), cnt)
+            
+            erb_infos.add_row(
+                len(stack_indexs[1] + stack_indexs[4]) + tmp_if,
+                len(stack_indexs[2] + stack_indexs[3]) + tmp_case,
+                f_count, line)
+            # 분기문 블럭 내부가 아닌 RETURN, f_count와의 충돌 방지 위해 후처리함
+            if checker == (0, 3, 0) and total_lv(stack_indexs, tmp_if, tmp_case) == 1:
+                self.warp_func(stack_lines, stack_indexs[0])
+
+        if stack_indexs[0]: # RETURN 없는 함수 정리
+            if is_goto and len(stack_indexs[0]) == 2:
+                is_goto = self.warp_goto(stack_lines, stack_indexs[0].pop(), cnt)
+            self.warp_func(stack_lines, stack_indexs[0])
+        return erb_infos
+
+    def fix_grammar(self, erbinfos: ERBInfo, mod_no=0):
+        """ERBMetaInfo 기반 문법 교정기
+
+        mod_no = bit 1: 중첩 printdata문 처리 on/off
+        """
+        result_lines:list[str] = []
+        change_dict:dict[int, str] = {}
+        ch_printdata = 0
+
+        for count, line in enumerate(erbinfos.m_lines()):
+            _, _, case_count, context = line
+            if context.startswith("PRINTDATA"):
+                ch_printdata += 1
+                if mod_no & 0b1 and ch_printdata > 1:
+                    change_dict[count] = "fix_printdata/"
+            elif mod_no & 0b1 and ch_printdata > 1:
+                head_word = context.split()[0]
+                if context.startswith("ENDDATA"):
+                    ch_printdata -= 1
+                    change_dict[count] = "fix_enddata/"
+                elif context.startswith("DATA"):
+                    if head_word == "DATALIST":
+                        change_dict[count] = "fix_datalist/"
+                    elif head_word in ("DATAFORM","DATA"):
+                        if case_count:
+                            change_dict[count] = "fix_data/fix_datalist/"
+                        else:
+                            change_dict[count] = "fix_data/"
+                    else:
+                        print("상정하지 않은 케이스 :" + context)
+                elif context.startswith("ENDLIST"):
+                    change_dict[count] = "delete"
+            elif context.startswith("ENDDATA"):
+                ch_printdata -= 1
+            result_lines.append(line)
+
+        keys = list(change_dict.keys())
+        if not keys:
+            return erbinfos
+        else:
+            print("{}에서 문법 교정을 시도합니다.".format(self.data_label))
+        keys.sort(reverse=True)
+
+        case_cntdict = {}
+        for key in keys:
+            value = change_dict[key]
+            if value == "delete":
+                result_lines.pop(key)
+            elif "fix" in value:
+                target_line:tuple[int, int, int, str] = result_lines[key]
+                _, case_lv, case_count, context = target_line
+                res_context = ""
+                if  mod_no & 0b1 and "data" in value:
+                    if "fix_data/" in value:
+                        res_context += context.replace(context.split()[0], "PRINTFORMW")
+                        value = value.replace("fix_data/", "")
+                        if "fix_datalist/" in value:
+                            context = "DATALIST"
+                    if "fix_datalist/" in value:
+                        no = case_count
+                        if_sent = "ELSEIF A == %d" % (no - 1)
+                        if no == 1:
+                            if_sent = if_sent.replace("ELSEIF", "IF")
+                        res_context += context.replace("DATALIST", if_sent)
+                    elif value == "fix_printdata/":
+                        res_context += "A = RAND:%d" % case_cntdict.pop(case_lv)
+                    elif value == "fix_enddata/":
+                        total_count = result_lines[key-1][2]
+                        case_cntdict[case_lv] = total_count
+                        res_context += context.replace("ENDDATA", "ENDIF")
+                    elif value == "":
+                        pass
+                    else:
+                        print("상정외 value :" + value)
+                        res_context = context
+                    
+                    post_context = ""
+                    if "IF" in res_context and "PRINTFORMW" in res_context:
+                        res_context, post_context = res_context.split("IF")
+                        if "ELSE" in res_context:
+                            res_context = res_context.replace("ELSE", "")
+                            post_context = "ELSEIF" + post_context
+                        else:
+                            post_context = "IF" + post_context
+                    target_line[-1] = res_context
+                    result_lines[key] = target_line
+                    if post_context:
+                        post_line = target_line.copy()
+                        post_line[-1] = post_context
+                        result_lines.insert(key, post_line)
+        for cnt, metaline in enumerate(result_lines):
+            erbinfos.df.loc[cnt] = metaline
+        erbinfos.df["f_line"] = erbinfos.df["line"]
+        return erbinfos
 
 
 class sample_code:

@@ -11,7 +11,7 @@ from customdb import *
 from usefile import DirFilter, FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter, DupItemCheck
 from System.interface import Menu, StatusNum
-from . import ERBFunc, SRSFunc
+from . import SRSFunc
 
 
 class ExportData:
@@ -34,7 +34,7 @@ class ExportData:
         dict: "ONLYDICT",
         str: "ONLYSTRING",
         list: "ONLYLIST",
-        ERBMetaInfo: "ONLYMETALINES",
+        ERBInfo: "ONLYMETALINES",
         SheetInfo: "ONLYSHEET",
     }
 
@@ -80,7 +80,7 @@ class ExportData:
                     data_tag = "N/A"
                     self.log_file.write_error_log(aterror)
                 dict_data_vals = list(data.dict_main.values())  # InfoDict 결과물이라면 dict 데이터 list임.
-                if isinstance(dict_data_vals[0], (dict, list, ERBMetaInfo, SheetInfo)) == True:
+                if isinstance(dict_data_vals[0], (dict, list, ERBInfo, SheetInfo)) == True:
                     tagging_data = {
                         "All {} - {} etc.".format(data_tag, list(data.dict_main.keys())[0]): data
                     }
@@ -92,9 +92,9 @@ class ExportData:
                     tagging_data = {"None": None}
             elif isinstance(data, FuncInfo):
                 tagging_data = {"ex: " + data.df["filename"][0]: data}
-            elif isinstance(data, (dict, list, str, ERBMetaInfo, SheetInfo)):
+            elif isinstance(data, (dict, list, str, ERBInfo, SheetInfo)):
                 tagging_data = {self.single_namedict[type(data)]: data}
-            else:  # 자료형이 InfoDict, ERBMetaInfo, SheetInfo, dict, list 아님
+            else:  # 자료형이 InfoDict, ERBInfo, SheetInfo, dict, list 아님
                 print("입력된 데이터가 유효한 데이터가 아닙니다.")
                 print("{} 타입 자료형입니다.".format(type(data)))
                 self.log_file.write_log("유효한 데이터 아님 - {} 타입 자료형\n".format(type(data)))
@@ -147,7 +147,7 @@ class ExportData:
             encode_type: 저장되는 파일의 인코딩
         """
         # txt, erb 공용
-        # erb metaline은 ERBUtil.indent_maker에서 텍스트.readlines형으로 양식화됨
+        # erb metaline은 ERBInfo.make_indents 에서 list[str]형으로 양식화됨 (ERBInfo[f_line])
         self.log_file.workclass = "TXTwrite"
         self.encoding = encode_type
         if self.target_data == None:
@@ -176,7 +176,7 @@ class ExportData:
             if isinstance(content, InfoDict):
                 infodict = content.dict_main
                 sel_data = list(map(lambda x: {x: infodict[x]}, infodict.keys()))
-            elif isinstance(content, ERBMetaInfo):
+            elif isinstance(content, ERBInfo):
                 sel_data = [{tag: content}]
             elif isinstance(content, (list, dict)):
                 sel_data = [{tag: content}]
@@ -195,7 +195,7 @@ class ExportData:
                 else:
                     data_filename = que_key
                 result_filename = "{}.{}".format(FileFilter().sep_filename(data_filename), filetype)
-                self.res_filename = self.dest_dir + result_filename
+                self.res_filename = self.dest_dir + result_filename #TODO 바로 앞 폴더명 추가
             elif dest_mod == 0:  # 원본 디렉토리에 저장
                 self.res_filename = que_key
             self.log_file.which_type_loaded(filetype)
@@ -217,8 +217,8 @@ class ExportData:
             elif option_num == 1:
                 if type(context) == list:
                     result_lines = context
-                elif isinstance(context, ERBMetaInfo):
-                    result_lines = ERBFunc().remodel_indent(metalineinfo=context.printable_lines())
+                elif isinstance(context, ERBInfo):
+                    result_lines = context.make_indents() # list[str]
                 else:
                     print("텍스트화 할 수 없는 데이터입니다. 옵션을 바꿔 다시 시도해주세요.")
                     self.log_file.write_log("Can not write text by {}".format(type(context)))

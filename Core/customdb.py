@@ -3,7 +3,7 @@
 Classes:
     InfoDict
     DFInfo
-    ERBMetaInfo
+    ERBInfo
     FuncInfo
     SheetInfo
     SRSFormat
@@ -115,217 +115,46 @@ class DFInfo:
         return self.df.set_index(label).T.to_dict()
 
 
-class ERBMetaInfo:
-    """ERB 파일 처리에 사용되는 자료형 클래스.
-    작업시 각 line 처리시마다 level 변수와 count 변수의 처리가 필요함.
-
-    Functions:
-        add_line_list(str)
-    Variables:
+class ERBInfo(DFInfo):
+    """ERB 파일의 Metainfolines 데이터베이스 클래스
+    
+    Functions
+        make_indents()
+        m_lines()
+    Variables
+        o_lines
+            metainfolines 작성 이전 원본 lines
         db_ver
             기록 양식 확인용 클래스 버전
-        linelist
-            작업 완료시 결과 list. [[IF단계,CASE단계,CASE수,line]] 형식
-        blocklist
-            작업 완료시 코드블럭 list. [[블럭 계층,코드 타입,[blocklines]]] 형식
-        if_level
-            IF문의 깊이 판단 변수
-        case_level
-            CASE/DATAFORM문의 깊이 판단 변수
-        case_count
-            CASE/DATAFORM문의 개수 판단 변수.
-            CASE/DATAFORM 내 CASE/DATAFORM이 포함된 경우 정확하지 않을 수 있음.
     """
+    def __init__(self, lines):
+        super().__init__(labels=["if_lv", "case_lv", "case_cnt", "line"])
+        self.o_lines = lines
+        self.db_ver = 1.0
 
-    def __init__(self, mod_no=0):
-        # mod_no bit 1= 0:전부 1: 기능관련만 bit 2= 0:전부 1:추가주석 제외
-        self.linelist = []
-        self.blocklist = []
-        self.blocklines = []
-        self.block_check = 0
-        self.__reset_count()
-        self.case_check = {}
-        self.mod_no = mod_no
-        self.db_ver = 1.3
+    def _make_indent(self, metaline):
+        if_lv, cases_lv, _, text = metaline
+        f_line = "{}{}{}".format("\t" * if_lv, "\t" * cases_lv, text)
+        if not text.endswith("\n"):
+            f_line = f_line + "\n"
+        return f_line
 
-    def __reset_count(self):
-        self.if_level = 0
-        self.case_level = 0
-        self.on_datalist = 0
+    def m_lines(self):
+        """ERBMetaInfo.linelist 대응"""
+        return self.df[["if_lv", "case_lv", "case_cnt", "line"]].values.tolist()
 
-    def case_count(self, stat=0, case_level=0):
-        """분기문 개수 판별 함수
-        stat 1: count 1 추가, -1: 해당 case_level의 count 초기화
-        """
-        if not case_level:
-            case_level = self.case_level
-
-        if self.case_check.get(case_level):
-            count = self.case_check[case_level]
+    def make_indents(self):
+        """metaline을 들여쓰기된 lines로 만드는 함수. 처리시 df에 f_line 저장함. 이미 있다면 f_line 값 반환"""
+        if 'f_line' in self.df.columns:
+            return self.df["f_line"].to_list()
+        f_lines:list[str] = []
+        for m_line in self.m_lines():
+            f_lines.append(self._make_indent(m_line))
+        if f_lines == []:
+            print("결과물이 없습니다.")
         else:
-            count = 0
-        
-        if stat == -1:
-            count = self.case_check.pop(case_level)
-        elif not stat:
-            pass
-        else:
-            count = max(count + stat, 0)
-            self.case_check[case_level] = count
-        return count
-
-    def add_line_list(self, line):
-        """linelist에 새로운 line 정보 추가"""
-        self.linelist.append([self.if_level, self.case_level, self.case_count(), line])
-
-    def add_linelist_embeded(self, line):  # TODO 코드 블럭 인식 기능
-        """line 데이터 처리 함수
-
-        0 리턴시 정상 작동 증명
-        None 발생시 상정되지 않은 상황 발생
-        """
-        line = line.strip()
-        back_count = 0
-        if self.linelist:
-            bef_status = self.linelist[-1]  # 작업 직전의 [if_level,case_level,case_count,line]
-            while not bef_status[-1]:  # line 이 공란일 때
-                back_count += 1
-                bef_status = self.linelist[-(back_count + 1)]  # line이 있었던 곳까지 돌아감
-        else:
-            bef_status = 0
-        while True:
-            if "PRINT" in line:
-                if "PRINTDATA" in line:
-                    self.add_line_list(line)
-                    self.case_level += 1
-                else:
-                    if self.mod_no & 0b1:
-                        break
-                    self.add_line_list(line)
-                break
-            elif "IF" in line:
-                if "ENDIF" in line:
-                    self.if_level -= 1
-                    self.add_line_list(line)
-                elif line.startswith("IF"):
-                    self.add_line_list(line)
-                    self.if_level += 1
-                elif "ELSEIF" in line:
-                    self.if_level -= 1
-                    self.add_line_list(line)
-                    self.if_level += 1
-                elif "SIF" in line:
-                    self.add_line_list(line)
-                else:
-                    return None
-                break
-            elif self.case_level != 0:  # 케이스 내부 돌 때
-                if "CASE" in line:
-                    if "SELECTCASE" in line:
-                        self.add_line_list(line)
-                        self.case_level += 1
-                    elif line.startswith("CASE"):
-                        if self.case_count(case_level=self.case_level - 1):
-                            self.case_level -= 1
-                        self.case_count(1)
-                        if self.mod_no & 0b1:
-                            return 1
-                        self.add_line_list(line)
-                        self.case_level += 1
-                    else:
-                        return None
-                    return 0
-                elif "DATA" in line:
-                    if "DATAFORM" in line:
-                        if not self.on_datalist:
-                            self.case_count(1)
-                        if self.mod_no & 0b1:
-                            break
-                        self.add_line_list(line)
-                    elif "DATALIST" in line:
-                        self.case_count(1)
-                        self.on_datalist = 1
-                        if self.mod_no & 0b1:
-                            self.case_level += 1
-                            break
-                        self.add_line_list(line)
-                        self.case_level += 1
-                    elif "PRINTDATA" in line:
-                        self.add_line_list(line)
-                        self.case_level += 1
-                        print("분기문 안에 분기문이 있습니다.")
-                    elif "ENDDATA" in line:
-                        cas_count = self.case_count(-1)
-                        self.case_level -= 1
-                        if not self.mod_no & 0b10:
-                            line = line + " ;{}개의 케이스 존재".format(cas_count)
-                        self.add_line_list(line)
-                    else:
-                        return None
-                    break
-                elif "END" in line:
-                    if "ENDSELECT" in line:
-                        self.case_level -= 1
-                        cas_count = self.case_count(-1)
-                        if not self.mod_no & 0b10:
-                            line = line + " ;{}개의 케이스 존재".format(cas_count)
-                        self.case_level -= 1
-                        self.add_line_list(line)
-                    elif "ENDLIST" in line:
-                        self.case_level -= 1
-                        self.on_datalist = 0
-                        if self.mod_no & 0b1:
-                            break
-                        self.add_line_list(line)
-                    else:
-                        return None
-                    break
-                else:
-                    pass
-            if "SELECTCASE" in line:
-                self.add_line_list(line)
-                self.case_level += 1
-            elif line.startswith("ELSE"):
-                self.if_level -= 1
-                self.add_line_list(line)
-                self.if_level += 1
-            elif line.startswith("RETURN"):
-                self.add_line_list(line)
-            elif line.startswith("GOTO"):
-                self.add_line_list(line)
-            elif line.startswith("#"):
-                self.add_line_list(line)
-            elif line.startswith("LOCAL"):
-                self.add_line_list(line)
-            elif line.startswith("$"):
-                self.add_line_list(line)
-            elif line.startswith("@"):
-                self.__reset_count()
-                self.add_line_list(line)
-            else:
-                if self.mod_no & 0b1:
-                    break
-                self.add_line_list(line)
-            break
-        if bef_status:
-            if self.if_level != bef_status[0]:
-                if self.if_level > bef_status[0]:  # if 블럭 스타트
-                    pass
-                elif self.if_level < bef_status[0]:  # if 블럭 종료
-                    pass
-            elif self.case_level != bef_status[1]:
-                if self.case_level > bef_status[1]:  # case 블럭 스타트
-                    pass
-                elif self.case_level < bef_status[1]:  # case 블럭 종료
-                    pass
-        return 0
-
-    def printable_lines(self):
-        """metainfo가 없는 순수 리스트 저장"""
-        lines = []
-        for metadata in self.linelist:
-            lines.append(metadata[-1])
-        return lines
+            self.df["f_line"] = f_lines
+        return f_lines
 
 
 class FuncInfo(DFInfo):
