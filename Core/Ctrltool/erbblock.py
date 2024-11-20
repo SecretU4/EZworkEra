@@ -6,11 +6,23 @@ from customdb import FuncInfo
 
 
 class CheckStack:
-    '''파일 단위 ERB 파서'''
+    '''파일 단위 ERB 파서
+    
+    Functions:
+        code_checker(line)
+        check_lines(lines)
+    Variables:
+        data_label
+            filename 등 데이터 대표 라벨 입력
+        funcs
+            처리된 함수 모음, FuncInfo형
+        gotos
+            처리된 goto 모음, dict형
+    '''
     def __init__(self, data_label="ERBFile"):
         self.data_label = data_label
         self.funcs = FuncInfo()
-        self.gotos = dict()
+        self.gotos = dict() # {cnt:label | label:lines}
 
     def code_checker(self, line):
         # 함수 관련문인지 아닌지 처리
@@ -57,17 +69,17 @@ class CheckStack:
                 return (3, 1, 1)
             return (3, 0, 0)
         # 반복문 처리
-        elif line.startswith("REPEAT"):
-            return (4, 1, 0)
-        elif line.startswith("WHILE"):
-            return (4, 1, 1)
         elif line.startswith("FOR"):
+            return (4, 1, 0)
+        elif line.startswith("REPEAT"):
+            return (4, 1, 1)
+        elif line.startswith("WHILE"):
             return (4, 1, 2)
-        elif line.startswith("REND"):
-            return (4, 3, 0)
-        elif line.startswith("WEND"):
-            return (4, 3, 1)
         elif line.startswith("NEXT"):
+            return (4, 3, 0)
+        elif line.startswith("REND"):
+            return (4, 3, 1)
+        elif line.startswith("WEND"):
             return (4, 3, 2)
         elif line.startswith("BREAK"):
             return (4, 2, 0)
@@ -88,6 +100,8 @@ class CheckStack:
             return (0, 2, 1)
         elif line.startswith("BEGIN"):
             return (0, 2, 2)
+        elif line.startswith("#"): # DIM, FUNCTION 등 특수 코드
+            return (0, 2, 3)
         elif line.startswith("RETURN"):  # RETURNF 도 인식함
             return (0, 3, 0)  # 함수 탈출자
         else:  # 일반문
@@ -118,41 +132,67 @@ class CheckStack:
             print("완성되지 않은 블럭이 있습니다.")
             raise IndexError(s_indexs, self.data_label) # TODO 로그 파일 작성
 
-    def check_lines(self, lines):
+    def warp_goto(self, g_lines:list):
+        t_lines = g_lines
+        label = t_lines.pop(0)
+        self.gotos[label] = t_lines
+
+    def warp_squash(self, checker:tuple, s_lines:dict, s_index:list, cnt):
+        # is_squash 값 반환
+        if checker == (0, 3, 2): # }
+            head_index = s_index.pop()
+            temp_lines = []
+            for num in range(cnt - head_index):
+                temp_lines.append(s_lines.pop(cnt - num))
+            s_lines[head_index] = temp_lines
+            return 0
+        return 1
+    
+    def warp_sif(self, s_lines:dict, s_index:list, cnt):
+        # is_sif 값 반환
+        head_index = s_index.pop()
+        s_lines[head_index] = [s_lines[head_index], s_lines.pop(cnt)]
+        return 0
+
+    def skip_line(self, line:str, switch):
+        # 주석문 및 SKIP문 처리, 없음/종료 시 0, 시작시 1, 진행중일 때 2 반환
+        if line.startswith("[SKIPSTART]"):
+            return 1
+        elif line.startswith("[SKIPEND]"):
+            return -1
+        elif switch:
+            return 2
+        elif line.startswith(";"):
+            return -2
+        return 0
+
+    def check_lines(self, lines:list[str]):
         is_sif, is_skip, is_squash, is_goto = 0, 0, 0, 0
         stack_index = list() # len()을 code 깊이 체크용으로 사용
+        stack_goto = list() #TODO 미완성
         stack_lines = dict()
 
         for cnt, line in enumerate(lines):
             line = line.strip()
             # 주석문 통과 선처리
-            if line.startswith("[SKIPSTART]"):
-                is_skip = 1
+            is_skip = self.skip_line(line, is_skip)
+            if is_skip >= 1:
                 continue
-            elif line.startswith("[SKIPEND]"):
+            elif is_skip <= -1:
                 is_skip = 0
                 continue
-            elif is_skip == 1 or line.startswith(";"):
-                continue
 
-            codetype, codeinfo, codeetc = self.code_checker(line)
+            checker = self.code_checker(line)
+            codetype, codeinfo, codeetc = checker
             if line:
                 stack_lines[cnt] = line
             else: # 공란은 통과
                 continue
 
             if is_squash:
-                if (codetype, codeinfo, codeetc) == (0, 3, 2): # }
-                    head_index = stack_index.pop()
-                    temp_lines = []
-                    for num in range(cnt - head_index):
-                        temp_lines.append(stack_lines.pop(cnt - num))
-                    stack_lines[head_index] = temp_lines
-                    is_squash = 0
+                is_squash = self.warp_squash(checker, stack_lines, stack_index, cnt)
             elif is_sif:
-                head_index = stack_index.pop()
-                stack_lines[head_index] = [stack_lines[head_index], stack_lines.pop(cnt)]
-                is_sif = 0
+                is_sif = self.warp_sif(stack_lines, stack_index, cnt)
             elif not codetype:
                 if not codeinfo:
                     if codeetc == 2: # code_checker 에서 걸러지지 못한 line
@@ -162,13 +202,17 @@ class CheckStack:
                         self.warp_func(stack_lines, stack_index)
                 elif (codeinfo, codeetc) == (1, 0):  # 함수 선언문
                     if stack_index:  # RETURN으로 끝나지 않은 함수가 있을때
+                        if is_goto == len(stack_index):
+                            self.warp_goto(lines[stack_goto.pop():cnt])
                         self.warp_func(stack_lines, stack_index)
 
                     stack_index.append(cnt)
                     is_goto = 0
                 elif (codeinfo, codeetc) == (1, 1):  # GOTO 시작점
+                    if is_goto:
+                        self.warp_goto(lines[stack_goto.pop():cnt+1])
                     is_goto = len(stack_index)
-                    pass #TODO
+                    stack_goto.append(cnt)
                 elif (codeinfo, codeetc) == (1, 2): # {
                     stack_index.append(cnt)
                     is_squash = 1
@@ -187,7 +231,7 @@ class CheckStack:
                 pass #TODO
             elif codeinfo == 3: # 탈출
                 if is_goto == len(stack_index):
-                    pass
+                    self.warp_goto(lines[stack_goto.pop():cnt+1])
                 start_index = stack_index.pop()
                 temp_lines = []
                 key = cnt
