@@ -24,7 +24,7 @@ class CheckStack:
         self.funcs = FuncInfo()
         self.gotos = dict() # {cnt:label | label:lines}
 
-    def code_checker(self, line):
+    def code_checker(self, line:str):
         # 함수 관련문인지 아닌지 처리
         """ 0항: 0=기타 1=IF 2=CASE 3=PRINTDATA 4=반복문\n1항: 0=단독 1=시작 2=중간 3=탈출\n2항: 비고
         """
@@ -109,7 +109,7 @@ class CheckStack:
                 return (0, 0, 2)
             return (None, None, None)  # 단순 빈줄 미처리
 
-    def warp_func(self, s_lines, s_indexs):
+    def warp_func(self, s_lines:dict[int, str], s_indexs:list[int]):
         '''처리된 함수 마무리'''
         head_index = s_indexs.pop()
         funcname = s_lines.get(head_index)
@@ -132,12 +132,13 @@ class CheckStack:
             print("완성되지 않은 블럭이 있습니다.")
             raise IndexError(s_indexs, self.data_label) # TODO 로그 파일 작성
 
-    def warp_goto(self, g_lines:list):
-        t_lines = g_lines
+    def warp_goto(self, s_lines:dict[int, str], goto_head:int, cnt:int):
+        t_lines = [s_lines.get(i) for i in range(goto_head, cnt)]
         label = t_lines.pop(0)
         self.gotos[label] = t_lines
+        return 0 # is_goto 초기화
 
-    def warp_squash(self, checker:tuple, s_lines:dict, s_index:list, cnt):
+    def warp_squash(self, checker:tuple, s_lines:dict[int, str], s_index:list[int], cnt):
         # is_squash 값 반환
         if checker == (0, 3, 2): # }
             head_index = s_index.pop()
@@ -148,7 +149,7 @@ class CheckStack:
             return 0
         return 1
     
-    def warp_sif(self, s_lines:dict, s_index:list, cnt):
+    def warp_sif(self, s_lines:dict[int, str], s_index:list[int], cnt):
         # is_sif 값 반환
         head_index = s_index.pop()
         s_lines[head_index] = [s_lines[head_index], s_lines.pop(cnt)]
@@ -202,15 +203,14 @@ class CheckStack:
                         self.warp_func(stack_lines, stack_index)
                 elif (codeinfo, codeetc) == (1, 0):  # 함수 선언문
                     if stack_index:  # RETURN으로 끝나지 않은 함수가 있을때
-                        if is_goto == len(stack_index):
-                            self.warp_goto(lines[stack_goto.pop():cnt])
+                        if is_goto and len(stack_index) == 2:
+                            is_goto = self.warp_goto(stack_lines, stack_goto.pop(), cnt)
                         self.warp_func(stack_lines, stack_index)
-
                     stack_index.append(cnt)
                     is_goto = 0
                 elif (codeinfo, codeetc) == (1, 1):  # GOTO 시작점
                     if is_goto:
-                        self.warp_goto(lines[stack_goto.pop():cnt+1])
+                        is_goto = self.warp_goto(stack_lines, stack_goto.pop(), cnt)
                     is_goto = len(stack_index)
                     stack_goto.append(cnt)
                 elif (codeinfo, codeetc) == (1, 2): # {
@@ -230,8 +230,6 @@ class CheckStack:
             elif codeinfo == 2:
                 pass #TODO
             elif codeinfo == 3: # 탈출
-                if is_goto == len(stack_index):
-                    self.warp_goto(lines[stack_goto.pop():cnt+1])
                 start_index = stack_index.pop()
                 temp_lines = []
                 key = cnt
@@ -242,7 +240,12 @@ class CheckStack:
             else:
                 raise NotImplementedError(line)
 
+            if is_goto >= len(stack_index):
+                is_goto = self.warp_goto(stack_lines, stack_goto.pop(), cnt)
+
         if stack_index: # RETURN 없는 함수 정리
+            if is_goto and len(stack_index) == 2:
+                is_goto = self.warp_goto(stack_lines, stack_goto.pop(), cnt)
             self.warp_func(stack_lines, stack_index)
 
         return stack_lines # 디버깅용
