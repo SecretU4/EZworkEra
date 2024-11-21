@@ -1,11 +1,11 @@
 # ERB 관련 모듈
 import re
-from customdb import ERBMetaInfo, FuncInfo, InfoDict, SheetInfo
+from customdb import FuncInfo, InfoDict, SheetInfo
 from usefile import CustomInput, FileFilter, LoadFile, LogPreset, MenuPreset
 from util import CommonSent, DataFilter
 from System.interface import StatusNum
 from System.xmlhandling import ERBGrammarXML, SettingXML, EraLicenceXML
-from .erbblock import CheckStack
+from .erbblock import CheckStack, MetaERB
 from . import CSVFunc
 
 
@@ -419,7 +419,7 @@ class ERBRemodel:
                 return '@"%s%s" + \n' % (context, endword)
         return ""
 
-    def __after_printcheck(self, target_lines:list[str], count:int, str_var):
+    def _after_printcheck(self, target_lines:list[str], count:int, str_var):
         # 변환시킨 출력문의 후처리 함수
         target_lines[-1] = target_lines[-1].replace(" + \n", "\n")
         if count >= 1 and count <= 5: # PRINT 출력문이 1~5줄짜리일 때
@@ -459,14 +459,14 @@ class ERBRemodel:
             else:
                 result_line = line
                 if count_print:
-                    result_lines = self.__after_printcheck(result_lines, count_print, str_var)
+                    result_lines = self._after_printcheck(result_lines, count_print, str_var)
                 count_print = 0
 
             result_line = result_line.replace("\r\n", "\n")
             result_lines.append(result_line)
 
         if '" + \n' in result_lines[-1]: # PRINT 출력문으로 파일이 끝날 때 처리
-            result_lines = self.__after_printcheck(result_lines, count_print, str_var)
+            result_lines = self._after_printcheck(result_lines, count_print, str_var)
 
         return result_lines
 
@@ -536,48 +536,13 @@ class ERBRemodel:
 
 
 class ERBUtil:
-    def indent_maker(self, metalineinfo):  # metaline을 들여쓰기된 lines로 만듦
-        self.filtered_lines = []
-        target_metalines = metalineinfo.linelist
-        for line in target_metalines:
-            if_level, case_level, _, context = line
-            if context.startswith(";"):
-                filtered_line = context
-            else:
-                filtered_line = "{}{}{}".format("\t" * if_level, "\t" * case_level, context)
-            if context.endswith("\n") != True:
-                filtered_line = filtered_line + "\n"
-            self.filtered_lines.append(filtered_line)
-        if self.filtered_lines == []:
-            print("결과물이 없습니다.")
-            return None
-        return self.filtered_lines
-
     def make_metainfo_lines(self, bulk_lines, option_num=0, target_name=None):  # 0: 전부 1: 기능관련만
-        skip_start = 0
-        erb_info = ERBMetaInfo(option_num)
+        metaerb = MetaERB(target_name)
         erb_log = LogPreset(2)
         erb_log.first_log(target_name)
-        for line in bulk_lines:
-            line = line.strip()
-            if "[SKIPEND]" in line:
-                skip_start = 0
-                erb_info.add_line_list(line)
-                continue
-            elif skip_start == 1:
-                continue
-            elif line.startswith(";") == True:  # 주석문
-                if option_num == 1:
-                    continue
-                erb_info.add_line_list(line)
-                continue
-            elif "[SKIPSTART]" in line:
-                skip_start = 1
-                erb_info.add_line_list(line)
-                continue
-            erb_info.add_linelist_embeded(line)
+        erb_info = metaerb.build_metalines(bulk_lines, option_num)
         erb_log.sucessful_done()
-        return erb_info
+        return erb_info # ERBInfo 메소드
 
     def csv_infodict_maker(self, mod_num=0, debug_log=None):
         """infodict을 필요로하는 함수나 클래스에 사용함. debug_log은 LogPreset 타입을 요구함."""
@@ -603,98 +568,6 @@ class ERBUtil:
                 log_text = "ERB 내부 {}\n".format(log_text)
             debug_log.write_log(log_text)
         return infodict_csv
-
-    def grammar_corrector(self, metalineinfo, mod_no=0):
-        """ERBMetaInfo 기반 문법 교정기
-
-        mod_no = bit 1: 중첩 printdata문 처리 on/off
-        """
-        result_lines = []
-        change_dict = {}
-        ch_printdata = 0
-        target_metalines = metalineinfo.linelist
-        for count, line in enumerate(target_metalines):
-            _, _, case_count, context = line
-            if context.startswith("PRINTDATA"):
-                ch_printdata += 1
-                if mod_no & 0b1 and ch_printdata == 1:
-                    change_dict[count] = "fix_printdata/"
-            elif mod_no & 0b1 and ch_printdata == 1:
-                head_word = context.split()[0]
-                if context.startswith("ENDDATA"):
-                    ch_printdata -= 1
-                    change_dict[count] = "fix_enddata/"
-                elif context.startswith("DATA"):
-                    if head_word == "DATALIST":
-                        change_dict[count] = "fix_datalist/"
-                    elif head_word in ("DATAFORM","DATA"):
-                        if case_count:
-                            change_dict[count] = "fix_data/fix_datalist/"
-                        else:
-                            change_dict[count] = "fix_data/"
-                    else:
-                        print("상정하지 않은 케이스 :" + context)
-                elif context.startswith("ENDLIST"):
-                    change_dict[count] = "delete"
-            elif context.startswith("ENDDATA"):
-                ch_printdata -= 1
-            result_lines.append(line)
-
-        keys = list(change_dict.keys())
-        if not keys:
-            print("확인된 문법 오류가 없습니다.")
-            return metalineinfo
-        keys.sort(reverse=True)
-
-        case_cntdict = {}
-        for key in keys:
-            value = change_dict[key]
-            if value == "delete":
-                result_lines.pop(key)
-            elif "fix" in value:
-                target_line = result_lines[key]
-                _, case_lv, case_count, context = target_line
-                res_context = ""
-                if  mod_no & 0b1 and "data" in value:
-                    if "fix_data/" in value:
-                        res_context += context.replace(context.split()[0], "PRINTFORMW")
-                        value = value.replace("fix_data/", "")
-                        if "fix_datalist/" in value:
-                            context = "DATALIST"
-                    if "fix_datalist/" in value:
-                        no = case_count
-                        if_sent = "ELSEIF A == %d" % (no - 1)
-                        if no == 1:
-                            if_sent = if_sent.replace("ELSEIF", "IF")
-                        res_context += context.replace("DATALIST", if_sent)
-                    elif value == "fix_printdata/":
-                        res_context += "A = RAND:%d" % case_cntdict.pop(case_lv)
-                    elif value == "fix_enddata/":
-                        total_count = result_lines[key-1][2]
-                        case_cntdict[case_lv] = total_count
-                        res_context += context.replace("ENDDATA", "ENDIF")
-                    elif value == "":
-                        pass
-                    else:
-                        print("상정외 value :" + value)
-                        res_context = context
-                    
-                    post_context = ""
-                    if "IF" in res_context and "PRINTFORMW" in res_context:
-                        res_context, post_context = res_context.split("IF")
-                        if "ELSE" in res_context:
-                            res_context = res_context.replace("ELSE", "")
-                            post_context = "ELSEIF" + post_context
-                        else:
-                            post_context = "IF" + post_context
-                    target_line[-1] = res_context
-                    result_lines[key] = target_line
-                    if post_context:
-                        post_line = target_line.copy()
-                        post_line[-1] = post_context
-                        result_lines.insert(key, post_line)
-        metalineinfo.linelist = result_lines
-        return metalineinfo
 
 
 class ERBVFinder:
@@ -961,7 +834,9 @@ class LicenceFinder:
 
 
 class DataBaseERB:
+    """TW의 OBJ형 템플릿 기반 ERB 데이터베이스 분석 클래스"""
     def collect_adj(self, lines:list[str], tag:str, adj_opt:bool = False, is_case:bool = False):
+        """lines 내 유효 값 존재시 dict 반환, 이외 빈 list"""
         result_list = []
         case_flag = False
         for line in lines:
@@ -1107,49 +982,44 @@ class ERBFunc:
         self.func_log.sucessful_done()
         return result_sheet # SheetInfo
 
-    def remodel_indent(self, metainfo_option_num=0, metalineinfo=None):
-        if metalineinfo == None:
+    def remodel_indent(self, erbinfo=None, meta_opt=0):
+        if erbinfo == None:
             print("들여쓰기를 자동 교정하는 유틸리티입니다.")
             erb_files, encode_type = CustomInput("ERB").get_filelist()
             file_count_check = StatusNum(erb_files, "파일")
             file_count_check.how_much_there()
-
-            for filename in erb_files:
-                erb_bulk = ERBLoad(filename, encode_type).make_erblines()
-                lines = (
-                    ERBUtil().make_metainfo_lines(erb_bulk, metainfo_option_num, filename).linelist
-                )
-                lines.insert(0, [0, 0, 0, ";{}에서 불러옴\n".format(filename)])
-                temp_metainfo = ERBMetaInfo()
-                temp_metainfo.linelist = lines
-                self.result_infodict.add(filename, ERBUtil().indent_maker(temp_metainfo))
-                file_count_check.how_much_done()
-
-            result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:[들여쓰기 처리된 lines]}
         else:
-            if isinstance(metalineinfo, list): # metaline 없는 순수 lines 일 때
-                metalineinfo = ERBUtil().make_metainfo_lines(metalineinfo, metainfo_option_num)
-            result_dataset = ERBUtil().indent_maker(metalineinfo)  # [들여쓰기 처리된 lines]
+            if isinstance(erbinfo, list): # metaline 없는 순수 lines 일 때
+                erbinfo = MetaERB().build_metalines(erbinfo, meta_opt)
+            erb_files = ["ONLYMETALINES", ]
+
+        for filename in erb_files:
+            if filename != "ONLYMETALINES":
+                erb_bulk = ERBLoad(filename, encode_type).make_erblines()
+                erbinfo = MetaERB(filename).build_metalines(erb_bulk, meta_opt)
+                file_count_check.how_much_done()
+            self.result_infodict.add(filename, erbinfo.make_indents())
+
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
-        return result_dataset
+        return self.result_infodict  # InfoDict 클래스 {파일명:[들여쓰기 처리된 lines]}
 
     def translate_txt_to_erb(self, era_type, csvvar_dict):
         txt_files, encode_type = CustomInput("TXT").get_filelist()
         file_count_check = StatusNum(txt_files, "파일")
         file_count_check.how_much_there()
         chara_num = input("작성하실 캐릭터의 번호를 입력해주세요. : ")
-        self.comp_lines = []
+        comp_lines = []
 
         for filename in txt_files:
             file_lines = ERBWrite(filename, encode_type, era_type, chara_num).txt_to_erblines(
                 csvvar_dict
             )
             print("{}의 처리가 완료되었습니다.".format(filename))
-            self.comp_lines.extend(file_lines)
+            comp_lines.extend(file_lines)
             file_count_check.how_much_done()
 
-        erb_metainfo = ERBUtil().make_metainfo_lines(self.comp_lines, 0, filename)
+        erb_metainfo = MetaERB(filename).build_metalines(comp_lines, 0)
         self.func_log.sucessful_done()
         return erb_metainfo
 
@@ -1174,7 +1044,7 @@ class ERBFunc:
         self.func_log.sucessful_done()
         return self.result_infodict  # {파일명:[바뀐줄]}
 
-    def remodel_equation(self, metainfo_option_num=2, metalineinfo=None):
+    def remodel_equation(self, meta_opt=2, metalineinfo=None):
         mod_dict = {1:"중첩 PRNTDATA 변환"}
         if metalineinfo == None:
             print("불완전한 수식을 교정해주는 유틸리티입니다.")
@@ -1185,19 +1055,14 @@ class ERBFunc:
 
             for filename in erb_files:
                 erb_bulk = ERBLoad(filename, encode_type).make_erblines()
-                lines = (
-                    ERBUtil().make_metainfo_lines(erb_bulk, metainfo_option_num, filename).linelist
-                )
-                lines.insert(0, [0, 0, 0, ";{}에서 불러옴\n".format(filename)])
-                temp_metainfo = ERBMetaInfo()
-                temp_metainfo.linelist = lines
-                self.result_infodict.add(filename, ERBUtil().grammar_corrector(temp_metainfo, mod_no))
+                erbmeta = MetaERB(filename)
+                self.result_infodict.add(filename, erbmeta.fix_grammar(erbmeta.build_metalines(erb_bulk, meta_opt), mod_no))
                 file_count_check.how_much_done()
 
-            result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:ERBMetaInfo 클래스 메소드}
+            result_dataset = self.result_infodict  # InfoDict 클래스 {파일명:ERBInfo 클래스 메소드}
         else:
             mod_no = MenuPreset().select_mod(mod_dict, 0b1)
-            result_dataset = ERBUtil().grammar_corrector(metalineinfo, mod_no)  # ERBMetaInfo 클래스 메소드
+            result_dataset = MetaERB().fix_grammar(metalineinfo, mod_no)  # ERBInfo 클래스 메소드
         CommonSent.extract_finished()
         self.func_log.sucessful_done()
         return result_dataset
