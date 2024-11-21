@@ -65,8 +65,8 @@ class ERBWrite(LoadFile):
         self.txt_bulklines = super().make_bulklines(self.debug_log)
 
     def __make_dict(self):
-        self.set_xml = SettingXML("EraSetting.xml")
-        self.gram_xml = ERBGrammarXML("CustomMarkdown.xml")
+        self.set_xml = SettingXML('config/EraSetting.xml')
+        self.gram_xml = ERBGrammarXML('config/CustomMarkdown.xml')
         # 사전 데이터 준비작업. 추후 __init__이나 최초 1회 실행 구문으로 이관 필요 있음.
         # csv 변수 양식에 맞게 불러줌. {csvvar:[csvname,num]}
         if self.csvvar_dict == None:
@@ -941,7 +941,7 @@ class ERBFunc:
         csvvar_list = ERBUtil().csv_infodict_maker()
         if csvvar_list == None:
             try:
-                csvvar_list = CSVFunc().single_csv_read("CSVfnclist.csv", opt=2)
+                csvvar_list = CSVFunc().single_csv_read('config/CSVfnclist.csv', opt=2)
             except:
                 print("설정 정보가 없어 실행이 불가합니다.")
                 return None

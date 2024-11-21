@@ -71,7 +71,7 @@ class ImportXML:
 
 class ERBGrammarXML(ImportXML):
     # {md문법:ERB문법} 또는 {분류(ex:MASTER):{md문법:ERB문법}}
-    def __init__(self, filename="CustomMarkdown.xml"):
+    def __init__(self, filename='config/CustomMarkdown.xml'):
         super().__init__(filename)
         self.tags_callname = self.find_all_tags("callname", self.xmlroot.find("callnames"), 1)
         self.tags_name = self.find_all_tags("name", self.xmlroot.find("names"), 1)
@@ -180,7 +180,7 @@ class ERBGrammarXML(ImportXML):
 
 class SettingXML(ImportXML):
     # TODO xml 양식의 세팅값 인식(ex: 기본 디렉토리)
-    def __init__(self, filename="EraSetting.xml"):
+    def __init__(self, filename='config/EraSetting.xml'):
         super().__init__(filename)
         self.info_tag = self.xmlroot.find("settings").find("information")
 
@@ -206,7 +206,7 @@ class VFinderFilterXML(ImportXML):
     pass
 
 class EraLicenceXML(ImportXML):
-    def __init__(self, filename="EraLicenceFinder.xml"):
+    def __init__(self, filename='config/EraLicenceFinder.xml'):
         super().__init__(filename)
         self.label_dict = self.create_dict(self.find_all_tags("item",self.xmlroot.find("label_dict")))
 

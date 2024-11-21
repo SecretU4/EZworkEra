@@ -41,7 +41,7 @@ class CSVLoad(LoadFile):
         self.dict_csvdata = {}
         self.list_csvdata = []
         try:
-            csvvar_list = CSVFunc().single_csv_read("CSVfnclist.csv", opt=2)
+            csvvar_list = CSVFunc().single_csv_read('config/CSVfnclist.csv', opt=2)
         except:
             csvvar_list = ["BASE", "TALENT", "ABL", "CFLAG", "CSTR","基礎", "素質", "能力", "フラグ", "呼び方リスト"]
 
