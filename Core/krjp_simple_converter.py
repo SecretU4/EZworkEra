@@ -1,7 +1,10 @@
 # 한국/원판 간 구상 호환을 도와주는 툴
 
+__version__ = "v2.0"
+
 import pickle
 import os
+
 from customdb import FuncInfo, InfoDict
 from simple_util import BringFiles
 from usefile import CustomInput, MenuPreset
@@ -245,13 +248,12 @@ def wrapping(set_dict:dict, tag_no:int, target_dir:str):
 
 # 이하 구동부
 if __name__ == "__main__":
-    version_str = "v2.0"
     print(
         "=" * 8,
         "일어본/번역본 간 동일한 기능을 하는 ERB 이름이 (번역 등 이유로) 차이가 있는 경우,",
         "중복되는 기능을 하는 파일을 수동으로 처리해주셔야 합니다.",
         "해당 경우 누락된 함수에서 오류를 발생시킬 수 있습니다.",
-        "현재 버전: " + version_str,
+        "현재 버전: " + __version__,
         "=" * 8, sep="\n"
     )
     config = SaveSetting()

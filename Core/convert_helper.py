@@ -1,5 +1,7 @@
 """Simple file encoding & image format converter"""
 
+__version__ = "v1.5.0"
+
 import sys
 import os
 from PySide6.QtWidgets import (
@@ -20,12 +22,10 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import QCoreApplication, QThread, Signal, Slot
+
 from convhelpcore import *
 from simple_util import BringFiles
 # import debugpy
-
-version_no ="v1.5.0"
-
 
 class MainWidget(QWidget):
 
@@ -316,7 +316,7 @@ class MyThread(QThread):
 
 
 if __name__ == "__main__":
-    print("version: " + version_no)
+    print("version: " + __version__)
     running_app = QApplication(sys.argv)
     gui_window = MainWindow()
     gui_window.show()

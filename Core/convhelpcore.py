@@ -5,7 +5,6 @@ import os
 import time
 from PIL import Image
 
-version = "v1.4.1c"
 encode_dict = {"Shift-JIS": "cp932", "UTF-8 with BOM": "utf-8-sig",
     "Korean-Windows": "cp949", "UTF-16 LE":"utf-16-le"}
 
@@ -110,7 +109,6 @@ class TXTConverter:
         self.change_encoding(self.encode_to)
 
 if __name__ == "__main__":
-    print("current-version: " + version)
     cur_path = "resources"
     if not os.path.isdir(cur_path):
         print("Please put this file in parent directory of 'resources'")
